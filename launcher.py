@@ -12,6 +12,7 @@ It can also be run by hand:  python launcher.py
 """
 
 import asyncio
+import json
 import os
 import platform
 import shutil
@@ -165,6 +166,98 @@ def frontend_is_stale() -> bool:
     return False
 
 
+# What the build tools ask of Node. Vite says so in its own package.json, which is read when
+# it is installed; this is the answer for a machine where node_modules is still empty.
+NODE_NEEDED = "^20.19.0 || >=22.12.0"
+
+
+def as_numbers(text: str) -> tuple[int, int, int] | None:
+    """"v20.11.1" -> (20, 11, 1). None when it is not a version at all."""
+    parts = text.strip().lstrip("v").split(".")[:3]
+    try:
+        numbers = [int(part) for part in parts]
+    except ValueError:
+        return None
+    while len(numbers) < 3:
+        numbers.append(0)
+    return numbers[0], numbers[1], numbers[2]
+
+
+def fits(version: tuple[int, int, int], spec: str) -> bool | None:
+    """Does this Node satisfy an engines line like "^20.19.0 || >=22.12.0"?
+
+    Only the two shapes these packages actually use are understood. Anything else answers
+    None, and the caller then lets the build go ahead rather than refuse on a guess: being
+    wrong about a range must never be the reason a church cannot start the app.
+    """
+    answer = False
+    for clause in spec.split("||"):
+        clause = clause.strip()
+        if clause.startswith("^"):
+            low = as_numbers(clause[1:])
+            if low is None:
+                return None
+            if low <= version < (low[0] + 1, 0, 0):
+                answer = True
+        elif clause.startswith(">="):
+            low = as_numbers(clause[2:])
+            if low is None:
+                return None
+            if version >= low:
+                answer = True
+        else:
+            return None
+    return answer
+
+
+def node_wanted(frontend: Path) -> str:
+    """The requirement the installed build tool states, or the one it stated when this was written."""
+    try:
+        engines = json.loads((frontend / "node_modules" / "vite" / "package.json")
+                             .read_text(encoding="utf-8")).get("engines") or {}
+        return engines.get("node") or NODE_NEEDED
+    except Exception:  # noqa: BLE001  not installed yet, or a shape we did not expect
+        return NODE_NEEDED
+
+
+def node_too_old(frontend: Path) -> str | None:
+    """What is wrong with the Node on this machine, when it cannot build the interface.
+
+    A Node that is one minor version short crashes inside the build with a stack trace about
+    a file nobody here wrote, so it is worth saying plainly beforehand.
+    """
+    node = shutil.which("node")
+    if node is None:
+        return None  # npm without node is odd enough to let the build itself complain
+    try:
+        found = subprocess.run([node, "--version"], capture_output=True, text=True, timeout=30).stdout
+    except (OSError, subprocess.SubprocessError):
+        return None
+    version = as_numbers(found)
+    wanted = node_wanted(frontend)
+    if version is None or fits(version, wanted) is not False:
+        return None
+    return (f"Node.js {'.'.join(str(n) for n in version)} at {node} is too old to build the interface; "
+            f"it asks for {wanted}. Install a newer Node.js from https://nodejs.org (22 is the safe "
+            "choice) and start again.")
+
+
+def carry_on_or_stop(built: Path, trouble: str) -> None:
+    """Start with the interface that is already there, or stop when there is none.
+
+    A build that will not run is a reason to say so loudly, not a reason to keep a church
+    from using the app: the built interface is committed, so there is nearly always one to
+    fall back on. That it may be older than the code is exactly what has to be said.
+    """
+    say(trouble)
+    if not built.exists():
+        raise SystemExit("There is no built interface to fall back on (frontend/dist is missing), so the "
+                         "app cannot start. Fix the above, or ask a developer to run `npm run build` in "
+                         "frontend/.")
+    say("The interface that came with the repository is used instead. It works, but anything you have "
+        "just pulled will not be in it until the build runs.")
+
+
 def ensure_frontend() -> None:
     if not frontend_is_stale():
         return
@@ -172,16 +265,20 @@ def ensure_frontend() -> None:
     built = frontend / "dist" / "index.html"
     npm = shutil.which("npm")
     if npm is None:
-        if built.exists():
-            say("The interface has changed but Node.js is not installed, so the version from before is "
-                "used. Install Node.js and start again to see the new one.")
-            return
-        raise SystemExit("The web interface has not been built (frontend/dist is missing) and Node.js is not "
-                         "installed. Ask a developer to run `npm run build` in frontend/ or install Node.js.")
+        carry_on_or_stop(built, "The interface has changed but Node.js is not installed, so it cannot "
+                                "be rebuilt. Install Node.js from https://nodejs.org and start again.")
+        return
+    old = node_too_old(frontend)
+    if old:
+        carry_on_or_stop(built, old)
+        return
     say("Building the web interface …")
-    if not (frontend / "node_modules").is_dir():
-        subprocess.run([npm, "install"], cwd=frontend, check=True)
-    subprocess.run([npm, "run", "build"], cwd=frontend, check=True)
+    try:
+        if not (frontend / "node_modules").is_dir():
+            subprocess.run([npm, "install"], cwd=frontend, check=True)
+        subprocess.run([npm, "run", "build"], cwd=frontend, check=True)
+    except subprocess.CalledProcessError:
+        carry_on_or_stop(built, "Building the interface failed; what went wrong is in the lines above.")
 
 
 # --- server -------------------------------------------------------------------

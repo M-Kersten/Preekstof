@@ -30,7 +30,8 @@ The built web interface is committed in `frontend/dist`, so Node.js is not neede
 ## Requirements
 
 - Python 3.11+
-- Node.js 20+
+- Node.js 20.19+ or 22.12+ (what Vite 8 asks for; version 22 is the safe choice). Only the build
+  needs it: `frontend/dist` is committed, so a machine without Node still runs the app.
 - FFmpeg with libass, libx264 and AAC (`ffmpeg` and `ffprobe` on `PATH`)
   - macOS: `brew install ffmpeg`
   - Ubuntu/Debian: `sudo apt install ffmpeg`

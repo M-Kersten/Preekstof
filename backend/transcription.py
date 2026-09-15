@@ -16,8 +16,15 @@ from .models import TEMPLATES_DIR, Segment, Transcript, write_atomic
 LANGUAGE = "nl"
 VOCABULARY_PATH = TEMPLATES_DIR / "woordenlijst.json"
 MODEL_SIZE = os.environ.get("WHISPER_MODEL", "small")
-# A full service is worth a bigger model if the church is willing to wait for it.
+# Only a few minutes of a service ever become clips, so the clip is worth a bigger model.
 ACCURATE_MODEL_SIZE = os.environ.get("WHISPER_MODEL_ACCURATE", "medium")
+
+# How wide a search the decoder runs at each step. Five is the careful setting and one is
+# greedy. Measured on ninety seconds of Dutch preaching with the church word list, on the
+# small model: 25.6 seconds at five, 14.4 at one, and 6% of the words different, nearly all
+# of that a full stop that became a comma. Worth it for a scan, not for what a viewer reads.
+SCAN_BEAM = int(os.environ.get("WHISPER_SCAN_BEAM", "1"))
+CLIP_BEAM = int(os.environ.get("WHISPER_CLIP_BEAM", "5"))
 DEVICE = os.environ.get("WHISPER_DEVICE", "cpu")
 COMPUTE_TYPE = os.environ.get("WHISPER_COMPUTE_TYPE", "int8" if DEVICE == "cpu" else "float16")
 
@@ -122,12 +129,32 @@ def apply_corrections(text: str, corrections: dict[str, str]) -> str:
     return text
 
 
-def model_for(accurate: bool = False) -> str:
-    """Which model this job gets: the quick one, or the one that hears more."""
-    return ACCURATE_MODEL_SIZE if accurate else MODEL_SIZE
+@dataclass(frozen=True)
+class Listening:
+    """How carefully to listen, and why.
+
+    Reading a whole service to find what is worth posting and writing out the words a
+    viewer will read are two different jobs. The first runs over an hour and a half and
+    only has to be good enough to follow the argument; the second runs over the three or
+    four minutes that became clips, where a slower setting costs seconds.
+    """
+
+    model: str
+    beam: int
+    why: str  # for the log, and for anyone wondering which pass they are looking at
 
 
-def batch_size(accurate: bool = False) -> int:
+def scanning() -> Listening:
+    """The whole service, once, to find the moments worth clipping."""
+    return Listening(MODEL_SIZE, SCAN_BEAM, "scan")
+
+
+def writing(accurate: bool = False) -> Listening:
+    """One clip, so the words under it are the ones that were said."""
+    return Listening(ACCURATE_MODEL_SIZE if accurate else MODEL_SIZE, CLIP_BEAM, "clip")
+
+
+def batch_size(model: str = MODEL_SIZE) -> int:
     """How many 30-second windows to decode at once.
 
     Batching is what makes this bearable on a laptop CPU: the windows go through the
@@ -140,7 +167,7 @@ def batch_size(accurate: bool = False) -> int:
     if override and override.isdigit() and int(override) > 0:
         return int(override)
     room = min(8, max(2, (os.cpu_count() or 2) * 2))
-    return max(2, room // 2) if accurate else room
+    return max(2, room // 2) if model == ACCURATE_MODEL_SIZE else room
 
 
 def quiet_hub_notices() -> None:
@@ -250,8 +277,12 @@ def save_partial(work_dir: Path, up_to: float, words: list[Word], segments: list
 
 def transcribe(source: Path, work_dir: Path, on_progress: Callable[[float, str], None] | None = None,
                duration: float | None = None, should_stop: Callable[[], None] | None = None,
-               start: float = 0.0, accurate: bool = False) -> Transcript:
+               start: float = 0.0, how: "Listening | None" = None) -> Transcript:
     """Transcribe `source`, or the `duration` seconds of it that begin at `start`.
+
+    `how` says which job this is: scanning() reads a whole service to find the moments,
+    writing() writes out one clip for people to read. Left out, it writes out a clip,
+    because a clip that arrived on its own is the only thing anyone asks for by hand.
 
     `on_progress(fraction, phase)` is called as the work moves along, with `phase` one of
     AUDIO, MODEL or TEXT so the caller can say what is happening instead of inferring it
@@ -263,6 +294,7 @@ def transcribe(source: Path, work_dir: Path, on_progress: Callable[[float, str],
     throw all of it away; now the next attempt carries on from the last saved point.
     """
     report = on_progress or (lambda _f, _p: None)
+    how = how or writing()
     work_dir.mkdir(parents=True, exist_ok=True)
     done_to, words, fallback = load_partial(work_dir)
     if duration and done_to >= duration - 1.0:
@@ -278,20 +310,19 @@ def transcribe(source: Path, work_dir: Path, on_progress: Callable[[float, str],
     from faster_whisper import BatchedInferencePipeline
 
     report(EXTRACT_SHARE, MODEL)
-    model = get_model(model_for(accurate))
+    model = get_model(how.model)
     if should_stop:
         should_stop()
     base = EXTRACT_SHARE + MODEL_SHARE
     report(base + (1 - base) * (done_to / duration) if duration else base, TEXT)
-    vocabulary = load_vocabulary()
     whisper_segments, _info = BatchedInferencePipeline(model=model).transcribe(
         str(wav_path),
         language=LANGUAGE,
-        beam_size=5,
+        beam_size=how.beam,
         vad_filter=True,
         word_timestamps=True,
         initial_prompt=initial_prompt() or None,
-        batch_size=batch_size(accurate),
+        batch_size=batch_size(how.model),
     )
 
     saved_at = done_to

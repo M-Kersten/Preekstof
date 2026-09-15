@@ -191,3 +191,30 @@ def test_a_missing_recording_is_reported_rather_than_crashing(disk):
         response = client.get("/services/service-1/source")
     assert response.status_code == 404
     assert "niet meer op de schijf" in response.json()["detail"]
+
+
+def test_the_audio_of_a_written_out_clip_goes_too(tmp_path, monkeypatch):
+    """Every clip is heard again when it is cut, so every clip leaves a wav behind."""
+    from backend.models import Output, Project, Segment, Transcript, save_project, save_transcript
+
+    folder = tmp_path / "projects"
+    folder.mkdir()
+    monkeypatch.setattr(models, "PROJECTS_DIR", folder)
+    monkeypatch.setattr(storage, "PROJECTS_DIR", folder)
+    monkeypatch.setattr(storage, "SERVICES_DIR", tmp_path / "none")
+
+    for name, written in (("done", True), ("busy", False)):
+        (folder / name / "work").mkdir(parents=True)
+        (folder / name / "work" / "audio.wav").write_bytes(b"x" * 4096)
+        (folder / name / "work" / "subtitles.ass").write_text("keep me")
+        project = Project(id=name, createdAt="2026-01-01T10:00:00", output=Output())
+        save_project(project)
+        if written:
+            save_transcript(project, Transcript(language="nl", segments=[
+                Segment(start=0.0, end=1.0, text="tekst")]))
+
+    freed = storage.clean_work()
+    assert freed == 4096
+    assert not (folder / "done" / "work" / "audio.wav").exists()
+    assert (folder / "done" / "work" / "subtitles.ass").exists(), "a render needs that one"
+    assert (folder / "busy" / "work" / "audio.wav").exists(), "nothing written out yet"

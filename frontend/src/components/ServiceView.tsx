@@ -28,12 +28,12 @@ const STATUS_TEXT: Record<Service['status'], string> = {
   fetching: 'De opname wordt binnengehaald van het adres dat je gaf. Hoe lang dat duurt hangt af van je verbinding.',
   uploaded: 'De opname is binnen. Klik op Uitschrijven om de gesproken tekst om te zetten in tekst.',
   transcribing:
-    'De gesproken tekst wordt omgezet in tekst. Bij een dienst van anderhalf uur duurt dit ongeveer een half uur. Laat dit venster open staan; de balk hieronder laat de voortgang zien.',
-  transcribed: 'De tekst is klaar. Klik op Beste momenten zoeken om de computer de dienst te laten doorlezen.',
+    'De dienst wordt snel doorgeluisterd, genoeg om de momenten te kunnen vinden. Laat dit venster open staan; de balk hieronder laat de voortgang zien.',
+  transcribed: 'De tekst is klaar, nog wat ruw. Klik op Beste momenten zoeken om de computer de dienst te laten doorlezen. De fragmenten die je straks kiest worden woord voor woord opnieuw uitgeschreven.',
   analyzing: 'De tekst wordt stuk voor stuk doorgelezen op momenten die als losse video werken. Dit duurt een paar minuten.',
   ready:
     'Hieronder staan de voorgestelde fragmenten, de beste bovenaan. Beluister ze, vink aan wat je wilt gebruiken en pas zo nodig het begin en einde aan. Klik daarna onderaan op Gekozen fragmenten verwerken.',
-  processing: 'De gekozen fragmenten worden uit de opname geknipt. Dit duurt een paar seconden per fragment.',
+  processing: 'De gekozen fragmenten worden uit de opname geknipt, netjes uitgeschreven en op de spreker gezet. Dit duurt ongeveer een halve minuut per fragment.',
   complete: 'De clips staan klaar bij Gemaakte clips. Open een clip om de ondertitels na te kijken, het beeldkader te kiezen en de video te maken.',
   error: 'Probeer de laatste stap opnieuw. Blijft het misgaan, geef de melding hieronder dan door aan degene die de app beheert.',
 }
@@ -428,7 +428,7 @@ export default function ServiceView({ onOpenClip }: Props) {
                 />
                 <span>
                   <strong>Nauwkeuriger uitschrijven</strong>
-                  <span className="meta"> · hoort namen en moeilijke woorden beter, maar duurt ongeveer drie keer zo lang</span>
+                  <span className="meta"> · het grotere model hoort namen en moeilijke woorden beter. Het luistert alleen naar de fragmenten die je kiest, dus het kost seconden en niet het uur dat het over de hele dienst zou kosten.</span>
                 </span>
               </label>
             )}

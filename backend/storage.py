@@ -16,7 +16,7 @@ from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
 from . import clips
-from .models import (PROJECTS_DIR, ROOT, SERVICES_DIR, Project, Service, load_service, save_project,
+from .models import (PROJECTS_DIR, ROOT, SERVICES_DIR, Project, Service, load_project, load_service, save_project,
                      save_service, service_dir, project_dir)
 
 # How long a recording is kept before it is offered for cleanup. A month covers a church
@@ -184,10 +184,14 @@ def clean(kind: str, item_id: str) -> int:
 
 
 def clean_work() -> int:
-    """Throw away the working audio of every service that has already been written out.
+    """Throw away the working audio of everything that has already been written out.
 
     A 90-minute service leaves a 170 MB wav behind, and once there is a transcript it is
     only in the way. It costs a second to make again. Always safe, so this runs unasked.
+
+    Clips leave one too, since each is heard again over its own seconds when it is cut. Far
+    smaller, and there is one per clip per Sunday, so it goes the same way. Only the audio:
+    the subtitles and the crop commands beside it belong to a render.
     """
     freed = 0
     for path in sorted(SERVICES_DIR.glob("*/work")):
@@ -196,6 +200,12 @@ def clean_work() -> int:
             continue
         freed += folder_size(path)
         shutil.rmtree(path, ignore_errors=True)
+    for audio in sorted(PROJECTS_DIR.glob("*/work/audio.wav")):
+        project = load_project(audio.parent.parent.name)
+        if project is None or not project.transcript:
+            continue
+        freed += audio.stat().st_size
+        audio.unlink(missing_ok=True)
     return freed
 
 

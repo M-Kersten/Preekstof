@@ -80,7 +80,9 @@ Environment variables for transcription:
 | Variable | Default | Notes |
 | --- | --- | --- |
 | `WHISPER_MODEL` | `small` | `tiny`, `base`, `small`, `medium`, `large-v3`. `small` is a good CPU trade-off. |
-| `WHISPER_MODEL_ACCURATE` | `medium` | Used for a service with **Nauwkeuriger uitschrijven** ticked. |
+| `WHISPER_MODEL_ACCURATE` | `medium` | Used for the clips of a service with **Nauwkeuriger uitschrijven** ticked. |
+| `WHISPER_SCAN_BEAM` | `1` | Decoder beam for the scan of a whole service. Put it back to `5` to listen as carefully as the clips do. |
+| `WHISPER_CLIP_BEAM` | `5` | Decoder beam for the clips people actually read. |
 | `WHISPER_DEVICE` | `cpu` | `cuda` when a GPU with CUDA is available. |
 | `WHISPER_COMPUTE_TYPE` | `int8` on CPU, `float16` on GPU | |
 | `WHISPER_BATCH_SIZE` | twice the core count, at most 8 | How many 30-second windows are decoded together. |
@@ -103,6 +105,39 @@ which phase it is in (pulling the audio out, loading the model, writing the text
 has measured the speed of the current phase, how long is left. Batched decoding hands back several
 minutes of text at a time, so the bar is carried forward at the measured rate between readings
 rather than standing still and then jumping.
+
+### Two passes: scanning a service, writing out a clip
+
+Reading a whole service to find what is worth posting and writing out the words a viewer will read
+are two different jobs, and only the second one is read by anybody. Three or four minutes of an
+hour and a half ever become clips, so listening carefully to the other eighty-six is a wait nobody
+is paid back for.
+
+So the service is **scanned** once with the decoder running greedily (`beam_size=1`), and every
+clip the user picks is **written out** again over its own half-minute at the careful setting, in
+the step that cuts the clips, where a bar is already running. Measured on ninety seconds of Dutch
+preaching with the church word list, `small` on four cores:
+
+| | wall clock | words different |
+| --- | --- | --- |
+| careful (`beam_size=5`) | 24.1 s | — |
+| scan (`beam_size=1`) | 14.0 s | 6% |
+| one clip of 35 s, written out | 10.5 s | |
+
+The waiting before the suggestions appear drops by **1.7×**; a clip costs about ten seconds more in
+a step that was already running. Of those 6% different words, nearly all are a full stop that
+became a comma. `base` and `tiny` were tried for the scan as well and dropped: at 35% and 48%
+different they mangle names ("Wat die Jesus luikbaar wel ziet"), and the LLM reads this text to
+decide what the preaching is about.
+
+The clips come out better than before, not worse, because **Nauwkeuriger uitschrijven** now points
+`medium` at the minutes that become clips rather than at the whole service. It used to cost several
+times the whole transcription; it now costs seconds.
+
+What this does to the *suggestions* has not been measured. `tools/evaluate.py` scores them against
+services a church has actually posted from, and the only service in `evaluation/` is invented, with
+a transcript that never went through a speech model. If the moments get worse, `WHISPER_SCAN_BEAM=5`
+in `config.env` puts the scan back exactly where it was.
 
 ## Using the app
 
@@ -176,13 +211,13 @@ Kerkomroep has no such resolver, so it still gets a note pointing at its own dow
 Link or upload → Transcribing → Analyzing service → Suggestions ready → Review & select → Process selected clips → Clip editor
 ```
 
-1. Open the **Full service** tab and drop the complete recording. Transcription starts automatically (the same faster-whisper setup as for clips, forced to `nl`) and shows progress; with the `small` model a 90-minute service takes about 20 to 40 minutes on a recent laptop CPU (`medium` takes several times longer). The black window may print warnings from the speech library while this runs; the progress bar in the browser is what counts.
+1. Open the **Full service** tab and drop the complete recording. The scan starts automatically (faster-whisper, forced to `nl`, decoding greedily; see [Two passes](#two-passes-scanning-a-service-writing-out-a-clip)) and shows progress. It is deliberately rough: good enough to find the moments, and replaced per clip in step 7. The black window may print warnings from the speech library while this runs; the progress bar in the browser is what counts.
 2. The transcript is labelled into the parts of a service before anything is sent: welcome, songs, reading, prayer, sermon, notices, blessing. No model is involved; it is the words a Dutch service uses, plus where in the hour a part falls and how much silence it leaves. See **Reading the shape of a service** below.
 3. Analysis runs in two passes. The **first** cuts the preaching into overlapping windows of about three minutes and sends each one, told which part of the service it is in, coming back as structured JSON candidates (start, end, title, summary, reason, confidence). Windows that sit wholly in the singing or the notices are never sent, which is a little under half of a normal service.
 4. Candidate boundaries are snapped to sentence boundaries and proposals covering the same moment are merged (the extra boundaries stay available as alternatives).
 5. The **second** pass reads every surviving proposal at once, with the shape of the service and an excerpt of what is actually said, and picks the five to ten this service is worth posting. This is the pass that makes the order mean something: a per-window confidence is not comparable between windows, because the best moment of a dull three minutes scores the same as the best moment of the service. Every proposal comes back with a one-line verdict, including the ones passed over.
 6. **Clip Suggestions** lists the chosen moments best first, with the shape of the service drawn behind them on the timeline. The ones that were found but passed over sit behind **Ook gevonden, niet gekozen** with the reason they lost. **Preview** plays just that range of the original recording; **Transcript & timecodes** opens the full excerpt and the boundary editor with direct `mm:ss.s` input and -5 / -1 / +1 / +5 second nudges. Selections and edits are saved automatically.
-7. **Process selected clips** creates a normal clip project per selected range, with the matching part of the transcript already filled in, and lists them in the bar at the bottom of the screen. **Open in editor** switches to the Clip tab for subtitles, styling, framing and rendering. Nothing about rendering lives in the discovery layer.
+7. **Process selected clips** creates a normal clip project per selected range. Each one is then heard again over its own seconds, at the careful setting, so the subtitles a viewer reads are not the scan's; and the speaker is found in it, so it opens already framed. Both steps report into the bar at the bottom of the screen, which also lists the finished clips. **Open in editor** switches to the Clip tab for subtitles, styling, framing and rendering. Nothing about rendering lives in the discovery layer.
 
    Nothing is cut at this point. A clip records which recording it came from and which seconds it covers, and the renderer seeks into the original, so a finished clip is one encode away from the camera instead of two and processing eight moments takes a moment rather than several minutes. `clips.source_of()` answers where a clip's footage is; `clips.materialise()` gives a clip its own copy, which only happens when the recording is about to be removed.
 

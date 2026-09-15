@@ -360,7 +360,7 @@ class Service(BaseModel):
     status: ServiceStatus = "created"
     error: str | None = None
     warning: str | None = None  # analysis finished, but not every part of the text worked
-    accurate: bool = False  # use the slower, better-hearing model for this recording
+    accurate: bool = False  # hear the clips of this recording with the slower, better model
     sermonTitle: str = ""  # what the preaching was about, when the church knows it beforehand
     series: str = ""  # the series it belongs to, if there is one
     shape: list[dict] = []  # the parts of the service: welcome, songs, sermon, notices...

@@ -802,10 +802,12 @@ def transcribe_service(service_id: str):
             wording = SPEECH_PHASE[phase]
             job.message = left.note(fraction, wording) if phase == transcription.TEXT else wording
 
+        # A scan, not the finished article: only a few minutes of an hour and a half ever
+        # become clips, and those are written out again in process_selected, properly.
         transcript = transcription.transcribe(
             service_dir(service.id) / service.sourceVideo, service_dir(service.id) / "work",
             on_progress=on_progress, duration=service.sourceInfo.duration, should_stop=job.check,
-            accurate=service.accurate,
+            how=transcription.scanning(),
         )
         save_service_transcript(service, transcript)
 
@@ -915,6 +917,42 @@ def update_candidates(service_id: str, candidates: list[ClipCandidate]):
     return service.candidates
 
 
+def write_out(project: Project, accurate: bool = False, on_progress=None, should_stop=None,
+              quiet: bool = True) -> Project:
+    """Listen to this clip again, carefully, and replace the scan's words with what it hears.
+
+    The service was read once, quickly, to find the moments. Those words are good enough to
+    choose by and too rough to put on screen, so the half-minute that became a clip is heard
+    again at the careful setting. Over a clip that costs seconds; over the whole service it
+    would have cost the best part of an hour.
+
+    The rough words are already on the clip, sliced out of the service transcript, so a pass
+    that fails leaves something readable behind rather than an empty editor.
+
+    `on_progress(fraction, message)` is the same shape as follow_speaker's, so the step that
+    runs both can hand them the same function.
+    """
+    try:
+        source, start, length = clips.source_of(project)
+        if project.sourceInfo is None or not project.sourceInfo.hasAudio:
+            return project
+        said = (lambda f, phase: on_progress(f, SPEECH_PHASE[phase])) if on_progress else None
+        heard = transcription.transcribe(
+            source, project_dir(project.id) / "work", on_progress=said,
+            duration=length, should_stop=should_stop, start=start,
+            how=transcription.writing(accurate),
+        )
+        if heard.segments:
+            save_transcript(project, heard)
+    except Cancelled:
+        raise
+    except Exception as exc:  # noqa: BLE001  the rough text stands; the clip is still usable
+        print(f"[uitschrijven] {project.id}: {exc}")
+        if not quiet:
+            raise
+    return project
+
+
 def framing_from(project: Project, found: Track) -> CropWindow:
     """The window a found path asks for: its zoom, its height, and a sensible fallback x.
 
@@ -1010,12 +1048,14 @@ def process_selected(service_id: str):
     transcript = load_service_transcript(service)
 
     def work(job: Job, service: Service) -> None:
-        # Looking for the speaker is the long part of this step, and it runs at a steady
-        # speed, so what is left can honestly be counted from what is done.
+        # Two slow steps per clip, over the same seconds of the recording, so half of the
+        # clip's share of the bar goes to each. Both run at a steady rate, which is what
+        # makes the time left worth printing.
         left = Estimator(settle=8.0)
+        each = 1 / len(selected)
         for n, cand in enumerate(selected, start=1):
             job.check()
-            share = (n - 1) / len(selected)
+            share = (n - 1) * each
             job.advance(share)
             job.message = left.note(share, f"Fragment {n} van {len(selected)} wordt klaargezet")
             project = clips.create_clip(
@@ -1023,14 +1063,18 @@ def process_selected(service_id: str):
                 origin=ClipOrigin(serviceId=service.id, candidateId=cand.id, start=cand.start, end=cand.end),
                 source_info=service.sourceInfo,
             )
-            # The framing is worked out here, in a step where you are already waiting, so
-            # the clip opens with the speaker already followed rather than centred and lost.
-            def told(fraction: float, message: str, n=n, share=share) -> None:
-                at = share + fraction / len(selected)
+
+            def told(fraction: float, message: str, n=n, share=share, part=0.0) -> None:
+                at = share + each * (part + fraction / 2)
                 job.advance(at)
                 job.message = left.note(at, f"Fragment {n} van {len(selected)} · {message}")
 
-            follow_speaker(project, told, job.check)
+            # The service was read quickly to find this moment; now it is heard properly,
+            # over half a minute instead of an hour and a half.
+            write_out(project, service.accurate, told, job.check)
+            # And the framing is worked out here too, in a step where you are already
+            # waiting, so the clip opens with the speaker followed rather than lost.
+            follow_speaker(project, lambda f, m, told=told: told(f, m, part=0.5), job.check)
             service.clips.append(ProcessedClip(
                 candidateId=cand.id, projectId=project.id, title=cand.title, start=cand.start, end=cand.end,
                 createdAt=datetime.now(timezone.utc).isoformat(timespec="seconds"),

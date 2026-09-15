@@ -5,7 +5,7 @@ import time
 import pytest
 
 from backend.jobs import Estimator, human_remaining
-from backend.transcription import batch_size, model_for
+from backend.transcription import batch_size, scanning, writing
 
 
 @pytest.mark.parametrize("seconds,expected", [
@@ -83,13 +83,25 @@ def test_the_message_carries_the_estimate_only_when_there_is_one():
 
 
 def test_the_batch_fits_the_machine_and_the_model():
-    quick, accurate = batch_size(False), batch_size(True)
+    quick, accurate = batch_size(writing().model), batch_size(writing(True).model)
     assert 2 <= quick <= 8
     assert 2 <= accurate <= quick, "the bigger model holds more, so it takes a smaller batch"
 
 
 def test_the_accurate_switch_picks_a_different_model():
-    assert model_for(False) != model_for(True)
+    assert writing().model != writing(True).model
+
+
+def test_a_scan_listens_less_carefully_than_a_clip():
+    """Where the hour and a half is saved: the whole service is read greedily, once."""
+    assert scanning().beam < writing().beam
+    assert scanning().model == writing().model, "same ears, less searching"
+
+
+def test_a_clip_is_written_out_as_carefully_as_the_old_whole_service_pass():
+    """Nobody reads worse subtitles than before because the scan got quicker."""
+    assert writing().beam == 5
+    assert writing().model == scanning().model
 
 
 def test_the_bar_carries_on_between_readings():

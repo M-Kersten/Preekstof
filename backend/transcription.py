@@ -11,6 +11,7 @@ from dataclasses import asdict, dataclass
 from pathlib import Path
 from typing import Callable
 
+from . import mac
 from .models import TEMPLATES_DIR, Segment, Transcript, write_atomic
 
 LANGUAGE = "nl"
@@ -25,6 +26,12 @@ ACCURATE_MODEL_SIZE = os.environ.get("WHISPER_MODEL_ACCURATE", "medium")
 # of that a full stop that became a comma. Worth it for a scan, not for what a viewer reads.
 SCAN_BEAM = int(os.environ.get("WHISPER_SCAN_BEAM", "1"))
 CLIP_BEAM = int(os.environ.get("WHISPER_CLIP_BEAM", "5"))
+
+# Which engine does the listening. "auto" takes the Mac's graphics chip when the machine has
+# one and mlx-whisper is installed, and the processor everywhere else. Name one of them to
+# settle it yourself, which is also how the two get compared (see tools/speechbench.py).
+BACKEND = os.environ.get("WHISPER_BACKEND", "auto").lower()
+MLX, CTRANSLATE = "mlx", "faster-whisper"
 DEVICE = os.environ.get("WHISPER_DEVICE", "cpu")
 COMPUTE_TYPE = os.environ.get("WHISPER_COMPUTE_TYPE", "int8" if DEVICE == "cpu" else "float16")
 
@@ -152,6 +159,13 @@ def scanning() -> Listening:
 def writing(accurate: bool = False) -> Listening:
     """One clip, so the words under it are the ones that were said."""
     return Listening(ACCURATE_MODEL_SIZE if accurate else MODEL_SIZE, CLIP_BEAM, "clip")
+
+
+def engine() -> str:
+    """Which of the two does the work, given the setting and what this machine has."""
+    if BACKEND in (MLX, CTRANSLATE):
+        return BACKEND
+    return MLX if mac.possible() else CTRANSLATE
 
 
 def batch_size(model: str = MODEL_SIZE) -> int:
@@ -307,23 +321,34 @@ def transcribe(source: Path, work_dir: Path, on_progress: Callable[[float, str],
                   on_progress=lambda f: report(EXTRACT_SHARE * f, AUDIO),
                   duration=remaining, start=start + done_to)
 
-    from faster_whisper import BatchedInferencePipeline
-
     report(EXTRACT_SHARE, MODEL)
-    model = get_model(how.model)
-    if should_stop:
-        should_stop()
     base = EXTRACT_SHARE + MODEL_SHARE
-    report(base + (1 - base) * (done_to / duration) if duration else base, TEXT)
-    whisper_segments, _info = BatchedInferencePipeline(model=model).transcribe(
-        str(wav_path),
-        language=LANGUAGE,
-        beam_size=how.beam,
-        vad_filter=True,
-        word_timestamps=True,
-        initial_prompt=initial_prompt() or None,
-        batch_size=batch_size(how.model),
-    )
+    # Both engines hand back the same shape: pieces with .start, .end, .text and .words, in
+    # the seconds of the audio just decoded. Everything below this line is the same either way.
+    if engine() == MLX:
+        # The model loads on the first piece rather than here, so the bar is told now that
+        # the waiting has started and the pieces move it along from there.
+        report(base, TEXT)
+        if should_stop:
+            should_stop()
+        whisper_segments = mac.listen(wav_path, how.model, initial_prompt() or None,
+                                      should_stop, LANGUAGE)
+    else:
+        from faster_whisper import BatchedInferencePipeline
+
+        model = get_model(how.model)
+        if should_stop:
+            should_stop()
+        report(base + (1 - base) * (done_to / duration) if duration else base, TEXT)
+        whisper_segments, _info = BatchedInferencePipeline(model=model).transcribe(
+            str(wav_path),
+            language=LANGUAGE,
+            beam_size=how.beam,
+            vad_filter=True,
+            word_timestamps=True,
+            initial_prompt=initial_prompt() or None,
+            batch_size=batch_size(how.model),
+        )
 
     saved_at = done_to
     try:

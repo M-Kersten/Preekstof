@@ -83,7 +83,8 @@ Environment variables for transcription:
 | `WHISPER_MODEL_ACCURATE` | `medium` | Used for the clips of a service with **Nauwkeuriger uitschrijven** ticked. |
 | `WHISPER_SCAN_BEAM` | `1` | Decoder beam for the scan of a whole service. Put it back to `5` to listen as carefully as the clips do. |
 | `WHISPER_CLIP_BEAM` | `5` | Decoder beam for the clips people actually read. |
-| `WHISPER_DEVICE` | `cpu` | `cuda` when a GPU with CUDA is available. |
+| `WHISPER_BACKEND` | `auto` | `mlx` on an Apple Silicon Mac that has it installed, `faster-whisper` everywhere else. Name one to settle it yourself. See [On a Mac](#on-a-mac-the-graphics-chip-instead-of-the-processor). |
+| `WHISPER_DEVICE` | `cpu` | `cuda` when a GPU with CUDA is available. Not used by the `mlx` backend. |
 | `WHISPER_COMPUTE_TYPE` | `int8` on CPU, `float16` on GPU | |
 | `WHISPER_BATCH_SIZE` | twice the core count, at most 8 | How many 30-second windows are decoded together. |
 | `HF_TOKEN` | none | Optional [Hugging Face token](https://huggingface.co/settings/tokens). The speech model is public and downloads without one; a token only lifts the rate limit and makes the first download quicker. Without one their client prints "you are sending unauthenticated requests" on every run, which the app keeps out of the window because nothing is wrong. |
@@ -138,6 +139,43 @@ What this does to the *suggestions* has not been measured. `tools/evaluate.py` s
 services a church has actually posted from, and the only service in `evaluation/` is invented, with
 a transcript that never went through a speech model. If the moments get worse, `WHISPER_SCAN_BEAM=5`
 in `config.env` puts the scan back exactly where it was.
+
+### On a Mac: the graphics chip instead of the processor
+
+faster-whisper decodes through CTranslate2, which has a CUDA backend and no Metal one. On an
+Apple laptop that means the whole transcription runs on the processor while the graphics chip sits
+there doing nothing. MLX is Apple's own array library, and `mlx-whisper` runs the same Whisper
+weights on that chip.
+
+It is not part of the normal install, because `mlx` only exists for Apple Silicon and pulls in a
+couple of gigabytes nobody else can use. On a MacBook:
+
+```bash
+.venv/bin/pip install -r backend/requirements-mac.txt
+```
+
+After that the app picks it up by itself; `WHISPER_BACKEND` in `config.env` overrules that in
+either direction, and the readiness check in the app bar says which chip is doing the work. The
+same `WHISPER_MODEL` names are used, resolved to the converted weights (`small` →
+`mlx-community/whisper-small-mlx`), so a church that set `medium` gets the medium one here too.
+
+MLX will not hand back a sentence at a time: it takes the audio, thinks, and answers when it is
+finished. Over an hour and a half that would mean a bar that does not move, a **Stoppen** button
+that does nothing and a closed laptop costing the lot, so `backend/mac.py` cuts the audio into
+five-minute pieces and feeds them one at a time. Each cut goes looking for the quietest moment
+within twenty seconds of where it wanted to land, so it does not fall in the middle of a word.
+Progress, stopping and resuming then work exactly as they do on the other engine.
+
+**How much quicker it is has not been measured here**, and no number is quoted for it: this
+repository is developed on Linux, where `mlx` cannot even be installed. Measure it on your own
+machine, on your own recording:
+
+```bash
+.venv/bin/python -m tools.speechbench opnames/dienst.mp4 --minutes 10
+```
+
+That runs both engines over the same audio, prints what each took and how much their words differ,
+and leaves both transcripts side by side to read.
 
 ## Using the app
 
@@ -497,6 +535,7 @@ backend/
   brands.py         brand presets: church, end screen, subtitle style, music
   health.py         the checks the interface shows
   clips.py          create_clip(source, start, end): cuts a range into a regular clip project
+  mac.py            speech on the graphics chip of an Apple Silicon Mac, via mlx-whisper
   vision.py         the two ONNX detectors: faces (YuNet) and people (YOLOv10n)
   tracking.py       detections -> one calm path for the crop window to walk
 frontend/src/
@@ -527,6 +566,7 @@ vision/
 launcher.py         loads config.env, fetches FFmpeg when missing, starts the server, opens the browser
 start.bat / start.command   one-click launchers for Windows and macOS (create .venv, install, run launcher.py)
 config.example.env  template for config.env (API key, LLM provider, whisper model)
+tools/speechbench.py        time the two speech engines against each other on your own recording
 projects/           one directory per clip project (ignored by git)
 services/           one directory per full service (ignored by git)
 ```

@@ -1,0 +1,12 @@
+# Speech on the graphics chip of an Apple Silicon Mac. Not part of the normal install:
+# mlx only exists for that machine, and this pulls in a couple of gigabytes that nobody on
+# Windows or Linux can use. On a MacBook:
+#
+#     .venv/bin/pip install -r backend/requirements-mac.txt
+#
+# After that the app uses it by itself; WHISPER_BACKEND in config.env overrules that either
+# way. Measure what it gains you with: .venv/bin/python -m tools.speechbench <opname>
+#
+# torch is in mlx-whisper's dependency list for converting weights, which this never does;
+# transcribing does not import it.
+mlx-whisper>=0.4.3

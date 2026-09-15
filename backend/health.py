@@ -8,7 +8,7 @@ from pathlib import Path
 
 from pydantic import BaseModel
 
-from . import discovery, storage, vision
+from . import discovery, mac, storage, transcription, vision
 from .models import PROJECTS_DIR, ROOT, SERVICES_DIR, TEMPLATES_DIR
 from .transcription import MODEL_SIZE
 
@@ -37,10 +37,21 @@ def _ffmpeg() -> Check:
 
 def _whisper() -> Check:
     cache = Path(os.environ.get("HF_HOME", Path.home() / ".cache" / "huggingface")) / "hub"
-    downloaded = any(cache.glob(f"models--*faster-whisper-{MODEL_SIZE}")) if cache.is_dir() else False
-    return Check(name="Spraakmodel", ok=True,
-                 detail=f"{MODEL_SIZE}, klaar voor gebruik" if downloaded
-                 else f"{MODEL_SIZE}, wordt bij de eerste keer uitschrijven gedownload (ongeveer 460 MB)")
+    on_gpu = transcription.engine() == transcription.MLX
+    pattern = f"models--mlx-community--whisper-{MODEL_SIZE}-mlx" if on_gpu \
+        else f"models--*faster-whisper-{MODEL_SIZE}"
+    downloaded = any(cache.glob(pattern)) if cache.is_dir() else False
+    # Worth naming: the Mac's graphics chip is several times the processor at this, and a
+    # laptop that could be using it and is not is the sort of thing you want to be told.
+    where = "op de grafische chip" if on_gpu else "op de processor"
+    if not downloaded:
+        return Check(name="Spraakmodel", ok=True,
+                     detail=f"{MODEL_SIZE} {where}, wordt bij de eerste keer uitschrijven gedownload")
+    if not on_gpu and mac.apple_silicon():
+        return Check(name="Spraakmodel", ok=True,
+                     detail=f"{MODEL_SIZE} op de processor. Deze Mac kan het op de grafische chip, "
+                            "wat een stuk sneller is: installeer backend/requirements-mac.txt.")
+    return Check(name="Spraakmodel", ok=True, detail=f"{MODEL_SIZE} {where}, klaar voor gebruik")
 
 
 def _tracking() -> Check:

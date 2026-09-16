@@ -9,7 +9,7 @@ import subprocess
 from pathlib import Path
 
 from . import renderer
-from .models import (ClipOrigin, Project, Segment, Transcript, VideoInfo, load_service, new_project,
+from .models import (ClipOrigin, Project, Segment, Spoken, Transcript, VideoInfo, load_service, new_project,
                      project_dir, save_project, save_transcript, service_dir)
 
 
@@ -35,6 +35,10 @@ def slice_transcript(transcript: Transcript, start: float, end: float) -> Transc
             start=round(max(0.0, seg.start - start), 2),
             end=round(min(end - start, seg.end - start), 2),
             text=seg.text,
+            # The word timings move with the rest, so a clip that is never heard again still
+            # knows when each word is said.
+            words=[Spoken(start=round(w.start - start, 2), end=round(w.end - start, 2), word=w.word)
+                   for w in seg.words],
         ))
     return Transcript(language=transcript.language, segments=[s for s in segments if s.end > s.start])
 

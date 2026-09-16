@@ -2070,5 +2070,467 @@
     }
    ]
   }
+ ],
+ "caption": [
+  {
+   "segment": {
+    "start": 1.0,
+    "end": 3.0,
+    "text": "God is op zoek naar jou",
+    "words": [
+     {
+      "start": 1.0,
+      "end": 1.3333333333333333,
+      "word": "God"
+     },
+     {
+      "start": 1.3333333333333333,
+      "end": 1.6666666666666665,
+      "word": "is"
+     },
+     {
+      "start": 1.6666666666666665,
+      "end": 2.0,
+      "word": "op"
+     },
+     {
+      "start": 2.0,
+      "end": 2.333333333333333,
+      "word": "zoek"
+     },
+     {
+      "start": 2.333333333333333,
+      "end": 2.666666666666667,
+      "word": "naar"
+     },
+     {
+      "start": 2.666666666666667,
+      "end": 3.0,
+      "word": "jou"
+     }
+    ]
+   },
+   "times": [
+    {
+     "start": 1.0,
+     "end": 1.3333333333333333,
+     "word": "God"
+    },
+    {
+     "start": 1.3333333333333333,
+     "end": 1.6666666666666665,
+     "word": "is"
+    },
+    {
+     "start": 1.6666666666666665,
+     "end": 2.0,
+     "word": "op"
+    },
+    {
+     "start": 2.0,
+     "end": 2.333333333333333,
+     "word": "zoek"
+    },
+    {
+     "start": 2.333333333333333,
+     "end": 2.666666666666667,
+     "word": "naar"
+    },
+    {
+     "start": 2.666666666666667,
+     "end": 3.0,
+     "word": "jou"
+    }
+   ]
+  },
+  {
+   "segment": {
+    "start": 1.0,
+    "end": 3.0,
+    "text": "God is op zoek naar jou",
+    "words": []
+   },
+   "times": [
+    {
+     "start": 1.0,
+     "end": 1.333,
+     "word": "God"
+    },
+    {
+     "start": 1.333,
+     "end": 1.583,
+     "word": "is"
+    },
+    {
+     "start": 1.583,
+     "end": 1.833,
+     "word": "op"
+    },
+    {
+     "start": 1.833,
+     "end": 2.25,
+     "word": "zoek"
+    },
+    {
+     "start": 2.25,
+     "end": 2.667,
+     "word": "naar"
+    },
+    {
+     "start": 2.667,
+     "end": 3.0,
+     "word": "jou"
+    }
+   ]
+  },
+  {
+   "segment": {
+    "start": 0.0,
+    "end": 2.5,
+    "text": "Genade",
+    "words": [
+     {
+      "start": 0.0,
+      "end": 2.5,
+      "word": "Genade"
+     }
+    ]
+   },
+   "times": [
+    {
+     "start": 0.0,
+     "end": 2.5,
+     "word": "Genade"
+    }
+   ]
+  },
+  {
+   "segment": {
+    "start": 10.0,
+    "end": 14.0,
+    "text": "Niet omdat je perfect bent, maar omdat hij van je houdt",
+    "words": [
+     {
+      "start": 10.0,
+      "end": 10.363636363636363,
+      "word": "Niet"
+     },
+     {
+      "start": 10.363636363636363,
+      "end": 10.727272727272727,
+      "word": "omdat"
+     },
+     {
+      "start": 10.727272727272727,
+      "end": 11.09090909090909,
+      "word": "je"
+     },
+     {
+      "start": 11.09090909090909,
+      "end": 11.454545454545455,
+      "word": "perfect"
+     },
+     {
+      "start": 11.454545454545455,
+      "end": 11.818181818181818,
+      "word": "bent,"
+     },
+     {
+      "start": 11.818181818181818,
+      "end": 12.181818181818182,
+      "word": "maar"
+     },
+     {
+      "start": 12.181818181818182,
+      "end": 12.545454545454545,
+      "word": "omdat"
+     },
+     {
+      "start": 12.545454545454545,
+      "end": 12.90909090909091,
+      "word": "hij"
+     },
+     {
+      "start": 12.90909090909091,
+      "end": 13.272727272727273,
+      "word": "van"
+     },
+     {
+      "start": 13.272727272727273,
+      "end": 13.636363636363637,
+      "word": "je"
+     },
+     {
+      "start": 13.636363636363637,
+      "end": 14.0,
+      "word": "houdt"
+     }
+    ]
+   },
+   "times": [
+    {
+     "start": 10.0,
+     "end": 10.363636363636363,
+     "word": "Niet"
+    },
+    {
+     "start": 10.363636363636363,
+     "end": 10.727272727272727,
+     "word": "omdat"
+    },
+    {
+     "start": 10.727272727272727,
+     "end": 11.09090909090909,
+     "word": "je"
+    },
+    {
+     "start": 11.09090909090909,
+     "end": 11.454545454545455,
+     "word": "perfect"
+    },
+    {
+     "start": 11.454545454545455,
+     "end": 11.818181818181818,
+     "word": "bent,"
+    },
+    {
+     "start": 11.818181818181818,
+     "end": 12.181818181818182,
+     "word": "maar"
+    },
+    {
+     "start": 12.181818181818182,
+     "end": 12.545454545454545,
+     "word": "omdat"
+    },
+    {
+     "start": 12.545454545454545,
+     "end": 12.90909090909091,
+     "word": "hij"
+    },
+    {
+     "start": 12.90909090909091,
+     "end": 13.272727272727273,
+     "word": "van"
+    },
+    {
+     "start": 13.272727272727273,
+     "end": 13.636363636363637,
+     "word": "je"
+    },
+    {
+     "start": 13.636363636363637,
+     "end": 14.0,
+     "word": "houdt"
+    }
+   ]
+  },
+  {
+   "segment": {
+    "start": 1.0,
+    "end": 3.0,
+    "text": "God is op zoek naar jou vandaag",
+    "words": [
+     {
+      "start": 1.0,
+      "end": 1.4,
+      "word": "God"
+     },
+     {
+      "start": 1.4,
+      "end": 1.6,
+      "word": "is"
+     },
+     {
+      "start": 1.6,
+      "end": 1.9,
+      "word": "op"
+     },
+     {
+      "start": 1.9,
+      "end": 2.2,
+      "word": "zoek"
+     },
+     {
+      "start": 2.2,
+      "end": 2.6,
+      "word": "naar"
+     },
+     {
+      "start": 2.6,
+      "end": 3.0,
+      "word": "jou"
+     }
+    ]
+   },
+   "times": [
+    {
+     "start": 1.0,
+     "end": 1.25,
+     "word": "God"
+    },
+    {
+     "start": 1.25,
+     "end": 1.438,
+     "word": "is"
+    },
+    {
+     "start": 1.438,
+     "end": 1.625,
+     "word": "op"
+    },
+    {
+     "start": 1.625,
+     "end": 1.938,
+     "word": "zoek"
+    },
+    {
+     "start": 1.938,
+     "end": 2.25,
+     "word": "naar"
+    },
+    {
+     "start": 2.25,
+     "end": 2.5,
+     "word": "jou"
+    },
+    {
+     "start": 2.5,
+     "end": 3.0,
+     "word": "vandaag"
+    }
+   ]
+  },
+  {
+   "segment": {
+    "start": 1.0,
+    "end": 3.0,
+    "text": "God zoekt jou",
+    "words": [
+     {
+      "start": 1.0,
+      "end": 1.4,
+      "word": "God"
+     },
+     {
+      "start": 1.4,
+      "end": 1.6,
+      "word": "is"
+     },
+     {
+      "start": 1.6,
+      "end": 1.9,
+      "word": "op"
+     },
+     {
+      "start": 1.9,
+      "end": 2.2,
+      "word": "zoek"
+     },
+     {
+      "start": 2.2,
+      "end": 2.6,
+      "word": "naar"
+     },
+     {
+      "start": 2.6,
+      "end": 3.0,
+      "word": "jou"
+     }
+    ]
+   },
+   "times": [
+    {
+     "start": 1.0,
+     "end": 1.571,
+     "word": "God"
+    },
+    {
+     "start": 1.571,
+     "end": 2.429,
+     "word": "zoekt"
+    },
+    {
+     "start": 2.429,
+     "end": 3.0,
+     "word": "jou"
+    }
+   ]
+  },
+  {
+   "segment": {
+    "start": 1.0,
+    "end": 2.0,
+    "text": "Heer, hoor ons",
+    "words": [
+     {
+      "start": 1.0,
+      "end": 1.3,
+      "word": "Heer,"
+     },
+     {
+      "start": 1.3,
+      "end": 1.3,
+      "word": " "
+     },
+     {
+      "start": 1.3,
+      "end": 1.6,
+      "word": "hoor"
+     },
+     {
+      "start": 1.6,
+      "end": 2.0,
+      "word": "ons"
+     }
+    ]
+   },
+   "times": [
+    {
+     "start": 1.0,
+     "end": 1.3,
+     "word": "Heer,"
+    },
+    {
+     "start": 1.3,
+     "end": 1.6,
+     "word": "hoor"
+    },
+    {
+     "start": 1.6,
+     "end": 2.0,
+     "word": "ons"
+    }
+   ]
+  },
+  {
+   "segment": {
+    "start": 5.0,
+    "end": 5.0,
+    "text": "geen tijd",
+    "words": [
+     {
+      "start": 5.0,
+      "end": 5.0,
+      "word": "geen"
+     },
+     {
+      "start": 5.0,
+      "end": 5.0,
+      "word": "tijd"
+     }
+    ]
+   },
+   "times": []
+  },
+  {
+   "segment": {
+    "start": 0.0,
+    "end": 1.0,
+    "text": "   ",
+    "words": []
+   },
+   "times": []
+  }
  ]
 }

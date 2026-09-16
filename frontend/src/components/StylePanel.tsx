@@ -9,6 +9,8 @@ interface Props {
   onChange: (style: Style) => void
 }
 
+const SPECIMEN = ['God', 'is', 'op', 'zoek', 'naar', 'jou']
+
 export default function StylePanel({ style, onChange }: Props) {
   const families = useFonts()
   const set = <K extends keyof Style>(key: K, value: Style[K]) => onChange({ ...style, [key]: value })
@@ -22,6 +24,14 @@ export default function StylePanel({ style, onChange }: Props) {
     const timer = window.setInterval(() => setBeat((b) => b + 1), 2600)
     return () => window.clearInterval(timer)
   }, [])
+  // The specimen walks the highlight along itself, so ticking the box shows what it does
+  // rather than leaving you to go and play the preview to find out.
+  const [lit, setLit] = useState(0)
+  useEffect(() => {
+    if (!style.highlight) return
+    const timer = window.setInterval(() => setLit((w) => (w + 1) % SPECIMEN.length), 420)
+    return () => window.clearInterval(timer)
+  }, [style.highlight])
   return (
     <Section step={3} title="Stijl van de ondertitels" intro="Wit met een donkere rand leest bijna altijd het best.">
       <div className="specimen">
@@ -40,7 +50,13 @@ export default function StylePanel({ style, onChange }: Props) {
             padding: style.background ? `0 ${outline}px` : undefined,
           }}
         >
-          God is op zoek naar jou
+          {style.highlight
+            ? SPECIMEN.map((word, i) => (
+                <span key={i} style={i === lit ? { color: style.highlightColor } : undefined}>
+                  {i > 0 ? ' ' : ''}{word}
+                </span>
+              ))
+            : SPECIMEN.join(' ')}
         </span>
       </div>
       <div className="fields">
@@ -109,6 +125,20 @@ export default function StylePanel({ style, onChange }: Props) {
         <div className="inline">
           <input id="background" type="checkbox" checked={style.background} onChange={(e) => set('background', e.target.checked)} />
           <label htmlFor="background">Donker vlak achter de tekst, bij druk beeld</label>
+        </div>
+
+        <label htmlFor="highlight">Meelezen</label>
+        <div className="inline">
+          <input id="highlight" type="checkbox" checked={style.highlight} onChange={(e) => set('highlight', e.target.checked)} />
+          <label htmlFor="highlight">Licht elk woord op terwijl het gezegd wordt</label>
+          {style.highlight && (
+            <input
+              type="color"
+              aria-label="Kleur van het woord dat gezegd wordt"
+              value={style.highlightColor}
+              onChange={(e) => set('highlightColor', e.target.value.toUpperCase())}
+            />
+          )}
         </div>
       </div>
     </Section>

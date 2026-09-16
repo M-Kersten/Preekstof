@@ -13,6 +13,9 @@ export interface Style {
   animation: SubtitleAnimation
   /** How long the animation runs, in milliseconds. */
   animationSpeed: number
+  /** Light up each word as it is said. */
+  highlight: boolean
+  highlightColor: string
 }
 
 export type Corner = 'topLeft' | 'topRight' | 'bottomLeft' | 'bottomRight'
@@ -33,10 +36,20 @@ export interface Output {
   fps: number
 }
 
+/** One word and when it was said, for lighting it up as it is spoken. */
+export interface Spoken {
+  start: number
+  end: number
+  word: string
+}
+
 export interface Segment {
   start: number
   end: number
   text: string
+  /** Whisper's own timings. They stop matching the text the moment somebody edits it, so
+   *  read them through wordTimes() rather than trusting them. */
+  words?: Spoken[]
 }
 
 export interface Transcript {
@@ -402,6 +415,8 @@ export const api = {
   cleanOld: () => request<StorageReport>('/storage/clean-old', { method: 'POST' }),
   renderStatus: (id: string) => request<RenderStatus>(`/projects/${id}/render-status`),
   church: () => request<ChurchInfo>('/church'),
+  /** The mishearings this church knows about, for flagging one still in a line. */
+  words: () => request<{ corrections: Record<string, string> }>('/words'),
   fonts: () => request<FontFamily[]>('/fonts'),
   outroConfig: () => request<OutroConfig>('/outro'),
   saveOutro: (config: OutroConfig) => request<OutroConfig>('/outro', json('PUT', config)),

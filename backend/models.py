@@ -60,6 +60,10 @@ class Style(BaseModel):
     background: bool = False
     animation: SubtitleAnimation = "fade"  # how a line appears
     animationSpeed: int = Field(default=180, ge=60, le=600)  # milliseconds
+    # Light up each word as it is said. Half of social video is watched muted, and a caption
+    # that keeps time with the voice is what tells a viewer there is a voice worth unmuting.
+    highlight: bool = False
+    highlightColor: str = "#C9971C"
 
 
 class Output(BaseModel):
@@ -68,10 +72,22 @@ class Output(BaseModel):
     fps: int = 30
 
 
+class Spoken(BaseModel):
+    """One word and when it was said, for lighting it up as it is spoken."""
+
+    start: float
+    end: float
+    word: str
+
+
 class Segment(BaseModel):
     start: float
     end: float
     text: str
+    # Whisper hands back a time per word. Kept, because a caption that lights up word by word
+    # is what the format asks for. Editing the text can leave these out of step with it, so
+    # nothing may trust them without checking: see subtitles.word_times.
+    words: list[Spoken] = []
 
 
 class Transcript(BaseModel):

@@ -1,5 +1,6 @@
-import { useState, type ReactNode } from 'react'
-import type { Segment } from '../api'
+import { useEffect, useState, type ReactNode } from 'react'
+import { api, type Segment } from '../api'
+import { troubleWith } from '../captionCheck'
 import { formatTime, parseTime } from '../subtitleLayout'
 import Section from './Section'
 
@@ -14,6 +15,15 @@ interface Props {
 
 /** The transcript as a script: timecodes in the left rail, the text reads as one document. */
 export default function SubtitleEditor({ segments, currentTime, onChange, onSeek, children }: Props) {
+  // The mishearings this church has already written down, to point at one still in the text.
+  const [corrections, setCorrections] = useState<Record<string, string>>({})
+  useEffect(() => {
+    const load = () => api.words().then((w) => setCorrections(w.corrections)).catch(() => setCorrections({}))
+    load()
+    window.addEventListener('brand-changed', load)
+    return () => window.removeEventListener('brand-changed', load)
+  }, [])
+
   const update = (index: number, patch: Partial<Segment>) =>
     onChange(segments.map((s, i) => (i === index ? { ...s, ...patch } : s)))
 
@@ -29,6 +39,8 @@ export default function SubtitleEditor({ segments, currentTime, onChange, onSeek
     next.splice(index, 1, { start: seg.start, end: mid, text: first }, { start: mid, end: seg.end, text: second })
     onChange(next)
   }
+
+  const flagged = segments.filter((s) => troubleWith(s, corrections).length).length
 
   const merge = (index: number) => {
     const a = segments[index]
@@ -49,7 +61,12 @@ export default function SubtitleEditor({ segments, currentTime, onChange, onSeek
       step={1}
       title="Ondertitels"
       intro="De computer verstaat namen en Bijbelteksten niet altijd goed. Klik in een regel om de tekst te verbeteren; met ▶ hoor je precies dat stukje terug."
-      aside={<span className="meta">{segments.length} regels</span>}
+      aside={
+        <span className="meta">
+          {segments.length} regels
+          {flagged > 0 && <span className="warn-inline"> · {flagged} om na te kijken</span>}
+        </span>
+      }
     >
       {segments.length === 0 ? (
         <p className="empty">Nog geen ondertitels. Klik links op Ondertitels maken, of voeg hieronder zelf een regel toe.</p>
@@ -64,6 +81,9 @@ export default function SubtitleEditor({ segments, currentTime, onChange, onSeek
               </div>
               <div className="body">
                 <textarea value={seg.text} rows={1} onChange={(e) => update(i, { text: e.target.value })} lang="nl" spellCheck placeholder="Tekst van deze regel" />
+                {troubleWith(seg, corrections).map((t) => (
+                  <p key={t.kind} className={`reads reads-${t.kind}`}>{t.says}</p>
+                ))}
                 <div className="tools">
                   <button className="bare small" onClick={() => onSeek(seg.start)} title="Speel dit stukje af">▶ Beluister</button>
                   <button className="bare small" onClick={() => split(i)} disabled={seg.text.trim().split(/\s+/).length < 2} title="Verdeel in twee regels">Splitsen</button>

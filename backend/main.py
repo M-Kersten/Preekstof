@@ -341,6 +341,17 @@ def read_church():
     return brands.active().church
 
 
+@app.get("/words")
+def read_words():
+    """The mishearings this church knows about, so the editor can point at one in a line.
+
+    The same map the transcription applies, shared list and brand list together. A word that
+    is in here and still in the text means the speech model got it wrong in a way somebody
+    has already written down.
+    """
+    return {"corrections": transcription.all_corrections()}
+
+
 @app.get("/brands", response_model=list[brands.BrandSummary])
 def read_brands():
     return brands.summaries()

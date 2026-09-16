@@ -60,3 +60,27 @@ TRACKS = [
 
 # Moments to read each of them at, including before the start and past the end.
 TRACK_TIMES = [-1.0, 0.0, 0.01, 0.039, 0.04, 0.08, 0.121, 0.16, 0.24, 0.399, 0.4, 1.0, 30.0]
+
+# Captions with and without the word timings whisper handed back, for the lighting-up. The
+# awkward ones are the caption somebody has edited since, where the timings no longer count
+# out the words, and the one that was never timed at all.
+CAPTIONS = [
+    # (start, end, text, [(start, end, word)] or None for "timings that fit")
+    (1.0, 3.0, "God is op zoek naar jou", None),
+    (1.0, 3.0, "God is op zoek naar jou", []),                       # never timed
+    (0.0, 2.5, "Genade", None),
+    (10.0, 14.0, "Niet omdat je perfect bent, maar omdat hij van je houdt", None),
+    # Edited since: a word added, so the timings count out one too few.
+    (1.0, 3.0, "God is op zoek naar jou vandaag",
+     [(1.0, 1.4, "God"), (1.4, 1.6, "is"), (1.6, 1.9, "op"),
+      (1.9, 2.2, "zoek"), (2.2, 2.6, "naar"), (2.6, 3.0, "jou")]),
+    # Edited since: a word removed.
+    (1.0, 3.0, "God zoekt jou",
+     [(1.0, 1.4, "God"), (1.4, 1.6, "is"), (1.6, 1.9, "op"),
+      (1.9, 2.2, "zoek"), (2.2, 2.6, "naar"), (2.6, 3.0, "jou")]),
+    # A blank among the timings: whisper does that, and it must not shift the count.
+    (1.0, 2.0, "Heer, hoor ons",
+     [(1.0, 1.3, "Heer,"), (1.3, 1.3, " "), (1.3, 1.6, "hoor"), (1.6, 2.0, "ons")]),
+    (5.0, 5.0, "geen tijd", None),                                   # nothing to divide
+    (0.0, 1.0, "   ", None),                                         # nothing to say
+]

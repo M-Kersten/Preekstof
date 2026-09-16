@@ -1,5 +1,5 @@
 // Mirror of backend/subtitles.py: keep both in sync so the preview matches the render.
-import type { Output, Style } from './api'
+import type { Output, Segment, Spoken, Style } from './api'
 
 export const SAFE_MARGIN_BOTTOM = 320
 export const SAFE_MARGIN_SIDE = 90
@@ -18,6 +18,49 @@ export const WEIGHTS: { value: Style['fontWeight']; label: string; css: number }
 
 export function cssWeight(weight: Style['fontWeight']): number {
   return WEIGHTS.find((w) => w.value === weight)?.css ?? 700
+}
+
+/**
+ * When each word of this caption is said. Mirror of subtitles.word_times in Python.
+ *
+ * Whisper's own timings are used while they still describe the text. They stop describing it
+ * the moment somebody corrects a name in the editor, and a caption that lights up a word that
+ * is no longer there is worse than one that guesses, so the fallback spreads the words over
+ * the caption by how long they are.
+ */
+export function wordTimes(seg: Segment): Spoken[] {
+  const said = seg.text.split(/\s+/).filter(Boolean)
+  if (!said.length || seg.end <= seg.start) return []
+  const kept = (seg.words ?? []).filter((w) => w.word.trim())
+  if (kept.length === said.length) {
+    return kept.map((w, i) => ({ start: w.start, end: w.end, word: said[i] }))
+  }
+  const weights = said.map((word) => word.length + 1)
+  const total = weights.reduce((sum, w) => sum + w, 0)
+  const span = seg.end - seg.start
+  const out: Spoken[] = []
+  let at = seg.start
+  for (let i = 0; i < said.length; i += 1) {
+    const ends = at + (span * weights[i]) / total
+    out.push({ start: round3(at), end: round3(ends), word: said[i] })
+    at = ends
+  }
+  return out
+}
+
+const round3 = (value: number): number => Math.round(value * 1000) / 1000
+
+/**
+ * Pair every word of every wrapped line with when it is said, in order. Mirror of
+ * subtitles.lit_words in Python: the wrapping only decides where the breaks go, so walking
+ * the timings from the front keeps them lined up with the words.
+ */
+export function litWords(lines: string[], said: Spoken[]): (Spoken | null)[][] {
+  const left = [...said]
+  return lines.map((line) => line.split(' ').map((word) => {
+    const timing = left.shift()
+    return timing ? { start: timing.start, end: timing.end, word } : null
+  }))
 }
 
 /** Greedy fill: put as many words on a line as fit within `width` characters. */

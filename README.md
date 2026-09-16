@@ -200,6 +200,36 @@ Each line can appear in one of four ways, with the speed (60–600 ms) set along
 | `pop` | starts at 72% and springs to full size | `\fscx`/`\fscy` with `\t` |
 | `slide` | rises 40 px into place | `\move` |
 
+### Captions that read like captions
+
+Most social viewing is muted, so the captions are the clip. Three things make the difference
+between something that looks made and something that looks generated.
+
+**Where the line breaks.** Breaking at sixty characters puts the break wherever the counting
+lands, which strands "van" or "de" at the end of a line. `transcription.chunk_words` now works
+out how far a caption *could* run (on length, on time, and on a silence or a full stop, which
+end one whatever the length says) and then scores every break inside that: a finished sentence
+is worth most, a comma less, a real silence as much as a sentence, and a line is docked for
+ending on one of the Dutch words that lean on what comes next. A good break halfway beats a bad
+one at the limit, because the fullness of the line is worth only a couple of points.
+
+Measured on ninety seconds of real preaching, against the old rule: lines ending on punctuation
+went from 77% to 85%, and lines left hanging on a leaning word from three to one.
+
+**Word-by-word highlighting.** `Style.highlight` lights each word as it is said, in
+`Style.highlightColor`. Whisper's timings are kept on the segment for it (`Segment.words`) and
+read back through `subtitles.word_times`, which falls back to spreading the words over the
+caption by length when an edit has left the timings not matching the text. In the ASS file every
+word carries its own colour and two `\t` switches, on when it is said and off after, rather than
+karaoke tags (which colour everything said so far and leave it coloured) or a line per word
+(which would restart the entrance animation on every word). `tests/test_render.py` renders a clip
+and reads the pixels back to prove the highlight really walks along the line.
+
+**What is wrong with a line, under the line.** The editor marks a caption running faster than
+2.5 words a second, standing longer than 7 seconds, or holding a word this church has already
+written down as a mishearing, and says which. `frontend/src/captionCheck.ts` holds the rules;
+`GET /words` gives the browser the same corrections the transcription applies.
+
 ## Bringing the recording in
 
 One service is open at a time. **Andere dienst kiezen** puts it away and brings the chooser
@@ -460,6 +490,7 @@ The renderer passes this directory to libass and the browser loads the same file
 POST /projects                      create an empty project
 POST /projects/{id}/upload          multipart upload (field "file"); probes the video
 POST /projects/{id}/transcribe      start the Dutch transcription as a background job
+GET  /words                         the mishearings this church knows about
 GET  /projects/{id}/transcribe-status  {status, progress, message, error, canStop}
 POST /projects/{id}/transcribe/stop stop the transcription that is running
 GET  /projects/{id}                 project + transcript

@@ -2,6 +2,7 @@
 
 import shutil
 import subprocess
+from pathlib import Path
 
 import pytest
 
@@ -99,3 +100,84 @@ def test_a_broken_source_gives_a_readable_message(tmp_path):
     assert "beschadigd" in renderer.ffmpeg_message("Invalid data found when processing input")
     assert "ruimte" in renderer.ffmpeg_message("No space left on device")
     assert "rechten" in renderer.ffmpeg_message("Permission denied")
+
+
+# --- lighting up the word that is being said --------------------------------------
+
+
+def gold_in(frame: Path, output: Output) -> tuple[int, float]:
+    """How many pixels of the highlight colour are in this frame, and where they sit."""
+    import numpy as np
+
+    raw = subprocess.run(["ffmpeg", "-v", "error", "-i", str(frame), "-f", "rawvideo",
+                          "-pix_fmt", "rgb24", "-"], capture_output=True, check=True).stdout
+    pixels = np.frombuffer(raw, np.uint8).reshape(output.height, output.width, 3).astype(np.int16)
+    # #C9971C against white: red stays high, green drops, blue drops a lot.
+    gold = ((pixels[:, :, 0] > 140) & (pixels[:, :, 1] > 90)
+            & (pixels[:, :, 1] < 200) & (pixels[:, :, 2] < 110))
+    found = np.argwhere(gold)
+    return len(found), float(found[:, 1].mean()) if len(found) else float("nan")
+
+
+@pytest.fixture(scope="module")
+def dark(tmp_path_factory):
+    """Black footage: the colour test pattern has gold in it, which is the colour we hunt for."""
+    path = tmp_path_factory.mktemp("dark") / "black.mp4"
+    subprocess.run(
+        ["ffmpeg", "-y", "-v", "error", "-f", "lavfi", "-i", "color=c=black:s=1920x1080:r=25:d=5",
+         "-c:v", "libx264", "-preset", "ultrafast", "-pix_fmt", "yuv420p", str(path)], check=True)
+    return path
+
+
+@pytest.fixture(scope="module")
+def lit(tmp_path_factory, dark):
+    """A clip rendered with the words lighting up, and the timings that went into it."""
+    from backend.models import Spoken
+
+    place = tmp_path_factory.mktemp("lit")
+    said = ["God", "is", "op", "zoek", "naar", "jou"]
+    each = 0.5
+    words = [Spoken(start=round(0.3 + i * each, 2), end=round(0.3 + (i + 1) * each, 2), word=w)
+             for i, w in enumerate(said)]
+    seg = Segment(start=0.3, end=round(0.3 + len(said) * each, 2), text=" ".join(said), words=words)
+    style = Style(highlight=True, animation="none", fontSize=48)
+    subs = write_ass(Transcript(language="nl", segments=[seg]), style, OUT, place / "lit.ass")
+    out = place / "lit.mp4"
+    renderer.render_video(dark, renderer.probe(dark), subs, OUT, out)
+    return out, words, place
+
+
+def test_one_word_is_lit_at_a_time_and_it_walks_along_the_line(lit):
+    """The whole point, checked on the pixels rather than on the tags that asked for it."""
+    video, words, place = lit
+    middles = []
+    for i, word in enumerate(words):
+        at = (word.start + word.end) / 2
+        frame = place / f"at{i}.png"
+        subprocess.run(["ffmpeg", "-y", "-v", "error", "-ss", f"{at:.2f}", "-i", str(video),
+                        "-frames:v", "1", "-update", "1", str(frame)], check=True)
+        count, middle = gold_in(frame, OUT)
+        assert count > 100, f"nothing lit up while {word.word!r} was being said"
+        middles.append(middle)
+    assert middles == sorted(middles), f"the highlight jumped about: {middles}"
+    assert middles[-1] - middles[0] > 200, "it hardly moved, so it is not following the words"
+
+
+def test_nothing_is_lit_before_the_caption_starts(lit):
+    video, _words, place = lit
+    frame = place / "before.png"
+    subprocess.run(["ffmpeg", "-y", "-v", "error", "-ss", "0.05", "-i", str(video),
+                    "-frames:v", "1", "-update", "1", str(frame)], check=True)
+    assert gold_in(frame, OUT)[0] < 100
+
+
+def test_a_clip_without_the_setting_has_no_colour_in_it(dark, tmp_path):
+    subs = write_ass(Transcript(language="nl", segments=[
+        Segment(start=0.3, end=3.3, text="God is op zoek naar jou"),
+    ]), Style(animation="none", fontSize=48), OUT, tmp_path / "plain.ass")
+    out = tmp_path / "plain.mp4"
+    renderer.render_video(dark, renderer.probe(dark), subs, OUT, out)
+    frame = tmp_path / "mid.png"
+    subprocess.run(["ffmpeg", "-y", "-v", "error", "-ss", "1.5", "-i", str(out),
+                    "-frames:v", "1", "-update", "1", str(frame)], check=True)
+    assert gold_in(frame, OUT)[0] < 100, "words lit up without anybody asking for it"

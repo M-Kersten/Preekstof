@@ -12,7 +12,7 @@ from pathlib import Path
 from typing import Callable
 
 from . import mac
-from .models import TEMPLATES_DIR, Segment, Transcript, write_atomic
+from .models import TEMPLATES_DIR, Segment, Spoken, Transcript, write_atomic
 
 LANGUAGE = "nl"
 VOCABULARY_PATH = TEMPLATES_DIR / "woordenlijst.json"
@@ -39,6 +39,30 @@ COMPUTE_TYPE = os.environ.get("WHISPER_COMPUTE_TYPE", "int8" if DEVICE == "cpu" 
 MAX_CHARS = 60  # roughly two lines of subtitle text
 MAX_DURATION = 6.0  # seconds
 PAUSE_SPLIT = 0.7  # a pause longer than this starts a new segment
+MIN_CHARS = 20  # under this a line is too short to be worth ending, full stop or not
+
+# Where a caption may end, and where it had better not. Breaking at sixty characters puts the
+# break wherever the counting happens to land, which strands "van" or "de" at the end of a
+# line and reads like a machine did it. These are the words that lean on what comes after
+# them: articles, prepositions, the bits of a verb that are waiting for the rest.
+LEANS_FORWARD = {
+    "de", "het", "een", "der", "des", "den",
+    "van", "in", "op", "met", "voor", "naar", "bij", "uit", "over", "door", "tot", "aan",
+    "om", "te", "onder", "tegen", "tussen", "zonder", "binnen", "langs", "richting", "per",
+    "en", "of", "maar", "want", "dus", "als", "dan", "zoals", "omdat", "doordat", "terwijl",
+    "mijn", "jouw", "zijn", "haar", "onze", "hun", "deze", "die", "dat", "dit", "wat", "wie",
+    "is", "was", "zijn", "wordt", "werd", "heeft", "had", "kan", "zal", "moet", "gaat",
+    "niet", "geen", "wel", "ook", "nog", "al", "er", "hier", "daar",
+}
+
+# A caption that starts with one of these reads as a continuation rather than a fragment.
+STARTS_WELL = {
+    "en", "maar", "want", "dus", "omdat", "terwijl", "toen", "als", "wanneer", "zodat",
+    "dat", "die", "waarin", "waarmee", "waarop", "waardoor", "hoewel", "totdat", "voordat",
+}
+
+ENDS_SENTENCE = (".", "?", "!", "…")
+ENDS_CLAUSE = (",", ";", ":")
 EXTRACT_SHARE = 0.08  # first slice of the progress bar: pulling the audio out of the video
 MODEL_SHARE = 0.04  # second slice: loading the speech model, which is slow only the first time
 
@@ -375,30 +399,91 @@ def transcribe(source: Path, work_dir: Path, on_progress: Callable[[float, str],
     segments = chunk_words(words) if words else fallback
     corrections = all_corrections()
     for seg in segments:
+        # Only the text. The words beside it are there for their timings; subtitles.word_times
+        # takes the words themselves from the text, so a correction lands in both at once.
         seg.text = apply_corrections(seg.text, corrections)
     (work_dir / PARTIAL_FILE).unlink(missing_ok=True)
     return Transcript(language=LANGUAGE, segments=[s for s in segments if s.text])
 
 
+def plain(word) -> str:
+    """The word without its punctuation or capital, for looking it up in a list."""
+    return word.word.strip().strip("\"'“”‘’()[[]").rstrip(".,!?;:…").lower()
+
+
+def length_of(words, first: int, last: int) -> int:
+    """How many characters words[first:last] make as one line."""
+    return sum(len(w.word.strip()) for w in words[first:last]) + max(0, last - first - 1)
+
+
+def furthest(words, first: int) -> int:
+    """The last word that could still go in this caption, on length, time and silence.
+
+    A long pause or a finished sentence ends a caption whatever the length says, because
+    reading on past either of those is what makes a caption feel out of step with the voice.
+    """
+    last = first + 1
+    while last < len(words):
+        if length_of(words, first, last + 1) > MAX_CHARS:
+            break
+        if words[last].end - words[first].start > MAX_DURATION:
+            break
+        if words[last].start - words[last - 1].end > PAUSE_SPLIT:
+            break
+        if (words[last - 1].word.strip().endswith(ENDS_SENTENCE)
+                and length_of(words, first, last) >= MIN_CHARS):
+            break
+        last += 1
+    return min(last, len(words))
+
+
+def break_score(words, first: int, at: int) -> float:
+    """How good a caption ending just before words[at] would be.
+
+    Punctuation and silence are where a listener hears the sentence stop, so those are worth
+    the most. A line is docked for ending on a word that leans on the next one, and credited
+    for being reasonably full, so a good break early still beats a bad one at the limit.
+    """
+    before = words[at - 1]
+    said = before.word.strip()
+    length = length_of(words, first, at)
+    score = 0.0
+    if length < MIN_CHARS:
+        # Three words on a line of their own read as a stutter, full stop or not, so a short
+        # line gets no credit for the punctuation it happens to end on.
+        score -= 8.0
+    elif said.endswith(ENDS_SENTENCE):
+        score += 10.0
+    elif said.endswith(ENDS_CLAUSE):
+        score += 4.0
+    if at < len(words):
+        gap = max(0.0, words[at].start - before.end)
+        # A silence this long is where the voice stopped, which beats any punctuation for
+        # knowing where the caption should stop too.
+        score += 8.0 if gap >= PAUSE_SPLIT else min(3.0, gap * 4.0)
+        if plain(words[at]) in STARTS_WELL:
+            score += 2.0
+    if plain(before) in LEANS_FORWARD:
+        score -= 6.0
+    return score + 2.0 * min(1.0, length / MAX_CHARS)
+
+
 def chunk_words(words) -> list[Segment]:
-    """Group whisper words into caption-sized segments."""
+    """Group whisper words into caption-sized segments, breaking where a sentence breathes."""
     segments: list[Segment] = []
-    current: list = []
-
-    def flush() -> None:
-        if current:
-            text = " ".join(w.word.strip() for w in current)
-            segments.append(Segment(start=round(current[0].start, 2), end=round(current[-1].end, 2), text=text))
-            current.clear()
-
-    for word in words:
-        if current:
-            text_len = sum(len(w.word.strip()) + 1 for w in current) + len(word.word.strip())
-            duration = word.end - current[0].start
-            pause = word.start - current[-1].end
-            ends_sentence = current[-1].word.strip().endswith((".", "?", "!"))
-            if text_len > MAX_CHARS or duration > MAX_DURATION or pause > PAUSE_SPLIT or (ends_sentence and text_len > 20):
-                flush()
-        current.append(word)
-    flush()
+    first = 0
+    while first < len(words):
+        end = furthest(words, first)
+        best = end
+        if end - first > 2:
+            best = max(range(first + 1, end + 1), key=lambda at: (break_score(words, first, at), at))
+        taken = words[first:best]
+        segments.append(Segment(
+            start=round(taken[0].start, 2),
+            end=round(taken[-1].end, 2),
+            text=" ".join(w.word.strip() for w in taken),
+            words=[Spoken(start=round(w.start, 2), end=round(w.end, 2), word=w.word.strip())
+                   for w in taken],
+        ))
+        first = best
     return segments

@@ -3,7 +3,7 @@ import type { ChurchInfo, CropWindow, Output, Segment, Style, Track, VideoInfo, 
 import { api } from '../api'
 import { canPan, clampCrop, cropGeometry } from '../crop'
 import { cropAt } from '../track'
-import { BACKGROUND_ALPHA, SAFE_MARGIN_BOTTOM, SAFE_MARGIN_SIDE, cssWeight, formatTime, layoutText } from '../subtitleLayout'
+import { BACKGROUND_ALPHA, SAFE_MARGIN_BOTTOM, SAFE_MARGIN_SIDE, cssWeight, formatTime, layoutText, litWords, wordTimes } from '../subtitleLayout'
 
 export interface PreviewHandle {
   seek: (time: number) => void
@@ -113,6 +113,10 @@ const VideoPreview = forwardRef<PreviewHandle, Props>(function VideoPreview(prop
 
   const active = useMemo(() => segments.find((s) => time >= s.start && time < s.end && s.text.trim()), [segments, time])
   const layout = active ? layoutText(active.text, style, output) : null
+  // The same pairing the ASS file gets, so the word lit here is the word lit in the render.
+  const lit = useMemo(
+    () => (active && layout && style.highlight ? litWords(layout.lines, wordTimes(active)) : null),
+    [active, layout, style.highlight])
 
   const togglePlay = () => {
     const v = phase === 'main' ? mainRef.current : outroRef.current
@@ -266,7 +270,17 @@ const VideoPreview = forwardRef<PreviewHandle, Props>(function VideoPreview(prop
                       : undefined
                   }
                 >
-                  {line}
+                  {lit
+                    ? line.split(' ').map((word, w) => {
+                        const said = lit[i]?.[w]
+                        const now = said && time >= said.start && time < said.end
+                        return (
+                          <span key={w} style={now ? { color: style.highlightColor } : undefined}>
+                            {w > 0 ? ' ' : ''}{word}
+                          </span>
+                        )
+                      })
+                    : line}
                 </span>
               </div>
             ))}

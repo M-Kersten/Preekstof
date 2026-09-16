@@ -6,9 +6,9 @@
  */
 import { readFileSync } from 'node:fs'
 import { cropGeometry } from '../src/crop.ts'
-import { layoutText } from '../src/subtitleLayout.ts'
+import { layoutText, wordTimes } from '../src/subtitleLayout.ts'
 import { trackAt } from '../src/track.ts'
-import type { CropWindow, Output, Style, Track, VideoInfo } from '../src/api.ts'
+import type { CropWindow, Output, Segment, Spoken, Style, Track, VideoInfo } from '../src/api.ts'
 
 interface LayoutCase { text: string; size: number; lines: string[]; fontSize: number }
 interface CropCase {
@@ -25,7 +25,14 @@ interface TrackCase {
   track: { fps: number; x: number[]; jumps: number[] }
   at: { seconds: number; x: number | null }[]
 }
-interface Fixture { output: Output; layout: LayoutCase[]; crop: CropCase[]; track: TrackCase[] }
+interface CaptionCase { segment: Segment; times: Spoken[] }
+interface Fixture {
+  output: Output
+  layout: LayoutCase[]
+  crop: CropCase[]
+  track: TrackCase[]
+  caption: CaptionCase[]
+}
 
 const path = process.argv[2]
 if (!path) {
@@ -94,7 +101,24 @@ for (const c of fixture.track) {
   }
 }
 
-const total = fixture.layout.length + fixture.crop.length + moments
+for (const c of fixture.caption) {
+  const got = wordTimes(c.segment)
+  const same = got.length === c.times.length && got.every((w, i) => (
+    w.word === c.times[i].word
+    && Math.abs(w.start - c.times[i].start) < 1e-6
+    && Math.abs(w.end - c.times[i].end) < 1e-6
+  ))
+  if (!same) {
+    const show = (ws: Spoken[]) => JSON.stringify(ws.map((w) => [w.word, w.start, w.end]))
+    problems.push(
+      [`wordTimes(${JSON.stringify(c.segment.text)}, ${c.segment.start}-${c.segment.end}s)`,
+       `  python: ${show(c.times)}`,
+       `  ts:     ${show(got)}`].join('\n'),
+    )
+  }
+}
+
+const total = fixture.layout.length + fixture.crop.length + moments + fixture.caption.length
 if (problems.length) {
   console.error(`The preview and the renderer disagree on ${problems.length} of ${total} cases:`)
   console.error('')

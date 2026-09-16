@@ -7,7 +7,7 @@ mirrored in frontend/src/subtitleLayout.ts so the preview matches the render.
 from pathlib import Path
 
 from . import fonts
-from .models import Output, Segment, Style, Transcript
+from .models import Output, Segment, Spoken, Style, Transcript
 
 SAFE_MARGIN_BOTTOM = 320  # px from the bottom edge at 1080x1920 (clear of the Reels UI)
 SAFE_MARGIN_SIDE = 90  # px from the left/right edges
@@ -99,6 +99,32 @@ def layout_text(text: str, style: Style, output: Output) -> tuple[list[str], int
     return lines, max(int(style.fontSize * MIN_FONT_SCALE), min(style.fontSize, fitted))
 
 
+def word_times(seg: Segment) -> list[Spoken]:
+    """When each word of this caption is said. Mirrored in frontend/src/subtitleLayout.ts.
+
+    Whisper's own timings are used when they still describe the text. They stop describing it
+    the moment somebody corrects a name in the editor, and a caption that lights up a word
+    that is no longer there is worse than one that guesses, so the fallback spreads the words
+    over the caption by how long they are. Long words take longer to say than short ones,
+    which is crude and close enough to follow a voice.
+    """
+    said = seg.text.split()
+    if not said or seg.end <= seg.start:
+        return []
+    kept = [w for w in seg.words if w.word.strip()]
+    if len(kept) == len(said):
+        return [Spoken(start=w.start, end=w.end, word=text) for w, text in zip(kept, said)]
+    weights = [len(word) + 1 for word in said]
+    total = sum(weights)
+    span = seg.end - seg.start
+    out, at = [], seg.start
+    for word, weight in zip(said, weights):
+        ends = at + span * weight / total
+        out.append(Spoken(start=round(at, 3), end=round(ends, 3), word=word))
+        at = ends
+    return out
+
+
 def ass_color(hex_color: str, alpha: int = 0) -> str:
     """'#RRGGBB' -> '&HAABBGGRR'."""
     hex_color = hex_color.lstrip("#")
@@ -135,6 +161,46 @@ def animation_tags(style: Style, output: Output) -> str:
     return ""
 
 
+def lit_words(lines: list[str], said: list[Spoken]) -> list[list[Spoken | None]]:
+    """Pair every word of every wrapped line with when it is said, in order.
+
+    The wrapping only decides where the breaks go, so walking the timings from the front
+    keeps them lined up with the words. Mirrored in frontend/src/subtitleLayout.ts.
+    """
+    left = list(said)
+    out = []
+    for line in lines:
+        row: list[Spoken | None] = []
+        for word in line.split(" "):
+            timing = left.pop(0) if left else None
+            row.append(Spoken(start=timing.start, end=timing.end, word=word) if timing else None)
+        out.append(row)
+    return out
+
+
+def lit_line(line: str, timings: list[Spoken | None], start: float, style: Style) -> str:
+    """One caption line with each word set to change colour while it is being spoken.
+
+    libass applies an override tag to the text that follows it, so every word carries its own
+    colour and its own two switches: on at the moment it is said, off again after. Written
+    that way rather than as karaoke tags, which colour everything said so far and leave it
+    coloured, and rather than as a line per word, which would restart the entrance animation
+    on every word.
+    """
+    out = []
+    for word, timing in zip(line.split(" "), timings):
+        if timing is None:
+            out.append(escape_text(word))
+            continue
+        on = max(0, int((timing.start - start) * 1000))
+        off = max(on + 1, int((timing.end - start) * 1000))
+        out.append(f"{{\\1c{ass_color(style.color)}"
+                   f"\\t({on},{on + 1},\\1c{ass_color(style.highlightColor)})"
+                   f"\\t({off},{off + 1},\\1c{ass_color(style.color)})}}"
+                   f"{escape_text(word)}")
+    return " ".join(out)
+
+
 def build_ass(transcript: Transcript, style: Style, output: Output) -> str:
     name, bold = font_name(style)
     border_style = 4 if style.background else 1  # 4 = libass: box behind each line, outline kept
@@ -164,7 +230,12 @@ def build_ass(transcript: Transcript, style: Style, output: Output) -> str:
         if not seg.text.strip() or seg.end <= seg.start:
             continue
         wrapped, size = layout_text(seg.text, style, output)
-        text = "\\N".join(escape_text(line) for line in wrapped)
+        if style.highlight:
+            timed = lit_words(wrapped, word_times(seg))
+            text = "\\N".join(lit_line(line, row, seg.start, style)
+                              for line, row in zip(wrapped, timed))
+        else:
+            text = "\\N".join(escape_text(line) for line in wrapped)
         prefix = tags + (f"\\fs{size}" if size != style.fontSize else "")
         if prefix:
             text = "{" + prefix + "}" + text

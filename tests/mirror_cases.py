@@ -7,11 +7,11 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 from backend.models import CropWindow, Output, Style, VideoInfo  # noqa: E402
-from backend.models import Track  # noqa: E402
+from backend.models import Segment, Spoken, Track  # noqa: E402
 from backend.renderer import crop_geometry, track_at  # noqa: E402
-from backend.subtitles import layout_text  # noqa: E402
-from tests.cases import (CROP_SOURCES, CROP_WINDOWS, LAYOUT_SIZES, LAYOUT_TEXTS, OUTPUT,  # noqa: E402
-                         TRACKS, TRACK_TIMES)
+from backend.subtitles import layout_text, word_times  # noqa: E402
+from tests.cases import (CAPTIONS, CROP_SOURCES, CROP_WINDOWS, LAYOUT_SIZES,  # noqa: E402
+                         LAYOUT_TEXTS, OUTPUT, TRACKS, TRACK_TIMES)
 
 
 def build() -> dict:
@@ -37,8 +37,23 @@ def build() -> dict:
         track.append({"track": {"fps": fps, "x": xs, "jumps": jumps},
                       "at": [{"seconds": t, "x": track_at(path, t)} for t in TRACK_TIMES]})
 
+    caption = []
+    for start, end, text, timings in CAPTIONS:
+        words = ([Spoken(start=a, end=b, word=w) for a, b, w in timings]
+                 if timings is not None
+                 else [Spoken(start=start + (end - start) * i / max(1, len(text.split())),
+                              end=start + (end - start) * (i + 1) / max(1, len(text.split())),
+                              word=w)
+                       for i, w in enumerate(text.split())])
+        seg = Segment(start=start, end=end, text=text, words=words)
+        caption.append({
+            "segment": {"start": start, "end": end, "text": text,
+                        "words": [w.model_dump() for w in words]},
+            "times": [w.model_dump() for w in word_times(seg)],
+        })
+
     return {"output": {"width": output.width, "height": output.height, "fps": output.fps},
-            "layout": layout, "crop": crop, "track": track}
+            "layout": layout, "crop": crop, "track": track, "caption": caption}
 
 
 if __name__ == "__main__":

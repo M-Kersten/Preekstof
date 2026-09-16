@@ -388,6 +388,12 @@ class TimeRange(BaseModel):
     end: float
 
 
+# Where a moment came from. "self" is one somebody cut out of the transcript themselves,
+# which the search may never touch: it was a deliberate act, and a run that came back after
+# it must not be able to throw it away.
+CandidateSource = Literal["found", "self"]
+
+
 class ClipCandidate(BaseModel):
     id: str
     start: float
@@ -403,6 +409,7 @@ class ClipCandidate(BaseModel):
     shortlisted: bool = True  # False: found, but another moment was judged better
     verdict: str = ""  # why it was picked, or why it was passed over
     part: str = ""  # which part of the service it comes from
+    source: CandidateSource = "found"  # older services have no hand-cut moments in them
 
 
 class ProcessedClip(BaseModel):

@@ -32,13 +32,21 @@ def a_project(pid: str = "clip", track: Track | None = None) -> Project:
     return project
 
 
+# A job that has been started but whose thread has not picked it up yet still reads "idle",
+# so "not running" is not the same as "finished". Waiting for an end state instead is the
+# difference between a test that passes and one that passes most of the time.
+OVER = ("done", "error", "cancelled")
+
+
 def settled(client, pid: str = "clip", seconds: float = 5.0) -> dict:
     """The track endpoint once the search thread is done with it."""
     limit = time.monotonic() + seconds
     while True:
         answer = client.get(f"/projects/{pid}/track").json()
-        if answer["job"]["status"] != "running" or time.monotonic() > limit:
+        if answer["job"]["status"] in OVER:
             return answer
+        if time.monotonic() > limit:
+            raise AssertionError(f"het zoeken is nooit klaar gekomen (status {answer['job']['status']})")
         time.sleep(0.02)
 
 

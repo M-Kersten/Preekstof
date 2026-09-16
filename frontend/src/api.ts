@@ -437,6 +437,8 @@ export interface TimeRange {
   end: number
 }
 
+export type CandidateSource = 'found' | 'self'
+
 export interface ClipCandidate {
   id: string
   start: number
@@ -454,6 +456,8 @@ export interface ClipCandidate {
   verdict: string
   /** Which part of the service it comes from. */
   part: string
+  /** "self": cut out of the transcript by hand, which the search may never touch. */
+  source: CandidateSource
 }
 
 /** One stretch of the service: welcome, songs, reading, prayer, sermon, notices, blessing. */

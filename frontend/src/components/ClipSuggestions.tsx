@@ -1,133 +1,47 @@
-import { useEffect, useRef, useState } from 'react'
+import { useState } from 'react'
 import type { ClipCandidate, Segment, Service } from '../api'
 import { formatTime, parseTime } from '../subtitleLayout'
-import Section from './Section'
 
 interface Props {
   service: Service
-  sourceUrl: string
+  video: React.RefObject<HTMLVideoElement | null>
+  playing: string | null
   disabled: boolean
+  onPreview: (candidate: ClipCandidate) => void
   onChange: (candidates: ClipCandidate[]) => void
 }
 
-/** Minutes:seconds, for the timeline scale. */
-function clock(seconds: number): string {
-  const m = Math.floor(seconds / 60)
-  return `${m}:${String(Math.floor(seconds % 60)).padStart(2, '0')}`
-}
-
-/** The suggestions, with a timeline showing where each fragment sits in the service. */
-export default function ClipSuggestions({ service, sourceUrl, disabled, onChange }: Props) {
-  const videoRef = useRef<HTMLVideoElement>(null)
-  const [previewing, setPreviewing] = useState<string | null>(null)
+/** The list of moments: the ones somebody cut by hand first, then what the search found. */
+export default function ClipSuggestions({ service, video, playing, disabled, onPreview, onChange }: Props) {
   const [expanded, setExpanded] = useState<string | null>(null)
   const [showRest, setShowRest] = useState(false)
-  const [time, setTime] = useState(0)
   const duration = service.sourceInfo?.duration ?? 1
   const segments = service.transcriptData?.segments ?? []
 
   const update = (id: string, patch: Partial<ClipCandidate>) =>
     onChange(service.candidates.map((c) => (c.id === id ? { ...c, ...patch } : c)))
+  const remove = (id: string) => onChange(service.candidates.filter((c) => c.id !== id))
 
-  // Play only the candidate's own range of the recording.
-  const preview = (cand: ClipCandidate) => {
-    const v = videoRef.current
-    if (!v) return
-    if (previewing === cand.id && !v.paused) {
-      v.pause()
-      return
-    }
-    setPreviewing(cand.id)
-    v.currentTime = cand.start
-    void v.play().catch(() => undefined)
-  }
-
-  useEffect(() => {
-    const v = videoRef.current
-    if (!v) return
-    const onTime = () => {
-      setTime(v.currentTime)
-      const cand = service.candidates.find((c) => c.id === previewing)
-      if (cand && v.currentTime >= cand.end) {
-        v.pause()
-        v.currentTime = cand.end
-      }
-    }
-    v.addEventListener('timeupdate', onTime)
-    return () => v.removeEventListener('timeupdate', onTime)
-  }, [previewing, service.candidates])
-
-  const jump = (cand: ClipCandidate) => {
-    preview(cand)
-    document.getElementById(`f-${cand.id}`)?.scrollIntoView({ behavior: 'smooth', block: 'center' })
-  }
-
-  const active = service.candidates.find((c) => c.id === previewing)
-  const best = service.candidates.filter((c) => c.shortlisted)
   const rest = service.candidates.filter((c) => !c.shortlisted)
 
+  if (service.candidates.length === 0) {
+    return (
+      <p className="say">
+        Er is nog geen enkel fragment. Zoek de beste momenten, of knip er zelf een uit de tekst
+        hiernaast.
+      </p>
+    )
+  }
+
   return (
-    <Section
-      title="Voorgestelde fragmenten"
-      intro="Alles is doorgelezen en daarna met elkaar vergeleken; hieronder staat wat er van deze dienst overblijft, het sterkste bovenaan. De balk laat zien waar elk voorstel zit en hoe de dienst is opgebouwd."
-      aside={<span className="meta">{best.length} gekozen{rest.length > 0 ? ` · ${rest.length} ook gevonden` : ''}</span>}
-    >
-      <div className="timeline">
-        {service.shape.length > 0 && (
-          <div className="shape" aria-hidden="true">
-            {service.shape.map((block, i) => {
-              const share = (block.end - block.start) / duration
-              return (
-                <span
-                  key={i}
-                  className={`part ${block.part}`}
-                  style={{ left: `${(block.start / duration) * 100}%`, width: `${share * 100}%` }}
-                  title={`${block.label} · ${clock(block.start)}–${clock(block.end)}`}
-                >
-                  {/* Too narrow to read is worse than blank; the tooltip still says what it is. */}
-                  {share > 0.09 && <span>{block.label}</span>}
-                </span>
-              )
-            })}
-          </div>
-        )}
-        <div className="rail">
-          {service.candidates.map((cand, i) => (
-            <button
-              key={cand.id}
-              className={`mark ${cand.selected ? 'on' : ''} ${previewing === cand.id ? 'now' : ''} ${cand.shortlisted ? '' : 'aside'}`}
-              style={{ left: `${(cand.start / duration) * 100}%`, width: `${Math.max(1.4, ((cand.end - cand.start) / duration) * 100)}%` }}
-              onClick={() => jump(cand)}
-              title={`${cand.title} · ${formatTime(cand.start)} tot ${formatTime(cand.end)}`}
-            >
-              {i + 1}
-            </button>
-          ))}
-          <span className="head" style={{ left: `${(time / duration) * 100}%` }} />
-        </div>
-        <div className="ticks">
-          {[0, 0.25, 0.5, 0.75, 1].map((f) => (
-            <span key={f} className="tc muted">{clock(duration * f)}</span>
-          ))}
-        </div>
-      </div>
-
-      <div className="player">
-        <video ref={videoRef} src={sourceUrl} preload="metadata" playsInline controls />
-        <p className="meta" style={{ marginTop: '0.35rem' }}>
-          {active
-            ? `Fragment ${active.id.replace('candidate-', '')} speelt · stopt om ${formatTime(active.end)}`
-            : 'Klik op een balkje hierboven of op Beluister bij een fragment.'}
-        </p>
-      </div>
-
-      <div>
-        {service.candidates.map((cand, index) => {
-          const excerpt = segments.filter((s) => s.end > cand.start && s.start < cand.end)
-          const open = expanded === cand.id
-          const opensRest = rest.length > 0 && cand.id === rest[0].id
-          return (
-            <div key={cand.id}>
+    <div>
+      {service.candidates.map((cand, index) => {
+        const excerpt = segments.filter((s) => s.end > cand.start && s.start < cand.end)
+        const open = expanded === cand.id
+        const own = cand.source === 'self'
+        const opensRest = rest.length > 0 && cand.id === rest[0].id
+        return (
+          <div key={cand.id}>
             {opensRest && (
               <div className="also">
                 <button className="bare" onClick={() => setShowRest(!showRest)} aria-expanded={showRest}>
@@ -139,7 +53,8 @@ export default function ClipSuggestions({ service, sourceUrl, disabled, onChange
             <article
               id={`f-${cand.id}`}
               hidden={!cand.shortlisted && !showRest}
-              className={`suggestion ${cand.selected ? 'chosen' : ''} ${previewing === cand.id ? 'playing' : ''} ${cand.shortlisted ? '' : 'aside'}`}
+              className={`suggestion ${cand.selected ? 'chosen' : ''} ${playing === cand.id ? 'playing' : ''}`
+                + ` ${cand.shortlisted ? '' : 'aside'} ${own ? 'own' : ''}`}
             >
               <header>
                 <span className="no">{String(index + 1).padStart(2, '0')}</span>
@@ -147,6 +62,7 @@ export default function ClipSuggestions({ service, sourceUrl, disabled, onChange
                   <h3>{cand.title}</h3>
                   <span className="meta tc">{formatTime(cand.start)} – {formatTime(cand.end)}</span>
                   <span className="meta"> · {Math.round(cand.end - cand.start)} sec</span>
+                  {own && <span className="badge">zelf geknipt</span>}
                 </div>
                 <button
                   className={`pick ${cand.selected ? 'on' : ''}`}
@@ -168,10 +84,24 @@ export default function ClipSuggestions({ service, sourceUrl, disabled, onChange
               {cand.reason && <p className="why">{cand.reason}</p>}
 
               <div className="acts">
-                <button className="small" onClick={() => preview(cand)}>{previewing === cand.id ? '■ Stop' : '▶ Beluister'}</button>
+                <button className="small" onClick={() => onPreview(cand)}>
+                  {playing === cand.id ? '■ Stop' : '▶ Beluister'}
+                </button>
                 <button className="small" onClick={() => setExpanded(open ? null : cand.id)}>
                   {open ? 'Verberg tekst en tijden' : 'Tekst en tijden'}
                 </button>
+                {/* Only the hand-cut ones can go: a found one is the search's answer, and
+                    hiding it would make "opnieuw zoeken" bring it straight back. */}
+                {own && (
+                  <button
+                    className="small bare"
+                    disabled={disabled}
+                    onClick={() => remove(cand.id)}
+                    title="Dit fragment weghalen"
+                  >
+                    Weghalen
+                  </button>
+                )}
               </div>
 
               {open && (
@@ -183,7 +113,7 @@ export default function ClipSuggestions({ service, sourceUrl, disabled, onChange
                     max={cand.end - 1}
                     disabled={disabled}
                     onChange={(t) => update(cand.id, { start: t })}
-                    onJump={() => videoRef.current && (videoRef.current.currentTime = cand.start)}
+                    onJump={() => video.current && (video.current.currentTime = cand.start)}
                   />
                   <Boundary
                     label="Einde"
@@ -192,7 +122,7 @@ export default function ClipSuggestions({ service, sourceUrl, disabled, onChange
                     max={duration}
                     disabled={disabled}
                     onChange={(t) => update(cand.id, { end: t })}
-                    onJump={() => videoRef.current && (videoRef.current.currentTime = Math.max(cand.start, cand.end - 3))}
+                    onJump={() => video.current && (video.current.currentTime = Math.max(cand.start, cand.end - 3))}
                   />
                   {cand.alternateBoundaries.length > 0 && (
                     <div className="row">
@@ -212,11 +142,10 @@ export default function ClipSuggestions({ service, sourceUrl, disabled, onChange
                 </div>
               )}
             </article>
-            </div>
-          )
-        })}
-      </div>
-    </Section>
+          </div>
+        )
+      })}
+    </div>
   )
 }
 

@@ -460,6 +460,10 @@ input[type='checkbox'] { accent-color: var(--purple); width: 1rem; height: 1rem;
 .timeline .mark.now { box-shadow: 0 0 0 2px var(--gold); background: var(--gold); }
 .timeline .mark.on.now { background: var(--purple); }
 .timeline .head { position: absolute; top: 0; bottom: 0; width: 2px; background: var(--ink); pointer-events: none; }
+.timeline .nothing {
+  position: absolute; inset: 0; display: grid; place-items: center; padding: 0 1rem;
+  color: var(--muted); font-size: 0.85rem; text-align: center;
+}
 .timeline .ticks { display: flex; justify-content: space-between; margin-top: 0.3rem; }
 
 /* suggestions */
@@ -488,6 +492,69 @@ input[type='checkbox'] { accent-color: var(--purple); width: 1rem; height: 1rem;
 .lines div { padding: 0.1rem 0; }
 .lines .tc { color: var(--muted); display: inline-block; width: 4.2rem; }
 .player video { width: 100%; max-height: 300px; background: #000; border-radius: 10px; display: block; }
+
+/* a moment somebody cut out of the transcript themselves */
+.timeline .mark.own { background: var(--gold); }
+.timeline .mark.own.on { background: #A87B10; }
+.suggestion.own { border-left: 3px solid var(--gold); }
+.badge {
+  display: inline-block; margin-left: 0.5rem; padding: 0.05rem 0.45rem; border-radius: 999px;
+  background: var(--gold); color: var(--deep); font-size: 0.68rem; font-weight: 700;
+  letter-spacing: 0.02em; vertical-align: 0.1em;
+}
+
+/* two ways into the same service: the fragments, or the text they were cut from */
+.seg.tabs { margin: 1.3rem 0 1rem; }
+.seg.tabs button { padding: 0.45rem 0.95rem; font-size: 0.9rem; font-weight: 600; }
+.seg.tabs .count {
+  margin-left: 0.4rem; padding: 0 0.35rem; border-radius: 999px; background: var(--lavender);
+  color: var(--purple); font-size: 0.75rem; font-variant-numeric: tabular-nums;
+}
+.seg.tabs button.on .count { background: rgba(255, 255, 255, 0.28); color: var(--white); }
+
+/* reading the whole service */
+.reading .find { display: flex; align-items: center; gap: 0.6rem; flex-wrap: wrap; }
+.reading .find input { flex: 1; min-width: 14rem; }
+.reading .found { display: inline-flex; align-items: center; gap: 0.15rem; color: var(--muted); font-size: 0.85rem; white-space: nowrap; }
+.reading .found button { font-size: 1.1rem; line-height: 1; padding: 0 0.3rem; }
+.reading .jumps { display: flex; align-items: center; gap: 0.35rem; flex-wrap: wrap; margin-top: 0.7rem; }
+.reading .jumps button { padding: 0.15rem 0.55rem; font-size: 0.8rem; }
+.reading .jumps button .tc { font-size: 0.72rem; }
+.reading kbd {
+  font-family: var(--mono); font-size: 0.78rem; background: var(--lavender); border-radius: 4px;
+  padding: 0 0.3rem; border: 1px solid var(--line);
+}
+
+/* An hour of speech is a long list. It scrolls inside its own box so the page does not, and
+   the line being spoken stays in view while the recording plays. */
+.lines.read {
+  max-height: 28rem; margin-top: 0.7rem; border: 1px solid var(--line); border-radius: 10px;
+  padding: 0.3rem; scroll-behavior: smooth;
+}
+.lines.read .line {
+  display: flex; gap: 0.55rem; width: 100%; text-align: left; border: none; border-radius: 6px;
+  background: transparent; color: var(--ink); font: inherit; font-size: 0.9rem; font-weight: 400;
+  padding: 0.18rem 0.45rem; line-height: 1.45; cursor: pointer;
+}
+.lines.read .line:hover { background: var(--lavender); border-color: transparent; }
+.lines.read .line .tc { flex: none; width: 3.4rem; color: var(--muted); padding-top: 0.12rem; }
+.lines.read .line.picked { background: var(--lavender); }
+.lines.read .line.picked .tc { color: var(--purple); font-weight: 600; }
+.lines.read .line.saying { box-shadow: inset 2px 0 0 var(--purple); }
+.lines.read .line.hit { outline: 2px solid var(--gold); outline-offset: -2px; }
+.lines.read mark { background: #FBEBC4; color: inherit; border-radius: 2px; }
+
+/* what you get when you have picked a run of lines */
+.cutting {
+  position: sticky; bottom: 0.4rem; margin-top: 0.7rem; padding: 0.7rem 0.8rem;
+  background: var(--white); border: 1px solid var(--purple); border-radius: 10px;
+  box-shadow: 0 -4px 16px rgba(46, 36, 56, 0.1);
+}
+.cutting .row { display: flex; align-items: center; gap: 0.5rem; flex-wrap: wrap; }
+.cutting .row > .tc { color: var(--purple); font-weight: 600; }
+.cutting input { flex: 1; min-width: 12rem; font-size: 0.9rem; }
+.cutting .hint { margin-top: 0.45rem; margin-bottom: 0; }
+.reading .follow { display: block; margin: 0.5rem auto 0; color: var(--purple); font-weight: 600; }
 .dock {
   position: sticky; bottom: 0; z-index: 5; display: flex; flex-direction: column; gap: 0.6rem;
   background: var(--white); border: 1px solid var(--line); border-radius: 12px; padding: 0.7rem 0.7rem 0.7rem 1.1rem;

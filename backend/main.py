@@ -895,7 +895,8 @@ def analyze_service(service_id: str):
         result = discovery.discover(transcript, on_progress, should_stop=job.check, cache_dir=cache,
                                     duration=service.sourceInfo.duration if service.sourceInfo else None,
                                     about=sermon_context(service))
-        service.candidates = result.candidates
+        # Read back what was cut by hand while this was running, before writing.
+        service.candidates = keep_own(service.id, result.candidates)
         service.shape = result.shape
         service.warning = result.warning
         save_service(service)
@@ -945,17 +946,76 @@ def read_candidates(service_id: str):
     return get_service(service_id).candidates
 
 
+def name_the_new(candidates: list[ClipCandidate]) -> None:
+    """Give every hand-cut moment that arrives without one an id of its own, in place.
+
+    The browser cuts a fragment out of the transcript and has nothing to call it. Numbering
+    happens here so two tabs open on the same service cannot both invent "eigen-01".
+    """
+    taken = {c.id for c in candidates if c.id}
+    n = 0
+    for cand in candidates:
+        if cand.id:
+            continue
+        while True:
+            n += 1
+            fresh = f"eigen-{n:02d}"
+            if fresh not in taken:
+                break
+        cand.id, cand.source = fresh, "self"
+        taken.add(fresh)
+
+
+def merged(before: list[ClipCandidate], sent: list[ClipCandidate]) -> list[ClipCandidate]:
+    """The browser's list, plus what the search found while the browser was not looking.
+
+    Someone reading the transcript keeps cutting fragments while the search is still
+    running, and their browser sends the list as it last knew it, which is the list from
+    before the search came back. Writing that down as-is would throw the search away. So a
+    moment the browser has not seen is added instead of dropped. Nothing that was meant to
+    go comes back: the browser only ever removes its own, and its own it has by definition
+    seen.
+    """
+    known = {c.id for c in sent}
+    unseen = [c for c in before if c.id and c.id not in known and c.source != "self"]
+    return sent + unseen
+
+
+def keep_own(service_id: str, found: list[ClipCandidate]) -> list[ClipCandidate]:
+    """What a finished search should leave behind: the hand-cut moments, then its own.
+
+    The search holds the service as it was when it started, which can be a minute or more
+    ago. Anything cut by hand since then is on disk and nowhere else, so it is read back
+    rather than overwritten. Hand-cut ones go first: somebody chose those on purpose, and
+    a ranking they were never part of should not push them down the page.
+    """
+    current = load_service(service_id)
+    own = [c for c in current.candidates if c.source == "self"] if current else []
+    taken = {c.id for c in own}
+    return own + [c for c in found if c.id not in taken]
+
+
 @app.put("/services/{service_id}/candidates", response_model=list[ClipCandidate])
 def update_candidates(service_id: str, candidates: list[ClipCandidate]):
-    """Save user adjustments: selection and boundary changes. Order is preserved as given."""
+    """Save user adjustments: selection, boundary changes, and moments cut by hand.
+
+    This is allowed to run while the search is running. Reading the transcript and cutting
+    your own moments is the thing to do with those minutes, and it would be a poor reward
+    to refuse to save them.
+    """
     service = get_service(service_id)
-    if jobs.is_running(service.id):
-        raise HTTPException(409, "De dienst wordt nog verwerkt, wacht even")
+    if service.status == "processing":
+        raise HTTPException(409, "De clips worden gemaakt, wacht even")
     duration = service.sourceInfo.duration if service.sourceInfo else None
+    name_the_new(candidates)
+    seen: set[str] = set()
     for cand in candidates:
         if cand.end <= cand.start or cand.start < 0 or (duration and cand.end > duration + 0.5):
-            raise HTTPException(400, f"Ongeldig begin of einde bij fragment {cand.id}")
-    service.candidates = candidates
+            raise HTTPException(400, f"Ongeldig begin of einde bij fragment {cand.title or cand.id}")
+        if cand.id in seen:
+            raise HTTPException(400, f"Twee fragmenten met hetzelfde kenmerk: {cand.id}")
+        seen.add(cand.id)
+    service.candidates = merged(service.candidates, candidates)
     save_service(service)
     return service.candidates
 

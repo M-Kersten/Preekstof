@@ -348,7 +348,7 @@ Link or upload → Transcribing → Analyzing service → Suggestions ready → 
 3. The sentences that belong to the singing, the notices and the blessing are dropped, and what is left is packed into as few passages as it fits in. `LLM_PASSAGE_MINUTES` is 40, so an ordinary sermon is a single call: the model reads the whole thing, is asked for the three to six moments the service is worth posting, and answers as structured JSON (start, end, title, summary, reason, confidence). See [One call, not sixteen](#one-call-not-sixteen).
 4. Candidate boundaries are snapped to sentence boundaries and proposals covering the same moment are merged (the extra boundaries stay available as alternatives).
 5. A sermon too long for one passage gets a **second round**, which reads every surviving proposal at once, with the shape of the service and an excerpt of what is actually said, and picks the ones worth posting. Confidence from two separate reads is not comparable on its own: the best moment of a dull three minutes scores the same as the best moment of the service. Every proposal comes back with a one-line verdict, including the ones passed over. A sermon that fitted in one passage skips this round entirely, because the model already had all of it in front of it.
-6. **Clip Suggestions** lists the chosen moments best first, with the shape of the service drawn behind them on the timeline. The ones that were found but passed over sit behind **Ook gevonden, niet gekozen** with the reason they lost. **Preview** plays just that range of the original recording; **Transcript & timecodes** opens the full excerpt and the boundary editor with direct `mm:ss.s` input and -5 / -1 / +1 / +5 second nudges. Selections and edits are saved automatically.
+6. **De dienst** holds both ways of working, under one timeline and one player. **Fragmenten** lists the moments best first, hand-cut ones above the found ones, with the shape of the service drawn behind them. The ones that were found but passed over sit behind **Ook gevonden, niet gekozen** with the reason they lost. **Beluister** plays just that range; **Tekst en tijden** opens the full excerpt and the boundary editor with direct `mm:ss.s` input and -5 / -1 / +1 / +5 second nudges. **Hele tekst** is the whole service to read through, search and cut from yourself; see [Reading the service yourself](#reading-the-service-yourself). Selections and edits are saved automatically.
 7. **Process selected clips** creates a normal clip project per selected range. Each one is then heard again over its own seconds, at the careful setting, so the subtitles a viewer reads are not the scan's; and the speaker is found in it, so it opens already framed. Both steps report into the bar at the bottom of the screen, which also lists the finished clips. **Open in editor** switches to the Clip tab for subtitles, styling, framing and rendering. Nothing about rendering lives in the discovery layer.
 
    Nothing is cut at this point. A clip records which recording it came from and which seconds it covers, and the renderer seeks into the original, so a finished clip is one encode away from the camera instead of two and processing eight moments takes a moment rather than several minutes. `clips.source_of()` answers where a clip's footage is; `clips.materialise()` gives a clip its own copy, which only happens when the recording is about to be removed.
@@ -376,6 +376,39 @@ readings are kept: churches do post those.
 
 Measured on the service in `tests/service_text.py`, 52 of 52 sentences are labelled correctly and
 19 of its 59 minutes never leave the house.
+
+### Reading the service yourself
+
+The text is on screen the moment it is written out, before the search has started and while
+it runs. Someone who has to have a clip out by lunchtime should not be sitting in front of a
+progress bar for a minute, and they usually already half know the moment they are after.
+
+**Hele tekst** is the service sentence by sentence with its timecodes. Typing in the search
+box marks every hit and steps through them with ‹ ›, accents and capitals folded away, so
+"mattheus" finds "Mattheüs". The parts of the service are buttons across the top, each with
+the minute it starts at, because a morning has three blocks of singing in it and the label
+alone does not say which is which. Clicking a sentence plays from there; while the recording
+plays the sentence being spoken is marked and the list scrolls itself along, until you scroll
+away yourself.
+
+Shift-clicking a second sentence takes everything in between. What that covers, how long it
+runs and whether that is too short or too long to work as a reel is shown at the bottom, with
+the opening words filled in as the name. **Fragment maken** puts it in the same list the
+search writes to, so there is one list to choose from and one button at the bottom.
+
+Hand-cut moments carry `source: "self"` and the search may never touch them:
+
+- A run that comes back reads the service off disk before writing, so a fragment cut while
+  it was thinking is still there afterwards.
+- Saving the list is allowed while the search runs, and the server merges rather than
+  overwrites: a moment the browser has not seen yet is added, never dropped. The browser only
+  ever removes its own, so nothing that was meant to go comes back.
+- They sort above the found ones. A ranking they were never part of should not push them down
+  the page.
+- **Opnieuw zoeken** replaces what the search found and leaves them alone.
+
+Only **Gekozen fragmenten verwerken** actually locks the list, because it walks the fragments
+as it goes. While the search runs, the dock says so and the button waits.
 
 ### One call, not sixteen
 

@@ -66,6 +66,40 @@ plus het model zelf. Loopt een run vast, dan wordt alleen de rest opnieuw gevraa
 Verandert er iets aan de tekst of de instructie, dan is de cache ongeldig en wordt er
 niets ouds teruggegeven.
 
+## 4b. Zelf knippen, terwijl het zoeken loopt
+
+De uitgeschreven tekst staat op het scherm zodra hij klaar is. Dus ook voordat het zoeken
+begint, en de hele tijd dat het loopt. Wie om twaalf uur een clip af moet hebben heeft
+niets aan een balkje dat vult, en weet meestal al half welk moment hij hebben wil.
+
+Onder **Hele tekst** staat de dienst zin voor zin met tijdcodes. Typen in het zoekveld
+markeert elke treffer en loopt er met ‹ › doorheen; accenten en hoofdletters tellen niet
+mee, dus "mattheus" vindt "Mattheüs". De delen van de dienst staan als knopjes bovenaan,
+met de minuut waarop ze beginnen, want een ochtend heeft drie blokken zang en aan het
+woord alleen zie je niet welke. Klik op een zin en de opname speelt daar verder. Tijdens
+het afspelen wordt de zin die gezegd wordt gemarkeerd en schuift de lijst mee, tot je zelf
+scrollt.
+
+Shift-klikken op een tweede zin pakt alles ertussen. Onderaan staat wat dat aan tijd is,
+of dat te kort of te lang is voor een reel, en de openingswoorden als naam. **Fragment
+maken** zet het in dezelfde lijst waar het zoeken in schrijft.
+
+Die twee kunnen elkaar niet in de weg zitten. Wat je zelf knipt draagt een merkteken dat
+het zoeken nooit aanraakt:
+
+- Een ronde die terugkomt leest de dienst eerst van schijf. Een fragment dat je knipte
+  terwijl het model nadacht staat er daarna nog.
+- Opslaan mag terwijl het zoeken loopt, en de server voegt samen in plaats van overschrijft:
+  een moment dat de browser nog niet gezien heeft komt erbij. Weggooien doet de browser
+  alleen bij zijn eigen fragmenten, en die kent hij per definitie.
+- Ze staan boven de gevonden momenten. Een rangorde waar ze nooit in meededen hoort ze niet
+  naar beneden te duwen.
+- **Opnieuw zoeken** vervangt wat het zoeken vond en laat ze staan.
+
+Alleen **Gekozen fragmenten verwerken** zet de lijst echt op slot, want dat loopt de
+fragmenten stuk voor stuk af. Tijdens het zoeken zegt de balk onderaan dat hij nog even
+wacht.
+
 ## 5. Overlap opruimen
 
 Twee voorstellen die hetzelfde moment zien blijven niet allebei staan. Overlappen ze voor

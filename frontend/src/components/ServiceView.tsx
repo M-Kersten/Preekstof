@@ -3,6 +3,9 @@ import { ApiError, serviceApi, type ClipCandidate, type Service, type ServiceSum
 import { useChurch } from '../church'
 import { formatTime } from '../subtitleLayout'
 import ClipSuggestions from './ClipSuggestions'
+import Section from './Section'
+import ServiceTimeline from './ServiceTimeline'
+import ServiceTranscript from './ServiceTranscript'
 import StationServices from './StationServices'
 import Steps from './Steps'
 
@@ -29,10 +32,10 @@ const STATUS_TEXT: Record<Service['status'], string> = {
   uploaded: 'De opname is binnen. Klik op Uitschrijven om de gesproken tekst om te zetten in tekst.',
   transcribing:
     'De dienst wordt snel doorgeluisterd, genoeg om de momenten te kunnen vinden. Laat dit venster open staan; de balk hieronder laat de voortgang zien.',
-  transcribed: 'De tekst is klaar, nog wat ruw. Klik op Beste momenten zoeken om de computer de dienst te laten doorlezen. De fragmenten die je straks kiest worden woord voor woord opnieuw uitgeschreven.',
-  analyzing: 'De tekst wordt stuk voor stuk doorgelezen op momenten die als losse video werken. Dit duurt een paar minuten.',
+  transcribed: 'De tekst is klaar, nog wat ruw. Lees hem hieronder door en knip er zelf een fragment uit, of laat de computer de beste momenten zoeken. Wat je kiest wordt straks woord voor woord opnieuw uitgeschreven.',
+  analyzing: 'De dienst wordt doorgelezen op momenten die als losse video werken. Lees zelf vast mee hieronder: wat je nu uitknipt blijft staan als het zoeken klaar is.',
   ready:
-    'Hieronder staan de voorgestelde fragmenten, de beste bovenaan. Beluister ze, vink aan wat je wilt gebruiken en pas zo nodig het begin en einde aan. Klik daarna onderaan op Gekozen fragmenten verwerken.',
+    'Hieronder staan de fragmenten, de beste bovenaan, met wat je zelf knipte erboven. Beluister ze, vink aan wat je wilt gebruiken en pas zo nodig het begin en einde aan. Klik daarna onderaan op Gekozen fragmenten verwerken.',
   processing: 'De gekozen fragmenten worden uit de opname geknipt, netjes uitgeschreven en op de spreker gezet. Dit duurt ongeveer een halve minuut per fragment.',
   complete: 'De clips staan klaar bij Gemaakte clips. Open een clip om de ondertitels na te kijken, het beeldkader te kiezen en de video te maken.',
   error: 'Probeer de laatste stap opnieuw. Blijft het misgaan, geef de melding hieronder dan door aan degene die de app beheert.',
@@ -86,6 +89,12 @@ export default function ServiceView({ onOpenClip }: Props) {
   const [saving, setSaving] = useState(false)
   const autoChain = useRef(false)
   const dirty = useRef(false)
+  // One player for the whole page: reading the transcript and listening to a fragment are
+  // the same seat, and two <video> elements on one recording is one too many.
+  const videoRef = useRef<HTMLVideoElement>(null)
+  const [playing, setPlaying] = useState<string | null>(null)
+  const [time, setTime] = useState(0)
+  const [tab, setTab] = useState<'moments' | 'text'>('text')
 
   const fail = (e: unknown) => {
     if (e instanceof ApiError && e.offline) {
@@ -152,6 +161,55 @@ export default function ServiceView({ onOpenClip }: Props) {
       serviceApi.analyze(service.id).then(setService).catch(fail)
     }
   }, [service])
+
+  // Which side you land on when a service opens: the fragments when there already are
+  // some, the text when there are not. After that the tabs only move when you click one.
+  // Being pulled away mid-selection because the search happened to finish is no help.
+  useEffect(() => {
+    setTab(service && service.candidates.length > 0 ? 'moments' : 'text')
+    setPlaying(null)
+    setTime(0)
+  }, [service?.id])
+
+  const preview = (cand: ClipCandidate) => {
+    const v = videoRef.current
+    if (!v) return
+    if (playing === cand.id && !v.paused) {
+      v.pause()
+      return
+    }
+    setPlaying(cand.id)
+    v.currentTime = cand.start
+    void v.play().catch(() => undefined)
+  }
+
+  /** From the timeline: play it, and put the card it belongs to in front of you. */
+  const jump = (cand: ClipCandidate) => {
+    setTab('moments')
+    preview(cand)
+    requestAnimationFrame(() =>
+      document.getElementById(`f-${cand.id}`)?.scrollIntoView({ behavior: 'smooth', block: 'center' }))
+  }
+
+  /**
+   * A fragment somebody cut out of the transcript. Saved straight away rather than on the
+   * usual debounce: it is a deliberate act, and the answer carries both the name the server
+   * gave it and anything the search turned up while this was in flight.
+   */
+  const cut = async (candidate: ClipCandidate) => {
+    if (!service) return
+    const own = service.candidates.filter((c) => c.source === 'self')
+    const found = service.candidates.filter((c) => c.source !== 'self')
+    const wanted = [...own, candidate, ...found]
+    setService({ ...service, candidates: wanted })
+    dirty.current = false
+    try {
+      const saved = await serviceApi.saveCandidates(service.id, wanted)
+      setService((prev) => (prev ? { ...prev, candidates: saved } : prev))
+    } catch (e) {
+      fail(e)
+    }
+  }
 
   const upload = async (file: File) => {
     setError(null)
@@ -227,7 +285,14 @@ export default function ServiceView({ onOpenClip }: Props) {
     const handle = setTimeout(() => {
       dirty.current = false
       setSaving(true)
-      serviceApi.saveCandidates(service.id, service.candidates).catch(fail).finally(() => setSaving(false))
+      serviceApi
+        .saveCandidates(service.id, service.candidates)
+        // The search can land while this is in flight. The answer already has both lists in
+        // it, so take that rather than the half of it this browser knew about.
+        .then((saved) => setService((prev) =>
+          prev && saved.length !== prev.candidates.length ? { ...prev, candidates: saved } : prev))
+        .catch(fail)
+        .finally(() => setSaving(false))
     }, 500)
     return () => clearTimeout(handle)
   }, [service])
@@ -252,8 +317,16 @@ export default function ServiceView({ onOpenClip }: Props) {
   }
 
   const busy = service ? BUSY.has(service.status) : false
+  // Only making the clips actually locks the list: it walks the fragments as it goes, so
+  // changing them underneath would lose one. While the search runs, cutting your own is
+  // the whole point of those minutes.
+  const locked = service?.status === 'processing'
   const hasVideo = Boolean(service?.sourceVideo && service.sourceInfo)
   const selectedCount = service?.candidates.filter((c) => c.selected).length ?? 0
+  const chosen = service?.candidates.filter((c) => c.shortlisted) ?? []
+  const extra = service?.candidates.filter((c) => !c.shortlisted) ?? []
+  const nowPlaying = service?.candidates.find((c) => c.id === playing)
+  const sentences = service?.transcriptData?.segments.length ?? 0
   const progress = service?.job ? Math.round(service.job.progress * 100) : null
   const stopping = Boolean(service?.job?.message?.startsWith('Bezig met stoppen'))
   // While a recording is being fetched there is nothing to choose; the card below says what
@@ -449,13 +522,70 @@ export default function ServiceView({ onOpenClip }: Props) {
             {!busy && service.transcript && service.analysis && <CostNote analysis={service.analysis} />}
           </section>
 
-          {service.candidates.length > 0 && (
-            <ClipSuggestions
-              service={service}
-              sourceUrl={serviceApi.sourceUrl(service.id)}
-              disabled={busy}
-              onChange={changeCandidates}
-            />
+          {service.transcript && (
+            <Section
+              title="De dienst"
+              intro="Luister mee, lees de hele tekst door en knip eruit wat je wilt gebruiken. De balk laat zien waar elk fragment zit en hoe de dienst is opgebouwd."
+              aside={service.candidates.length > 0
+                ? <span className="meta">{chosen.length} gekozen{extra.length > 0 ? ` · ${extra.length} ook gevonden` : ''}</span>
+                : undefined}
+            >
+              <ServiceTimeline service={service} time={time} playing={playing} onPick={jump} />
+
+              <div className="player">
+                <video
+                  ref={videoRef}
+                  src={serviceApi.sourceUrl(service.id)}
+                  preload="metadata"
+                  playsInline
+                  controls
+                  onTimeUpdate={(e) => {
+                    const v = e.currentTarget
+                    setTime(v.currentTime)
+                    const cand = service.candidates.find((c) => c.id === playing)
+                    if (cand && v.currentTime >= cand.end) {
+                      v.pause()
+                      v.currentTime = cand.end
+                    }
+                  }}
+                />
+                <p className="meta" style={{ marginTop: '0.35rem' }}>
+                  {nowPlaying
+                    ? `${nowPlaying.title} speelt · stopt om ${formatTime(nowPlaying.end)}`
+                    : 'Klik op een balkje hierboven, of op een zin in de tekst.'}
+                </p>
+              </div>
+
+              <div className="seg tabs">
+                <button className={tab === 'moments' ? 'on' : ''} onClick={() => setTab('moments')}>
+                  Fragmenten
+                  {service.candidates.length > 0 && <span className="count">{service.candidates.length}</span>}
+                </button>
+                <button className={tab === 'text' ? 'on' : ''} onClick={() => setTab('text')}>
+                  Hele tekst
+                  <span className="count">{sentences}</span>
+                </button>
+              </div>
+
+              {tab === 'moments' ? (
+                <ClipSuggestions
+                  service={service}
+                  video={videoRef}
+                  playing={playing}
+                  disabled={locked}
+                  onPreview={preview}
+                  onChange={changeCandidates}
+                />
+              ) : (
+                <ServiceTranscript
+                  service={service}
+                  video={videoRef}
+                  time={time}
+                  disabled={locked}
+                  onCut={cut}
+                />
+              )}
+            </Section>
           )}
 
           {(service.candidates.length > 0 || service.clips.length > 0) && (
@@ -499,7 +629,10 @@ export default function ServiceView({ onOpenClip }: Props) {
                 </div>
               ) : service.candidates.length > 0 && (
                 <div className="row">
-                  <span>{selectedCount === 0 ? 'Nog geen fragment gekozen' : selectedCount === 1 ? '1 fragment gekozen' : `${selectedCount} fragmenten gekozen`}</span>
+                  <span>
+                    {selectedCount === 0 ? 'Nog geen fragment gekozen' : selectedCount === 1 ? '1 fragment gekozen' : `${selectedCount} fragmenten gekozen`}
+                    {busy && selectedCount > 0 && <span className="meta"> · wacht tot het zoeken klaar is</span>}
+                  </span>
                   <button className="primary" disabled={busy || selectedCount === 0} onClick={processSelected}>
                     Gekozen fragmenten verwerken
                   </button>

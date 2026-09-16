@@ -422,6 +422,17 @@ give back.
 ## When something goes wrong
 
 - The app bar shows a check of everything the app needs: FFmpeg, the speech model, the analysis model, free disk space and writable folders. It opens by itself when a check fails and says what to do.
+- Windows lets go of a file when it feels like it. Every save goes through a temporary file
+  and a rename, and Windows refuses a rename onto a file that anything else has open, which
+  includes the virus scanner reading what was just written. `models.write_atomic` gives each
+  writer its own temporary name, takes one writer at a time per file, waits out a refused
+  rename over about a second and a half, and writes straight over the file if it is still
+  held. Saving the status of a service could fail there, and it used to fail *inside* the
+  handler that was writing down a different failure, which threw the real error away and left
+  the page waiting on work that had already stopped.
+- A service that says it is busy with nothing running is not busy. `GET /services/{id}/status`
+  checks the job as well as the file, so a status that never reached the disk shows up as what
+  it is instead of as a bar that never moves.
 - Long jobs can be stopped. Transcribing, analysing, cutting and rendering all have a **Stoppen** button; the job ends at its next checkpoint, which takes a few seconds for a render and up to half a minute for a transcription.
 - Interrupted work carries on rather than starting over. Transcription writes down what it has heard every half minute, so closing the laptop half way through a 90-minute service costs the last thirty seconds, not the last twenty minutes. Analysis keeps each window's answer, so a run that lost a few windows to a rate limit only pays for those few the next time. After a restart the service goes back to the step before with a line saying which button carries on; pressing it continues where it stopped.
 - Project and service files are written through a temporary file and renamed, so a crash or a power cut cannot leave half a file behind.

@@ -9,6 +9,9 @@ Layout of a project directory (projects/<id>/):
 """
 
 import json
+import os
+import threading
+import time
 import uuid
 from datetime import datetime, timezone
 from pathlib import Path
@@ -217,11 +220,56 @@ class ChurchInfo(BaseModel):
 # --- storage -----------------------------------------------------------------
 
 
+# Windows refuses to rename onto a file that anything else has open, and "anything else"
+# includes the virus scanner reading the file we just finished writing. It lets go within a
+# moment, so this waits rather than gives up: ten tries over about a second and a half.
+REPLACE_TRIES = 10
+REPLACE_WAIT = 0.03
+
+_writing: dict[str, threading.Lock] = {}
+_writing_guard = threading.Lock()
+
+
+def _writer_for(path: Path) -> threading.Lock:
+    """One writer at a time per file, so two threads here never race for the same name."""
+    with _writing_guard:
+        return _writing.setdefault(str(path), threading.Lock())
+
+
 def write_atomic(path: Path, text: str) -> None:
-    """Write through a temporary file, so a crash never leaves a half-written file behind."""
-    tmp = path.with_name(path.name + ".tmp")
-    tmp.write_text(text, encoding="utf-8")
-    tmp.replace(path)
+    """Write through a temporary file, so a crash never leaves a half-written file behind.
+
+    The temporary name carries the process and the thread, because a job thread and a request
+    thread saving the same service at the same moment used to fight over one ".tmp" and, on
+    Windows, lose: the rename came back as "Access is denied" and the status never got written
+    down. What that looked like was a page waiting for work that had already stopped.
+
+    A rename that keeps failing is followed by writing straight over the file. That gives up
+    the crash-safety for the length of one write, which beats losing what was written.
+    """
+    with _writer_for(path):
+        # The process because another copy of the app may be running, and a fresh random tail
+        # because thread ids are handed out again once a thread is done with them.
+        tmp = path.with_name(f"{path.name}.{os.getpid()}.{uuid.uuid4().hex[:8]}.tmp")
+        try:
+            tmp.write_text(text, encoding="utf-8")
+            for attempt in range(REPLACE_TRIES):
+                try:
+                    os.replace(tmp, path)
+                    return
+                except PermissionError:
+                    if attempt == REPLACE_TRIES - 1:
+                        break
+                    time.sleep(REPLACE_WAIT * (attempt + 1))
+            try:
+                path.write_text(text, encoding="utf-8")
+            except OSError as exc:
+                raise OSError(
+                    f"{path.name} kon niet opgeslagen worden: een ander programma houdt het "
+                    f"bestand vast. Een virusscanner of een geopende map doet dat soms. ({exc})"
+                ) from exc
+        finally:
+            tmp.unlink(missing_ok=True)
 
 
 def project_dir(project_id: str) -> Path:

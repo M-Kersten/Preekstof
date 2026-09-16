@@ -631,6 +631,20 @@ def set_status(service: Service, status: str, error: str | None = None) -> None:
 # Stopping a job puts the service back where it was before that job started.
 STOPPED_AT = {"fetching": "created", "transcribing": "uploaded", "analyzing": "transcribed",
               "processing": "ready"}
+BUSY_STATUS = set(STOPPED_AT)
+
+
+def remember(service: Service, status: str, error: str | None = None) -> None:
+    """Write the status down, and never let failing at that replace what went wrong.
+
+    set_status saves the service, and saving can fail: on Windows another program holding
+    service.json for a moment is enough. Raising from inside a handler would throw away the
+    error being handled and leave the service reading as busy for ever.
+    """
+    try:
+        set_status(service, status, error)
+    except Exception as exc:  # noqa: BLE001
+        print(f"[dienst] {service.id}: status '{status}' kon niet opgeslagen worden: {exc}")
 
 
 def run_service_job(service: Service, busy_status: str, done_status: str, work) -> ServiceDetail:
@@ -643,13 +657,17 @@ def run_service_job(service: Service, busy_status: str, done_status: str, work) 
     def wrapped(job: Job) -> None:
         try:
             work(job, service)
-            set_status(service, done_status)
         except Cancelled:
-            set_status(service, STOPPED_AT.get(busy_status, "ready"))
+            remember(service, STOPPED_AT.get(busy_status, "ready"))
             raise
         except Exception as exc:  # noqa: BLE001
-            set_status(service, "error", str(exc))
+            remember(service, "error", str(exc))
             raise
+        # Also through remember: the work is done and the candidates are already saved, so a
+        # disk that will not take the last line of bookkeeping is no reason to call the whole
+        # run a failure. It gets said in the black window, and the restart puts the status
+        # right by itself.
+        remember(service, done_status)
 
     jobs.start(service.id, wrapped)
     return service_detail(service)
@@ -889,9 +907,19 @@ def read_service_status(service_id: str):
     """Small payload for polling: the transcript itself would be sent over and over."""
     service = get_service(service_id)
     job = jobs.get(service.id)
+    status, error = service.status, service.error
+    # The file says busy and the job that was doing it has stopped. That happens when writing
+    # the status down failed, and it used to leave the page waiting on work that was over.
+    # "idle" is left alone: the job may be a second from starting, and a job from before a
+    # restart is put right at startup by recover_services.
+    if status in BUSY_STATUS and job.status in ("error", "done", "cancelled"):
+        if job.status == "error":
+            status, error = "error", job.error or error or "Het werk is gestopt zonder reden."
+        else:
+            status = STOPPED_AT.get(status, "ready")
     return {
-        "status": service.status,
-        "error": service.error,
+        "status": status,
+        "error": error,
         "warning": service.warning,
         "job": job.to_dict() if job.status == "running" else None,
         "candidates": len(service.candidates),

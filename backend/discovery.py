@@ -20,26 +20,28 @@ from typing import Callable
 from pydantic import BaseModel
 
 from .jobs import Cancelled
-from . import structure
+from . import settings, structure
 from .models import ClipCandidate, Segment, TimeRange, Transcript, write_atomic
 from .structure import Block
 
-LLM_PROVIDER = os.environ.get("LLM_PROVIDER", "anthropic")  # anthropic | ollama
-LLM_MODEL = os.environ.get("LLM_MODEL")  # defaults per provider below
+LLM_PROVIDER = settings.choice("LLM_PROVIDER", ("anthropic", "ollama"), "anthropic")
+LLM_MODEL = settings.text("LLM_MODEL") or None  # defaults per provider below
 # How long the model thinks before it answers. With one call left this is most of the wait.
-LLM_EFFORT = os.environ.get("LLM_EFFORT", "medium")
-LLM_CONCURRENCY = int(os.environ.get("LLM_CONCURRENCY", "3"))
-LLM_ATTEMPTS = int(os.environ.get("LLM_ATTEMPTS", "3"))  # tries per passage before giving up on it
-LLM_TIMEOUT = float(os.environ.get("LLM_TIMEOUT", "300"))  # a whole sermon takes longer to read than four minutes
-LLM_MAX_TOKENS = int(os.environ.get("LLM_MAX_TOKENS", "16000"))  # thinking included; an answer is a few hundred
-OLLAMA_URL = os.environ.get("OLLAMA_URL", "http://localhost:11434")
+# The API takes these five words and nothing else, so a sixth never leaves the house.
+EFFORT_LEVELS = ("low", "medium", "high", "xhigh", "max")
+LLM_EFFORT = settings.choice("LLM_EFFORT", EFFORT_LEVELS, "medium")
+LLM_CONCURRENCY = settings.whole("LLM_CONCURRENCY", 3, least=1)
+LLM_ATTEMPTS = settings.whole("LLM_ATTEMPTS", 3, least=1)  # tries per passage before giving up on it
+LLM_TIMEOUT = settings.number("LLM_TIMEOUT", 300, least=1)  # a sermon takes longer to read than four minutes
+LLM_MAX_TOKENS = settings.whole("LLM_MAX_TOKENS", 16000, least=1000)  # thinking included; an answer is a few hundred
+OLLAMA_URL = settings.text("OLLAMA_URL", "http://localhost:11434")
 
 # How much of the service goes into one call. This used to be four minutes, from a time
 # when a model could not hold more, and a ninety-minute service then became sixteen calls
 # plus a second round to compare their answers: three waits in a row for a volunteer who
 # wanted a clip in a hurry. A whole sermon is around twenty thousand tokens and fits in one
 # call with room to spare, so that is what gets sent.
-PASSAGE_MINUTES = float(os.environ.get("LLM_PASSAGE_MINUTES", "40"))
+PASSAGE_MINUTES = settings.number("LLM_PASSAGE_MINUTES", 40, least=1)
 PASSAGE_SECONDS = PASSAGE_MINUTES * 60
 PASSAGE_OVERLAP = 90.0  # only comes into play for a sermon too long for one passage
 PASSAGE_LEAD = 60.0  # transcript before the passage, given as context but never proposed from
@@ -362,7 +364,10 @@ def _anthropic(user: str, system: str = SYSTEM_PROMPT, schema=LlmAnalysis):
     except anthropic.APIStatusError as exc:
         if exc.status_code >= 500:
             raise Retryable(f"De Claude API gaf een serverfout ({exc.status_code}).") from exc
-        raise RuntimeError(f"De Claude API gaf een fout ({exc.status_code}): {exc.message}") from exc
+        # A 400 is nearly always a setting the API does not recognise, and repeating the
+        # request will not change that. Say where to go and look.
+        hint = " Kijk de instellingen in config.env na." if exc.status_code == 400 else ""
+        raise RuntimeError(f"De Claude API gaf een fout ({exc.status_code}): {exc.message}{hint}") from exc
     except anthropic.APIConnectionError as exc:
         raise Retryable("Geen verbinding met de Claude API.") from exc
     if response.stop_reason == "max_tokens":
@@ -566,7 +571,7 @@ PRICES = {"claude-opus-5": (5.0, 25.0), "claude-sonnet-5": (2.0, 10.0), "claude-
 
 # Anthropic publishes those prices in dollars and the church pays in euros, so one rate,
 # in one place, adjustable from config.env when it has drifted far enough to matter.
-EUR_PER_USD = float(os.environ.get("EUR_PER_USD", "0.86"))
+EUR_PER_USD = settings.number("EUR_PER_USD", 0.86, least=0)
 
 
 def estimate(transcript: Transcript, duration: float | None = None) -> dict:
@@ -690,7 +695,9 @@ def discover(transcript: Transcript, on_progress: ProgressCallback | None = None
                 on_progress(done / total, reading(done))
 
     if failures and len(failures) == total:
-        raise RuntimeError("Geen enkel deel van de tekst kon geanalyseerd worden. " + failures[0])
+        nothing = ("De tekst kon niet geanalyseerd worden." if alone
+                   else "Geen enkel deel van de tekst kon geanalyseerd worden.")
+        raise RuntimeError(f"{nothing} {failures[0]}")
     warning = None
     if failures:
         warning = (f"{len(failures)} van de {total} stukken tekst konden niet geanalyseerd worden, de rest wel. "

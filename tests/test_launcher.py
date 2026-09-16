@@ -283,3 +283,53 @@ def test_the_check_and_the_fallback_look_in_the_same_place():
     from backend import gpu
 
     assert launcher.cuda_libraries_ready() == bool(gpu.package_dirs())
+
+
+# --- config.env, as a volunteer writes it -------------------------------------------
+
+
+def config(tmp_path, monkeypatch, text: str):
+    monkeypatch.setattr(launcher, "CONFIG", tmp_path / "config.env")
+    monkeypatch.setattr(launcher, "CONFIG_EXAMPLE", tmp_path / "config.example.env")
+    launcher.CONFIG.write_text(text, encoding="utf-8")
+
+
+def test_a_note_behind_a_setting_does_not_become_part_of_it(tmp_path, monkeypatch):
+    """This reached the API as one long word and every passage came back a 400."""
+    monkeypatch.delenv("LLM_EFFORT", raising=False)
+    config(tmp_path, monkeypatch, "LLM_EFFORT=medium   # of high als de momenten tegenvallen\n")
+    launcher.load_config()
+    assert os.environ["LLM_EFFORT"] == "medium"
+
+
+def test_a_number_with_a_note_behind_it_is_still_a_number(tmp_path, monkeypatch):
+    monkeypatch.delenv("LLM_CONCURRENCY", raising=False)
+    config(tmp_path, monkeypatch, "LLM_CONCURRENCY=8 # sneller\n")
+    launcher.load_config()
+    assert int(os.environ["LLM_CONCURRENCY"]) == 8
+
+
+def test_a_key_with_a_hash_in_it_arrives_whole(tmp_path, monkeypatch):
+    monkeypatch.delenv("ANTHROPIC_API_KEY", raising=False)
+    config(tmp_path, monkeypatch, "ANTHROPIC_API_KEY=sk-ant-a#b#c\n")
+    launcher.load_config()
+    assert os.environ["ANTHROPIC_API_KEY"] == "sk-ant-a#b#c"
+
+
+def test_commented_out_lines_and_blank_lines_are_skipped(tmp_path, monkeypatch):
+    monkeypatch.delenv("KEEP_WEEKS", raising=False)
+    config(tmp_path, monkeypatch, "# KEEP_WEEKS=9\n\nKEEP_WEEKS=2\n")
+    launcher.load_config()
+    assert os.environ["KEEP_WEEKS"] == "2"
+
+
+def test_what_is_already_in_the_environment_wins(tmp_path, monkeypatch):
+    monkeypatch.setenv("LLM_EFFORT", "high")
+    config(tmp_path, monkeypatch, "LLM_EFFORT=low\n")
+    launcher.load_config()
+    assert os.environ["LLM_EFFORT"] == "high"
+
+
+def test_a_card_asked_for_with_a_note_behind_it_is_still_asked_for(monkeypatch):
+    monkeypatch.setenv("WHISPER_DEVICE", "cuda  # de kaart van de beamer-pc")
+    assert launcher.wants_card() is True

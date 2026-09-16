@@ -11,30 +11,30 @@ from dataclasses import asdict, dataclass
 from pathlib import Path
 from typing import Callable
 
-from . import gpu, mac
+from . import gpu, mac, settings
 from .models import TEMPLATES_DIR, Segment, Spoken, Transcript, write_atomic
 
 LANGUAGE = "nl"
 VOCABULARY_PATH = TEMPLATES_DIR / "woordenlijst.json"
-MODEL_SIZE = os.environ.get("WHISPER_MODEL", "small")
+MODEL_SIZE = settings.text("WHISPER_MODEL", "small")
 # Only a few minutes of a service ever become clips, so the clip is worth a bigger model.
-ACCURATE_MODEL_SIZE = os.environ.get("WHISPER_MODEL_ACCURATE", "medium")
+ACCURATE_MODEL_SIZE = settings.text("WHISPER_MODEL_ACCURATE", "medium")
 
 # How wide a search the decoder runs at each step. Five is the careful setting and one is
 # greedy. Measured on ninety seconds of Dutch preaching with the church word list, on the
 # small model: 25.6 seconds at five, 14.4 at one, and 6% of the words different, nearly all
 # of that a full stop that became a comma. Worth it for a scan, not for what a viewer reads.
-SCAN_BEAM = int(os.environ.get("WHISPER_SCAN_BEAM", "1"))
-CLIP_BEAM = int(os.environ.get("WHISPER_CLIP_BEAM", "5"))
+SCAN_BEAM = settings.whole("WHISPER_SCAN_BEAM", 1, least=1)
+CLIP_BEAM = settings.whole("WHISPER_CLIP_BEAM", 5, least=1)
 
 # Which engine does the listening. "auto" takes the Mac's graphics chip when the machine has
 # one and mlx-whisper is installed, and the processor everywhere else. Name one of them to
 # settle it yourself, which is also how the two get compared (see tools/speechbench.py).
-BACKEND = os.environ.get("WHISPER_BACKEND", "auto").lower()
+BACKEND = settings.choice("WHISPER_BACKEND", ("auto", "mlx", "faster-whisper"), "auto")
 MLX, CTRANSLATE = "mlx", "faster-whisper"
 # "cpu", "cuda", or "auto" to take the card when it works and the processor when it does not.
-DEVICE = os.environ.get("WHISPER_DEVICE", "cpu").lower()
-COMPUTE_TYPE = os.environ.get("WHISPER_COMPUTE_TYPE", "")
+DEVICE = settings.choice("WHISPER_DEVICE", ("cpu", "cuda", "auto"), "cpu")
+COMPUTE_TYPE = settings.text("WHISPER_COMPUTE_TYPE")
 CPU_COMPUTE = "int8"  # what the processor can actually do, whatever the card was set to
 
 # Set when a graphics card was asked for and could not be used. The service that was being

@@ -15,13 +15,13 @@ from dataclasses import dataclass
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
-from . import clips
+from . import clips, settings
 from .models import (PROJECTS_DIR, ROOT, SERVICES_DIR, Project, Service, load_project, load_service, save_project,
                      save_service, service_dir, project_dir)
 
 # How long a recording is kept before it is offered for cleanup. A month covers a church
 # that only gets round to its clips a few weeks later.
-KEEP_WEEKS = int(os.environ.get("KEEP_WEEKS", "4"))  # 0 turns automatic cleaning off
+KEEP_WEEKS = settings.whole("KEEP_WEEKS", 4, least=0)  # 0 turns automatic cleaning off
 LOW_DISK_GB = 5.0  # below this the interface stops suggesting and starts warning
 
 

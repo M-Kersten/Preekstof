@@ -32,7 +32,7 @@ ROOT = Path(__file__).resolve().parent
 TOOLS = ROOT / "tools" / "ffmpeg"
 CONFIG = ROOT / "config.env"
 CONFIG_EXAMPLE = ROOT / "config.example.env"
-PORT = int(os.environ.get("PORT", "8000"))
+PORT = int(os.environ.get("PORT", "8000").split("#")[0].strip() or "8000")
 
 FFMPEG_DOWNLOADS = {
     "Windows": [("https://www.gyan.dev/ffmpeg/builds/ffmpeg-release-essentials.zip", ("ffmpeg.exe", "ffprobe.exe"))],
@@ -75,12 +75,17 @@ def load_config() -> None:
         say(f"Created {CONFIG.name}. Put your ANTHROPIC_API_KEY in it to enable clip suggestions.")
     if not CONFIG.exists():
         return
+    from backend import settings
+
     for line in CONFIG.read_text(encoding="utf-8").splitlines():
         line = line.strip()
         if not line or line.startswith("#") or "=" not in line:
             continue
-        key, _, value = line.partition("=")
-        key, value = key.strip(), value.strip().strip('"').strip("'")
+        key, _, raw = line.partition("=")
+        # settings.clean drops the note someone wrote behind the value. Without that,
+        # "LLM_EFFORT=medium  # of high" reaches the API as one long word and every
+        # passage comes back a 400, and a number written that way stops the app dead.
+        key, value = key.strip(), settings.clean(raw)
         if key and value and key not in os.environ:
             os.environ[key] = value
 
@@ -95,7 +100,9 @@ CUDA_PACKAGES = ("nvidia-cublas-cu12", "nvidia-cudnn-cu12")
 
 def wants_card() -> bool:
     """Did anyone ask for the graphics card? The default is the processor, quietly."""
-    return os.environ.get("WHISPER_DEVICE", "cpu").strip().lower() in ("cuda", "auto")
+    from backend import settings
+
+    return settings.text("WHISPER_DEVICE", "cpu").lower() in ("cuda", "auto")
 
 
 def card_present() -> bool:

@@ -28,8 +28,10 @@ from typing import Callable, Iterator
 
 import numpy as np
 
+from . import settings
+
 SAMPLE_RATE = 16000
-PIECE = float(os.environ.get("MLX_PIECE_SECONDS", "300"))  # how much to hand over at once
+PIECE = settings.number("MLX_PIECE_SECONDS", 300, least=10)  # how much to hand over at once
 LOOK = 20.0  # how far from the target to go looking for a quiet moment to cut at
 FRAME = 0.1  # the silence is measured in tenths of a second
 

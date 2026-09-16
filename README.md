@@ -663,6 +663,7 @@ backend/
   renderer.py       ffprobe metadata, crop strategies, FFmpeg render with progress
   jobs.py           in-process background jobs
   discovery.py      transcript passages -> LLM analysis -> deduplicated, ranked ClipCandidates
+  settings.py       one value out of config.env, typo and all
   outro.py          end-screen config -> ASS + FFmpeg, rebuilt when the config changes
   fonts.py          which font families and weights templates/fonts holds
   brands.py         brand presets: church, end screen, subtitle style, music

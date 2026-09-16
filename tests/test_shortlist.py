@@ -142,10 +142,35 @@ def test_an_excerpt_of_nothing_is_empty(service):
 
 # --- the whole run, with the model stubbed out ---------------------------------
 
+def spread_out(segments, times: int = 4):
+    """The same service played several times over, so it no longer fits in one passage."""
+    span = segments[-1].end + 60.0
+    return [Segment(start=s.start + n * span, end=s.end + n * span, text=s.text)
+            for n in range(times) for s in segments]
+
+
 def test_a_run_reports_what_it_skipped_and_what_it_chose(service, monkeypatch):
+    """A sermon this size is one call, and that call is also the choosing."""
     transcript = Transcript(language="nl", segments=service)
     monkeypatch.setattr(discovery, "check_provider", lambda: None)
-    monkeypatch.setattr(discovery, "analyze_window", lambda w, about="": [
+    monkeypatch.setattr(discovery, "analyze_window", lambda w, about="", **kw: [
+        LlmCandidate(start=w.start + 5 + i * 200, end=w.start + 45 + i * 200, title=f"Moment {i}",
+                     summary="s", reason="r", confidence=0.9 - i * 0.1)
+        for i in range(3)])
+    monkeypatch.setattr(discovery, "ask", lambda *a, **k: pytest.fail("no second round for one passage"))
+    result = discovery.discover(transcript)
+
+    assert result.skippedMinutes > 0, "the parts that are not preaching were left out"
+    assert result.windows == 1
+    assert result.shortlisted == len(result.candidates) == 3
+    assert result.shape and result.shape[0]["part"] == "welkom"
+    assert all(c.selected for c in result.candidates)
+
+
+def test_a_sermon_too_long_for_one_passage_is_still_weighed_as_a_whole(service, monkeypatch):
+    transcript = Transcript(language="nl", segments=spread_out(service))
+    monkeypatch.setattr(discovery, "check_provider", lambda: None)
+    monkeypatch.setattr(discovery, "analyze_window", lambda w, about="", **kw: [
         LlmCandidate(start=w.start + 5, end=w.start + 45, title=f"Uit venster {w.index}",
                      summary="s", reason="r", confidence=0.8)])
 
@@ -158,18 +183,16 @@ def test_a_run_reports_what_it_skipped_and_what_it_chose(service, monkeypatch):
     monkeypatch.setattr(discovery, "ask", judge)
     result = discovery.discover(transcript)
 
-    assert result.skipped > 0, "the parts that are not preaching were left out"
-    assert result.windows > 0
+    assert result.windows > 1
     assert result.shortlisted == 3
-    assert result.shape and result.shape[0]["part"] == "welkom"
     assert [c.shortlisted for c in result.candidates[:3]] == [True, True, True]
     assert not result.candidates[3].shortlisted
 
 
 def test_a_failing_editor_leaves_the_moments_alone(service, monkeypatch):
-    transcript = Transcript(language="nl", segments=service)
+    transcript = Transcript(language="nl", segments=spread_out(service))
     monkeypatch.setattr(discovery, "check_provider", lambda: None)
-    monkeypatch.setattr(discovery, "analyze_window", lambda w, about="": [
+    monkeypatch.setattr(discovery, "analyze_window", lambda w, about="", **kw: [
         LlmCandidate(start=w.start + 5, end=w.start + 45, title="Moment", summary="s", reason="r",
                      confidence=0.8)])
 

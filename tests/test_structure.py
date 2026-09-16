@@ -108,17 +108,26 @@ def test_the_sermon_is_always_worth_looking_at(service):
     assert structure.worth_analysing(found, sermon.start, sermon.end)
 
 
-def test_roughly_half_the_service_is_never_sent(service):
-    everything = discovery.build_windows(service)
-    keeping, _shape, dropped = discovery.sermon_windows(service)
-    assert len(keeping) + dropped == len(everything)
-    assert dropped / len(everything) >= 0.4, "a service is about half sermon; the rest should not be sent"
+def test_a_good_part_of_the_service_is_never_sent(service):
+    _keeping, _shape, dropped = discovery.sermon_windows(service)
+    assert dropped / service[-1].end >= 0.25, "the singing, the notices and the blessing stay home"
 
 
-def test_no_window_that_is_sent_sits_wholly_in_a_skipped_part(service):
+def test_the_singing_and_the_notices_are_dropped_sentence_by_sentence(service):
+    """Whole windows used to be dropped, so a song next to the sermon was paid for anyway."""
+    shape = structure.blocks(service)
+    keeping, _dropped = discovery.worth_sending(shape, service)
+    said = " ".join(s.text for s in keeping)
+    assert "Kom naar mij, jullie die vermoeid zijn" in said, "the reading runs into the preaching"
+    assert "meezingen met de band" not in said
+    assert "collecte" not in said.lower()
+
+
+def test_no_sentence_that_is_sent_sits_in_a_skipped_part(service):
     keeping, shape, _dropped = discovery.sermon_windows(service)
     for window in keeping:
-        assert structure.worth_analysing(shape, window.start, window.end)
+        for segment in window.segments:
+            assert structure.worth_analysing(shape, segment.start, segment.end)
 
 
 def test_every_window_sent_knows_which_part_it_is_in(service):
@@ -154,7 +163,9 @@ def test_the_part_is_put_in_front_of_the_model(service, monkeypatch):
 
 
 def test_what_came_before_is_sent_along_but_marked_off_limits(service, monkeypatch):
-    keeping, _shape, _dropped = discovery.sermon_windows(service)
+    # A sermon this size is one passage, so the run-up only appears once a service is long
+    # enough to be split. Split it by hand to get at the second piece.
+    keeping = discovery.build_windows(service, length=240.0, overlap=60.0, lead=120.0)
     later = next(w for w in keeping if w.lead)
     message = sent(later, monkeypatch=monkeypatch)
     assert "Wat hieraan voorafging" in message

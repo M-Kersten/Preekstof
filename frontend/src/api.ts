@@ -178,7 +178,7 @@ export interface AnalysisEstimate {
   model: string
   /** Windows actually sent; the rest of the service is not preaching. */
   windows: number
-  skipped: number
+  skippedMinutes: number
   tokens: number
   costEur: number
 }

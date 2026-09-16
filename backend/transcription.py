@@ -11,7 +11,7 @@ from dataclasses import asdict, dataclass
 from pathlib import Path
 from typing import Callable
 
-from . import mac
+from . import gpu, mac
 from .models import TEMPLATES_DIR, Segment, Spoken, Transcript, write_atomic
 
 LANGUAGE = "nl"
@@ -32,8 +32,14 @@ CLIP_BEAM = int(os.environ.get("WHISPER_CLIP_BEAM", "5"))
 # settle it yourself, which is also how the two get compared (see tools/speechbench.py).
 BACKEND = os.environ.get("WHISPER_BACKEND", "auto").lower()
 MLX, CTRANSLATE = "mlx", "faster-whisper"
-DEVICE = os.environ.get("WHISPER_DEVICE", "cpu")
-COMPUTE_TYPE = os.environ.get("WHISPER_COMPUTE_TYPE", "int8" if DEVICE == "cpu" else "float16")
+# "cpu", "cuda", or "auto" to take the card when it works and the processor when it does not.
+DEVICE = os.environ.get("WHISPER_DEVICE", "cpu").lower()
+COMPUTE_TYPE = os.environ.get("WHISPER_COMPUTE_TYPE", "")
+CPU_COMPUTE = "int8"  # what the processor can actually do, whatever the card was set to
+
+# Set when a graphics card was asked for and could not be used. The service that was being
+# written out says so, so a volunteer knows why it is taking longer than last week.
+DEVICE_NOTE: str | None = None
 
 # Caption chunking: subtitles for reels read best as short phrases.
 MAX_CHARS = 60  # roughly two lines of subtitle text
@@ -306,6 +312,42 @@ def quiet_hub_notices() -> None:
         logging.getLogger(name).setLevel(logging.ERROR)
 
 
+def compute_for(device: str) -> str:
+    """Which number format to decode in. int8 on the processor, float16 on a card."""
+    if COMPUTE_TYPE:
+        return COMPUTE_TYPE
+    return CPU_COMPUTE if device == "cpu" else "float16"
+
+
+def load_whisper(size: str):
+    """Build the model on the card when there is one, and on the processor when there is not.
+
+    A Windows machine with WHISPER_DEVICE=cuda and no CUDA libraries used to take the whole
+    app down with "Library cublas64_12.dll is not found or cannot be loaded". CTranslate2
+    ships without those libraries and nothing puts the pip ones on the search path, so most
+    of the time pointing at them is enough. When it is not, the processor takes over: a
+    transcription that is slower beats one that never starts, and Sunday afternoon is a bad
+    time to be installing CUDA.
+    """
+    global DEVICE_NOTE
+    from faster_whisper import WhisperModel
+
+    gpu.make_findable()
+    device = "cuda" if DEVICE == "auto" else DEVICE
+    if device == "cpu":
+        return WhisperModel(size, device="cpu", compute_type=compute_for("cpu"))
+    try:
+        return WhisperModel(size, device=device, compute_type=compute_for(device))
+    except Exception as exc:  # noqa: BLE001
+        if not gpu.blames_cuda(exc):
+            raise
+        DEVICE_NOTE = gpu.advice(exc)
+        print(f"[uitschrijven] {DEVICE_NOTE}")
+        # Not compute_for("cpu"): a WHISPER_COMPUTE_TYPE set for the card is float16, which
+        # the processor cannot decode in either.
+        return WhisperModel(size, device="cpu", compute_type=CPU_COMPUTE)
+
+
 def get_model(size: str | None = None):
     """The loaded model of this size, kept for the life of the process."""
     size = size or MODEL_SIZE
@@ -315,7 +357,7 @@ def get_model(size: str | None = None):
             from faster_whisper import WhisperModel
 
             try:
-                _models[size] = WhisperModel(size, device=DEVICE, compute_type=COMPUTE_TYPE)
+                _models[size] = load_whisper(size)
             except Exception as exc:  # noqa: BLE001
                 raise RuntimeError(
                     f"Het spraakmodel '{size}' kon niet geladen worden. De eerste keer wordt het gedownload; "

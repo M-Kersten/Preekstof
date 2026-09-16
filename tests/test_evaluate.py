@@ -78,7 +78,7 @@ def test_a_run_finds_the_moments_that_were_posted(case, monkeypatch):
     """A model that proposes exactly the posted moments must score a clean sweep."""
     monkeypatch.setattr(discovery, "check_provider", lambda: None)
 
-    def propose(window, about=""):
+    def propose(window, about="", **kw):
         out = []
         for moment in case.posted:
             if window.start <= moment.start <= window.end:
@@ -97,7 +97,7 @@ def test_a_run_finds_the_moments_that_were_posted(case, monkeypatch):
 def test_a_run_that_finds_nothing_useful_says_which_moments_it_missed(case, monkeypatch):
     monkeypatch.setattr(discovery, "check_provider", lambda: None)
     # Short proposals, so none of them can cover half of a posted moment by accident.
-    monkeypatch.setattr(discovery, "analyze_window", lambda w, about="": [
+    monkeypatch.setattr(discovery, "analyze_window", lambda w, about="", **kw: [
         LlmCandidate(start=w.start, end=w.start + 16, title="iets anders", summary="s", reason="r",
                      confidence=0.5)])
     monkeypatch.setattr(discovery, "shortlist", lambda found, *a, **k: found)
@@ -111,7 +111,7 @@ def test_only_the_shortlisted_moments_count(case, monkeypatch):
     """Finding a moment and then not choosing it is not finding it."""
     monkeypatch.setattr(discovery, "check_provider", lambda: None)
 
-    def propose(window, about=""):
+    def propose(window, about="", **kw):
         return [LlmCandidate(start=m.start, end=m.end, title=m.note, summary="s", reason="r",
                              confidence=0.9)
                 for m in case.posted if window.start <= m.start <= window.end]

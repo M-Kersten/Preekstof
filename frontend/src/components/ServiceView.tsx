@@ -57,12 +57,14 @@ function CostNote({ analysis }: { analysis: NonNullable<Service['analysis']> }) 
       </p>
     )
   }
+  // A sermon almost always fits in one call. Saying so is the difference between a volunteer
+  // who waits a minute and one who wonders whether the app has hung.
+  const pieces = analysis.windows === 1 ? 'in \u00e9\u00e9n keer' : `in ${analysis.windows} stukken`
   return (
     <p className="cost">
-      Bij <strong>Beste momenten zoeken</strong> gaat alleen de uitgeschreven tekst naar Claude, in {analysis.windows} stukken
-      {analysis.skipped > 0 && (
-        <> · {analysis.skipped} {analysis.skipped === 1 ? 'stuk blijft' : 'stukken blijven'} thuis, want daar wordt gezongen,
-        gecollecteerd of afgekondigd</>
+      Bij <strong>Beste momenten zoeken</strong> gaat alleen de uitgeschreven tekst naar Claude, {pieces}
+      {analysis.skippedMinutes > 0 && (
+        <> · {analysis.skippedMinutes} minuten zang en afkondigingen blijven thuis</>
       )}. Dat kost tokens: ongeveer <strong>{analysis.tokens.toLocaleString('nl-NL')} tokens</strong>, dus rond de{' '}
       <strong>€ {analysis.costEur.toFixed(2).replace('.', ',')}</strong> met {analysis.model}. De video en het geluid blijven
       op deze computer.

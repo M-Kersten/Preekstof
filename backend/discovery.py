@@ -1,4 +1,4 @@
-"""AI clip discovery: transcript windows -> LLM analysis -> ranked, deduplicated ClipCandidates.
+"""AI clip discovery: transcript passages -> LLM analysis -> ranked, deduplicated ClipCandidates.
 
 This layer only knows what the service contains and where good moments are.
 It never renders video; selected candidates go through backend/clips.py into
@@ -26,15 +26,23 @@ from .structure import Block
 
 LLM_PROVIDER = os.environ.get("LLM_PROVIDER", "anthropic")  # anthropic | ollama
 LLM_MODEL = os.environ.get("LLM_MODEL")  # defaults per provider below
-LLM_EFFORT = os.environ.get("LLM_EFFORT", "high")
+# How long the model thinks before it answers. With one call left this is most of the wait.
+LLM_EFFORT = os.environ.get("LLM_EFFORT", "medium")
 LLM_CONCURRENCY = int(os.environ.get("LLM_CONCURRENCY", "3"))
-LLM_ATTEMPTS = int(os.environ.get("LLM_ATTEMPTS", "3"))  # tries per window before giving up on it
-LLM_TIMEOUT = float(os.environ.get("LLM_TIMEOUT", "180"))
+LLM_ATTEMPTS = int(os.environ.get("LLM_ATTEMPTS", "3"))  # tries per passage before giving up on it
+LLM_TIMEOUT = float(os.environ.get("LLM_TIMEOUT", "300"))  # a whole sermon takes longer to read than four minutes
+LLM_MAX_TOKENS = int(os.environ.get("LLM_MAX_TOKENS", "16000"))  # thinking included; an answer is a few hundred
 OLLAMA_URL = os.environ.get("OLLAMA_URL", "http://localhost:11434")
 
-WINDOW_SECONDS = 240.0  # analysis window: four minutes, so a whole point fits in one read
-WINDOW_OVERLAP = 60.0
-WINDOW_LEAD = 120.0  # transcript before the window, given as context but never proposed from
+# How much of the service goes into one call. This used to be four minutes, from a time
+# when a model could not hold more, and a ninety-minute service then became sixteen calls
+# plus a second round to compare their answers: three waits in a row for a volunteer who
+# wanted a clip in a hurry. A whole sermon is around twenty thousand tokens and fits in one
+# call with room to spare, so that is what gets sent.
+PASSAGE_MINUTES = float(os.environ.get("LLM_PASSAGE_MINUTES", "40"))
+PASSAGE_SECONDS = PASSAGE_MINUTES * 60
+PASSAGE_OVERLAP = 90.0  # only comes into play for a sermon too long for one passage
+PASSAGE_LEAD = 60.0  # transcript before the passage, given as context but never proposed from
 MIN_CLIP = 25.0  # hard limits: shorter/longer proposals are dropped
 MAX_CLIP = 180.0
 PREFERRED = (45.0, 90.0)
@@ -74,41 +82,33 @@ class LlmShortlist(BaseModel):
     verdicts: list[Verdict]
 
 
-SYSTEM_PROMPT = """Je bent redacteur voor de social-media kanalen van een kerk. Je krijgt een stuk van het \
-transcript van een Nederlandse kerkdienst, met tijdcodes per zin. Zoek momenten die als losse korte video \
+SYSTEM_PROMPT = """Je bent redacteur voor de social-media kanalen van een kerk. Je krijgt het transcript \
+van een Nederlandse kerkdienst, met tijdcodes per zin. Zoek de momenten die als losse korte video \
 (Instagram Reel, YouTube Short) werken voor iemand die de dienst niet gehoord heeft.
 
-Zo iemand kent het verhaal niet. Hij scrolt, blijft hangen, en heeft twee seconden om te snappen waar dit \
-over gaat. Een fragment dat begint met "en dus moeten we dat doen" is voor hem betekenisloos, hoe mooi de \
-zin ook is. Kies daarom liever een moment dat zijn eigen aanloop meeneemt dan de losse rake zin.
+Zo iemand kent het verhaal niet, scrolt voorbij, en heeft twee seconden om te snappen waar dit over gaat. \
+Een fragment dat begint met "en dus moeten we dat doen" zegt die kijker niets, hoe mooi de zin ook is. Kies \
+liever een moment dat zijn eigen aanloop meeneemt dan de losse rake zin.
 
-Een moment is bruikbaar als:
-- de eerste zin het onderwerp zelf noemt: wie, wat, of welke vraag er op tafel ligt
-- het daarna één gedachte helemaal afmaakt, met een begin en een einde
-- iemand die de kerk niet kent er iets aan heeft: een inzicht, een verhaal, een eerlijke vraag
-- het op zichzelf staat zonder dat je de rest van de preek gehoord hebt
+Een moment is bruikbaar als de eerste zin het onderwerp zelf noemt, de gedachte daarna binnen het fragment \
+af komt, en iemand die de kerk niet kent er iets aan heeft.
 
-Laat liggen:
-- fragmenten die openen op een terugverwijzing: "dat", "die", "hij", "daarom", "dus", "zoals ik net zei"
-- losse rake zinnen zonder de opbouw eromheen; neem die opbouw mee of sla het moment over
-- onafgemaakte gedachten, herhaling, uitweidingen
-- mededelingen, collecte, agenda, liedaankondigingen, gebed
-- een verhaal waarvan de clou buiten het fragment valt
+Laat liggen: fragmenten die openen op een terugverwijzing ("dat", "die", "hij", "daarom", "dus", "zoals ik \
+net zei"), losse rake zinnen zonder de opbouw eromheen, onafgemaakte gedachten, herhaling, mededelingen, \
+collecte, liedaankondigingen, gebed, en een verhaal waarvan de clou buiten het fragment valt.
 
 Grenzen:
-- start en end zijn tijden in seconden en vallen samen met het begin en het einde van zinnen uit het fragment
-- begin nooit midden in een zin en stop niet terwijl de spreker dezelfde gedachte nog afmaakt
-- richt op 45-90 seconden; 30-120 seconden mag als de gedachte dat vraagt. Korter dan 30 seconden is \
-bijna altijd te kort om iets uit te leggen
-- geef hooguit 2 kandidaten uit dit stuk, en alleen wat je echt zou posten; een lege lijst is een prima antwoord
-- kandidaten mogen elkaar niet overlappen
-- de tekst onder "Wat hieraan voorafging" is er alleen zodat je begrijpt waar het over gaat. Kies daar geen \
-begin- of eindtijd uit
+- start en end zijn tijden in seconden en vallen samen met het begin en het einde van zinnen uit het transcript
+- richt op 45-90 seconden; 30-120 mag als de gedachte dat vraagt. Korter dan 30 seconden is bijna altijd te \
+kort om iets uit te leggen
+- kandidaten mogen elkaar niet overlappen, en verdeel ze over de preek in plaats van ze op een kluitje te kiezen
+- uit de tekst onder "Wat hieraan voorafging" kies je geen begin- of eindtijd
 
 Geef per kandidaat: start, end, een korte pakkende Nederlandse titel (max 60 tekens, geen aanhalingstekens), \
-een samenvatting van één zin, en bij reason: wat een kijker die niets weet in de eerste vijf seconden \
-begrijpt, en waarom de gedachte binnen het fragment af is. Confidence tussen 0 en 1. Optimaliseer niet voor \
-"viraal" maar voor heldere, zelfstandige preekmomenten."""
+een samenvatting van een zin, en bij reason: wat een kijker die niets weet in de eerste vijf seconden \
+begrijpt, en waarom de gedachte binnen het fragment af is. Confidence tussen 0 en 1, onderling vergelijkbaar: \
+0.9 gaat alleen naar wat er echt uitspringt. Optimaliseer voor heldere, zelfstandige preekmomenten, niet \
+voor "viraal"."""
 
 
 SHORTLIST_PROMPT = """Je bent eindredacteur voor de social-media kanalen van een kerk. Een collega \
@@ -152,8 +152,8 @@ class Window:
     lead: list[Segment] = field(default_factory=list)
 
 
-def build_windows(segments: list[Segment], length: float = WINDOW_SECONDS, overlap: float = WINDOW_OVERLAP,
-                  lead: float = WINDOW_LEAD) -> list[Window]:
+def build_windows(segments: list[Segment], length: float = PASSAGE_SECONDS, overlap: float = PASSAGE_OVERLAP,
+                  lead: float = PASSAGE_LEAD) -> list[Window]:
     """Split timestamped segments into overlapping analysis windows (not clip boundaries)."""
     segments = [s for s in sorted(segments, key=lambda s: s.start) if s.text.strip()]
     windows: list[Window] = []
@@ -202,24 +202,44 @@ def format_window(window: Window) -> str:
             f"{say(window.segments)}")
 
 
-def sermon_windows(segments: list[Segment], duration: float | None = None) -> tuple[list[Window], list[Block], int]:
-    """The windows worth sending, each told which part of the service it sits in.
+def worth_sending(shape: list[Block], segments: list[Segment]) -> tuple[list[Segment], float]:
+    """The sentences that go to the model, and the seconds of speech that were dropped.
 
-    Roughly half a service is welcome, songs, notices and blessing. Sending those costs
-    money and puts moments in the list that nobody would post, so they are dropped here
-    rather than argued away in the prompt. Returns (windows, the shape of the service,
-    how many windows were left out).
+    Roughly half a Sunday morning is welcome, songs, notices and blessing. Those cost money
+    and put moments in the list that nobody would post, so they are dropped here rather
+    than argued away in the prompt. The filter runs per sentence, so what is left packs
+    tightly and forty minutes of preaching stays forty minutes instead of becoming an hour
+    and a half with the singing still in it.
+    """
+    keeping: list[Segment] = []
+    left_out = 0.0
+    for segment in sorted(segments, key=lambda s: s.start):
+        if not segment.text.strip():
+            continue
+        if structure.worth_analysing(shape, segment.start, segment.end):
+            keeping.append(segment)
+        else:
+            left_out += max(0.0, segment.end - segment.start)
+    return keeping, left_out
+
+
+def sermon_windows(segments: list[Segment],
+                   duration: float | None = None) -> tuple[list[Window], list[Block], float]:
+    """The passages worth sending, each told which part of the service it sits in.
+
+    What survives the filter is packed into as few passages as it fits in. A model that
+    reads the whole sermon at once can tell the best moment of the service from the best
+    moment of a dull three minutes, which no single four-minute window ever could, and one
+    call is one wait instead of sixteen. Returns (passages, the shape of the service, the
+    seconds of service that were left out).
     """
     shape = structure.blocks(segments, duration)
-    everything = build_windows(segments)
-    keeping = []
-    for window in everything:
-        if not structure.worth_analysing(shape, window.start, window.end):
-            continue
-        window.part = structure.PART_LABEL[structure.part_at(shape, (window.start + window.end) / 2)]
-        window.index = len(keeping)
-        keeping.append(window)
-    return keeping, shape, len(everything) - len(keeping)
+    keeping, _spoken = worth_sending(shape, segments)
+    left_out = sum(b.seconds for b in shape if b.part in structure.SKIP)
+    passages = build_windows(keeping)
+    for passage in passages:
+        passage.part = structure.PART_LABEL[structure.part_at(shape, (passage.start + passage.end) / 2)]
+    return passages, shape, left_out
 
 
 # --- LLM call ----------------------------------------------------------------
@@ -229,23 +249,54 @@ class Retryable(RuntimeError):
     """A failure that is worth trying again: rate limit, server error, network hiccup."""
 
 
-def window_file(cache_dir: Path, window: Window, about: str = "") -> Path:
-    """Where one window's answer is kept.
+def wanted_from(window: Window, alone: bool) -> int:
+    """How many moments to ask for out of one passage.
 
-    The name carries the text and the settings that produced the answer, so a
-    re-transcription, a different model, an edited prompt or a church that filled in what
+    When the whole sermon arrives in one call the model is already choosing what gets
+    posted, so it is asked for the shortlist itself and the round that compares proposals
+    afterwards has nothing left to do. A sermon long enough to need splitting is proposed
+    from more generously, because that round still follows and can throw away the excess.
+    """
+    if alone:
+        return SHORTLIST_RANGE[1]
+    minutes = max(1.0, (window.end - window.start) / 60.0)
+    return max(2, min(10, round(minutes / 5.0)))
+
+
+def window_request(window: Window, about: str = "", wanted: int = 2, alone: bool = False) -> str:
+    """Everything the model is told about one passage, in the order it reads it."""
+    if alone:
+        low, high = SHORTLIST_RANGE[0], max(SHORTLIST_RANGE[0], wanted)
+        job = (f"Dit is de hele preek. Kies de {low} tot {high} momenten die deze week daadwerkelijk gepost "
+               f"worden, het sterkste eerst. Liever {low} momenten die een vreemde begrijpt dan acht die "
+               f"alleen kloppen voor wie erbij was.")
+        where = f"De preek, van {window.start:.0f}s tot {window.end:.0f}s in de dienst."
+    else:
+        job = (f"Geef hooguit {wanted} kandidaten uit dit stuk, en alleen wat je echt zou posten; een lege "
+               f"lijst is een prima antwoord. Een collega vergelijkt straks de stukken met elkaar.")
+        where = (f"Fragment {window.index + 1}, van {window.start:.0f}s tot {window.end:.0f}s in de dienst, "
+                 f"ongeveer {int(window.start // 60)} minuten na het begin.")
+    setting = f"{where} Dit deel van de dienst is: {window.part}.{(' ' + about) if about else ''}"
+    return f"{setting}\n\n{job}\n\n{format_window(window)}"
+
+
+def window_file(cache_dir: Path, window: Window, request: str) -> Path:
+    """Where one passage's answer is kept.
+
+    The name carries everything the model was told, so a re-transcription, a different
+    model, an edited prompt, a different passage length or a church that filled in what
     the sermon is about all miss the cache instead of handing back something that no
     longer matches.
     """
-    recipe = f"{format_window(window)}\n{window.part}\n{about}\n{LLM_PROVIDER}\n{LLM_MODEL}\n{SYSTEM_PROMPT}"
+    recipe = f"{request}\n{LLM_PROVIDER}\n{LLM_MODEL}\n{SYSTEM_PROMPT}"
     digest = hashlib.sha1(recipe.encode("utf-8")).hexdigest()[:16]
     return cache_dir / f"{window.index:03d}-{digest}.json"
 
 
-def cached_window(cache_dir: Path | None, window: Window, about: str = "") -> list[LlmCandidate] | None:
+def cached_window(cache_dir: Path | None, window: Window, request: str) -> list[LlmCandidate] | None:
     if cache_dir is None:
         return None
-    path = window_file(cache_dir, window, about)
+    path = window_file(cache_dir, window, request)
     if not path.is_file():
         return None
     try:
@@ -254,21 +305,15 @@ def cached_window(cache_dir: Path | None, window: Window, about: str = "") -> li
         return None
 
 
-def remember_window(cache_dir: Path | None, window: Window, found: list[LlmCandidate], about: str = "") -> None:
+def remember_window(cache_dir: Path | None, window: Window, found: list[LlmCandidate], request: str) -> None:
     if cache_dir is None:
         return
     cache_dir.mkdir(parents=True, exist_ok=True)
-    write_atomic(window_file(cache_dir, window, about), json.dumps([c.model_dump() for c in found]))
+    write_atomic(window_file(cache_dir, window, request), json.dumps([c.model_dump() for c in found]))
 
 
-def analyze_window(window: Window, about: str = "") -> list[LlmCandidate]:
-    user = (
-        f"Fragment {window.index + 1}, van {window.start:.1f}s tot {window.end:.1f}s in de dienst, "
-        f"ongeveer {int(window.start // 60)} minuten na het begin. "
-        f"Dit deel van de dienst is: {window.part}.{(' ' + about) if about else ''}\n\n"
-        f"{format_window(window)}"
-    )
-    return ask(user, SYSTEM_PROMPT, LlmAnalysis).candidates
+def analyze_window(window: Window, about: str = "", wanted: int = 2, alone: bool = False) -> list[LlmCandidate]:
+    return ask(window_request(window, about, wanted, alone), SYSTEM_PROMPT, LlmAnalysis).candidates
 
 
 def ask(user: str, system: str, schema):
@@ -320,6 +365,9 @@ def _anthropic(user: str, system: str = SYSTEM_PROMPT, schema=LlmAnalysis):
         raise RuntimeError(f"De Claude API gaf een fout ({exc.status_code}): {exc.message}") from exc
     except anthropic.APIConnectionError as exc:
         raise Retryable("Geen verbinding met de Claude API.") from exc
+    if response.stop_reason == "max_tokens":
+        raise RuntimeError("Het antwoord van Claude werd afgekapt voordat het af was. Zet LLM_EFFORT op "
+                           "medium of low in config.env, of verhoog LLM_MAX_TOKENS.")
     if response.stop_reason == "refusal" or response.parsed_output is None:
         return schema()
     return response.parsed_output
@@ -328,7 +376,7 @@ def _anthropic(user: str, system: str = SYSTEM_PROMPT, schema=LlmAnalysis):
 def _anthropic_request(client, user: str, system: str, schema):
     return client.messages.parse(
         model=LLM_MODEL or "claude-opus-5",
-        max_tokens=16000,
+        max_tokens=LLM_MAX_TOKENS,
         system=system,
         output_config={"effort": LLM_EFFORT},
         messages=[{"role": "user", "content": user}],
@@ -442,6 +490,7 @@ def dedupe_and_rank(raw: list[ClipCandidate]) -> list[ClipCandidate]:
 # --- the second pass: choosing between everything that was found -----------------
 
 SHORTLIST_MIN = 4  # below this many proposals there is nothing to choose between
+SHORTLIST_RANGE = (3, 6)  # how many moments a service is worth posting
 EXCERPT_CHARS = 400  # how much of each moment the editor gets to read
 
 
@@ -476,14 +525,23 @@ def shortlist_request(found: list[ClipCandidate], segments: list[Segment], shape
 
 
 def shortlist(found: list[ClipCandidate], segments: list[Segment], shape: list[Block],
-              about: str = "") -> list[ClipCandidate]:
+              about: str = "", alone: bool = False) -> list[ClipCandidate]:
     """Weigh every proposal against all the others and rank the ones worth posting.
 
-    The first pass reads a few minutes at a time and scores its own confidence, which is
-    not comparable between windows: the best moment of a dull three minutes gets the same
-    0.9 as the best moment of the service. This pass sees them all at once, so the order
+    A sermon split over several passages is scored a passage at a time, and that confidence
+    is not comparable between them: the best moment of a dull three minutes gets the same
+    0.9 as the best moment of the service. This round sees them all at once, so the order
     means something. Everything is kept; the ones that lose are marked, not thrown away.
+
+    A sermon that fitted in one passage skips the round entirely. The model had all of it
+    in front of it and was asked for the shortlist there, so a second call would re-rank
+    what it already ranked and cost another minute of waiting to do it.
     """
+    if alone:
+        for candidate in found:
+            candidate.shortlisted = True
+            candidate.selected = True
+        return found
     if len(found) < SHORTLIST_MIN:
         for candidate in found:
             candidate.shortlisted = True
@@ -514,17 +572,17 @@ EUR_PER_USD = float(os.environ.get("EUR_PER_USD", "0.86"))
 def estimate(transcript: Transcript, duration: float | None = None) -> dict:
     """What a run would send and cost, so the interface can say so before spending anything.
 
-    Only the windows that will actually be sent are counted, plus the one call at the end
-    that weighs the proposals against each other.
+    Only the passages that will actually be sent are counted, plus the round that weighs
+    the proposals against each other, which a sermon that fits in one passage never pays for.
     """
-    windows, _shape, skipped = sermon_windows(transcript.segments, duration)
-    # The run-up is sent along with every window, so it is paid for too.
-    characters = sum(len(w.text) + 16 for window in windows for w in window.segments + window.lead)
-    input_tokens = int(characters / 3.5) + len(windows) * 900  # transcript plus the instructions per window
-    output_tokens = len(windows) * 400  # at most two proposals per window
-    # The second pass reads a summary of every proposal once, and answers briefly.
-    if windows:
-        proposals = len(windows)  # roughly one surviving moment per window
+    passages, _shape, left_out = sermon_windows(transcript.segments, duration)
+    alone = len(passages) == 1
+    # The run-up is sent along with every passage, so it is paid for too.
+    characters = sum(len(w.text) + 16 for passage in passages for w in passage.segments + passage.lead)
+    input_tokens = int(characters / 3.5) + len(passages) * 700  # transcript plus the instructions per passage
+    proposals = sum(wanted_from(passage, alone) for passage in passages)
+    output_tokens = proposals * 220
+    if len(passages) > 1:  # the round that reads a summary of every proposal and answers briefly
         input_tokens += proposals * 280 + 700
         output_tokens += proposals * 60
     model = LLM_MODEL or ("llama3.1" if LLM_PROVIDER == "ollama" else "claude-opus-5")
@@ -534,16 +592,16 @@ def estimate(transcript: Transcript, duration: float | None = None) -> dict:
         price_in, price_out = PRICES.get(model, PRICES["claude-opus-5"])
         dollars = input_tokens * price_in / 1e6 + output_tokens * price_out / 1e6
         cost = round(dollars * EUR_PER_USD, 2)
-    return {"provider": LLM_PROVIDER, "model": model, "windows": len(windows), "skipped": skipped,
-            "tokens": input_tokens + output_tokens, "costEur": cost}
+    return {"provider": LLM_PROVIDER, "model": model, "windows": len(passages),
+            "skippedMinutes": int(left_out // 60), "tokens": input_tokens + output_tokens, "costEur": cost}
 
 
 class Result(BaseModel):
     """What one analysis run produced, including the windows that would not cooperate."""
 
     candidates: list[ClipCandidate] = []
-    windows: int = 0  # windows actually sent to the model
-    skipped: int = 0  # windows left out because they were not preaching
+    windows: int = 0  # passages actually sent to the model
+    skippedMinutes: int = 0  # minutes of service left out because they were not preaching
     failed: int = 0
     shortlisted: int = 0  # how many the second pass judged worth posting
     shape: list[dict] = []  # the parts of the service, for the timeline
@@ -555,36 +613,42 @@ def discover(transcript: Transcript, on_progress: ProgressCallback | None = None
              duration: float | None = None, about: str = "") -> Result:
     """Read the whole transcript and come back with ranked moments.
 
-    Two passes. The first reads the service a few minutes at a time and proposes moments;
-    the parts that are not preaching are never sent. The second reads all the proposals
-    together and decides which of them this service is actually worth posting, which is
-    something no single window could know.
+    The parts that are not preaching never leave the house. What is left goes to the model
+    in as few passages as it fits in, usually one, and that one call also does the choosing:
+    a model that has read the whole sermon knows which moments are the best of the service.
+    A sermon too long for one passage gets a second round afterwards that weighs the
+    passages against each other, because confidence from two separate reads is not
+    comparable on its own.
 
-    Windows that were already answered are read from `cache_dir` instead of being sent
-    again, so a run that was interrupted or that lost a few windows to a rate limit picks
-    up where it left off instead of paying for the whole service twice.
+    Passages that were already answered are read from `cache_dir` instead of being sent
+    again, so a run that was interrupted or that lost a passage to a rate limit picks up
+    where it left off instead of paying for the whole service twice.
     """
     check_provider()
-    windows, shape, skipped = sermon_windows(transcript.segments, duration)
+    windows, shape, left_out = sermon_windows(transcript.segments, duration)
     total = len(windows)
+    skipped_minutes = int(left_out // 60)
     if total == 0:
-        return Result(shape=[b.as_dict() for b in shape], skipped=skipped)
+        return Result(shape=[b.as_dict() for b in shape], skippedMinutes=skipped_minutes)
+    alone = total == 1
     raw: list[ClipCandidate] = []
     failures: list[str] = []
     done = 0
 
-    # Every window is told what kind of service it sits in, so a moment can be judged
-    # against the whole rather than against the four minutes around it.
+    # Every passage is told what kind of service it sits in, so a moment can be judged
+    # against the whole rather than against the minutes around it.
     setting = f"De dienst is opgebouwd als: {structure.summary(shape)}."
     context = f"{setting} {about}".strip()
 
     def work(window: Window) -> list[ClipCandidate]:
         if should_stop:
             should_stop()
-        found = cached_window(cache_dir, window, context)
+        wanted = wanted_from(window, alone)
+        request = window_request(window, context, wanted, alone)
+        found = cached_window(cache_dir, window, request)
         if found is None:
-            found = analyze_window(window, context)
-            remember_window(cache_dir, window, found, context)
+            found = analyze_window(window, context, wanted=wanted, alone=alone)
+            remember_window(cache_dir, window, found, request)
         out = []
         for c in found:
             start, end = snap(c, window)
@@ -595,7 +659,8 @@ def discover(transcript: Transcript, on_progress: ProgressCallback | None = None
             out.append(ClipCandidate(
                 id="", start=start, end=end, title=c.title.strip()[:80], summary=c.summary.strip(),
                 reason=c.reason.strip(), confidence=round(c.confidence, 3),
-                score=score(c, length, opening), part=window.part,
+                score=score(c, length, opening),
+                part=structure.PART_LABEL[structure.part_at(shape, (start + end) / 2)],
             ))
         return out
 
@@ -609,15 +674,20 @@ def discover(transcript: Transcript, on_progress: ProgressCallback | None = None
             failures.append(str(exc))
             return []
 
+    def reading(done_so_far: int) -> str:
+        if alone:
+            return "De preek wordt in een keer doorgelezen"
+        extra = f" · {len(failures)} niet gelukt" if failures else ""
+        return f"Tekst wordt doorgelezen · deel {min(done_so_far + 1, total)} van {total}{extra}"
+
     if on_progress:
-        on_progress(0.0, f"Tekst wordt doorgelezen · deel 1 van {total}")
+        on_progress(0.0, reading(0))
     with ThreadPoolExecutor(max_workers=max(1, LLM_CONCURRENCY)) as pool:
         for result in pool.map(guarded, windows):
             raw.extend(result)
             done += 1
             if on_progress:
-                extra = f" · {len(failures)} niet gelukt" if failures else ""
-                on_progress(done / total, f"Tekst wordt doorgelezen · deel {min(done + 1, total)} van {total}{extra}")
+                on_progress(done / total, reading(done))
 
     if failures and len(failures) == total:
         raise RuntimeError("Geen enkel deel van de tekst kon geanalyseerd worden. " + failures[0])
@@ -629,12 +699,12 @@ def discover(transcript: Transcript, on_progress: ProgressCallback | None = None
     candidates = dedupe_and_rank(raw)
     chosen = 0
     if candidates:
-        if on_progress:
+        if on_progress and not alone:
             on_progress(0.97, "De gevonden momenten worden met elkaar vergeleken")
         if should_stop:
             should_stop()
         try:
-            candidates = shortlist(candidates, transcript.segments, shape, about)
+            candidates = shortlist(candidates, transcript.segments, shape, about, alone)
             chosen = sum(1 for c in candidates if c.shortlisted)
         except Cancelled:
             raise
@@ -644,4 +714,4 @@ def discover(transcript: Transcript, on_progress: ProgressCallback | None = None
                 "De momenten konden niet met elkaar vergeleken worden, dus de volgorde is die van de "
                 "eerste ronde. Je kunt opnieuw zoeken om dat alsnog te proberen.")
     return Result(candidates=candidates, windows=total, failed=len(failures), warning=warning,
-                  shape=[b.as_dict() for b in shape], skipped=skipped, shortlisted=chosen)
+                  shape=[b.as_dict() for b in shape], skippedMinutes=skipped_minutes, shortlisted=chosen)

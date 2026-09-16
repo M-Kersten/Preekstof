@@ -117,7 +117,7 @@ Environment variables for transcription:
 | `WHISPER_SCAN_BEAM` | `1` | Decoder beam for the scan of a whole service. Put it back to `5` to listen as carefully as the clips do. |
 | `WHISPER_CLIP_BEAM` | `5` | Decoder beam for the clips people actually read. |
 | `WHISPER_BACKEND` | `auto` | `mlx` on an Apple Silicon Mac that has it installed, `faster-whisper` everywhere else. Name one to settle it yourself. See [On a Mac](#on-a-mac-the-graphics-chip-instead-of-the-processor). |
-| `WHISPER_DEVICE` | `cpu` | `cuda` when a GPU with CUDA is available. Not used by the `mlx` backend. |
+| `WHISPER_DEVICE` | `cpu` | `cuda` for an NVIDIA card, or `auto` to take the card when it works and the processor when it does not. Not used by the `mlx` backend. See [When the graphics card will not cooperate](#when-the-graphics-card-will-not-cooperate). |
 | `WHISPER_COMPUTE_TYPE` | `int8` on CPU, `float16` on GPU | |
 | `WHISPER_BATCH_SIZE` | twice the core count, at most 8 | How many 30-second windows are decoded together. |
 | `HF_TOKEN` | none | Optional [Hugging Face token](https://huggingface.co/settings/tokens). The speech model is public and downloads without one; a token only lifts the rate limit and makes the first download quicker. Without one their client prints "you are sending unauthenticated requests" on every run, which the app keeps out of the window because nothing is wrong. |
@@ -209,6 +209,29 @@ machine, on your own recording:
 
 That runs both engines over the same audio, prints what each took and how much their words differ,
 and leaves both transcripts side by side to read.
+
+### When the graphics card will not cooperate
+
+On Windows with an NVIDIA card, `WHISPER_DEVICE=cuda` can come back with
+
+```text
+Library cublas64_12.dll is not found or cannot be loaded
+```
+
+The card was found; cuBLAS was not. CTranslate2 links against the CUDA libraries without shipping
+them, and pip installs them under `nvidia/` in a folder Windows does not search. `backend/gpu.py`
+adds those folders before the model is built, which is usually all it takes.
+
+When it still fails, the processor takes over and the service says why, instead of the run ending
+in a traceback. Transcription is then slower, and it happens. To use the card properly, install
+what it is missing and start the app again:
+
+```bash
+.venv\Scripts\python -m pip install nvidia-cublas-cu12 nvidia-cudnn-cu12
+```
+
+`WHISPER_DEVICE=auto` tries the card and drops to the processor by itself, which is the setting for
+a machine you are not sure about. `WHISPER_DEVICE=cpu` never tries, and never mentions it.
 
 ## Using the app
 
@@ -314,9 +337,9 @@ Link or upload → Transcribing → Analyzing service → Suggestions ready → 
 
 1. Open the **Full service** tab and drop the complete recording. The scan starts automatically (faster-whisper, forced to `nl`, decoding greedily; see [Two passes](#two-passes-scanning-a-service-writing-out-a-clip)) and shows progress. It is deliberately rough: good enough to find the moments, and replaced per clip in step 7. The black window may print warnings from the speech library while this runs; the progress bar in the browser is what counts.
 2. The transcript is labelled into the parts of a service before anything is sent: welcome, songs, reading, prayer, sermon, notices, blessing. No model is involved; it is the words a Dutch service uses, plus where in the hour a part falls and how much silence it leaves. See **Reading the shape of a service** below.
-3. Analysis runs in two passes. The **first** cuts the preaching into overlapping windows of about three minutes and sends each one, told which part of the service it is in, coming back as structured JSON candidates (start, end, title, summary, reason, confidence). Windows that sit wholly in the singing or the notices are never sent, which is a little under half of a normal service.
+3. The sentences that belong to the singing, the notices and the blessing are dropped, and what is left is packed into as few passages as it fits in. `LLM_PASSAGE_MINUTES` is 40, so an ordinary sermon is a single call: the model reads the whole thing, is asked for the three to six moments the service is worth posting, and answers as structured JSON (start, end, title, summary, reason, confidence). See [One call, not sixteen](#one-call-not-sixteen).
 4. Candidate boundaries are snapped to sentence boundaries and proposals covering the same moment are merged (the extra boundaries stay available as alternatives).
-5. The **second** pass reads every surviving proposal at once, with the shape of the service and an excerpt of what is actually said, and picks the five to ten this service is worth posting. This is the pass that makes the order mean something: a per-window confidence is not comparable between windows, because the best moment of a dull three minutes scores the same as the best moment of the service. Every proposal comes back with a one-line verdict, including the ones passed over.
+5. A sermon too long for one passage gets a **second round**, which reads every surviving proposal at once, with the shape of the service and an excerpt of what is actually said, and picks the ones worth posting. Confidence from two separate reads is not comparable on its own: the best moment of a dull three minutes scores the same as the best moment of the service. Every proposal comes back with a one-line verdict, including the ones passed over. A sermon that fitted in one passage skips this round entirely, because the model already had all of it in front of it.
 6. **Clip Suggestions** lists the chosen moments best first, with the shape of the service drawn behind them on the timeline. The ones that were found but passed over sit behind **Ook gevonden, niet gekozen** with the reason they lost. **Preview** plays just that range of the original recording; **Transcript & timecodes** opens the full excerpt and the boundary editor with direct `mm:ss.s` input and -5 / -1 / +1 / +5 second nudges. Selections and edits are saved automatically.
 7. **Process selected clips** creates a normal clip project per selected range. Each one is then heard again over its own seconds, at the careful setting, so the subtitles a viewer reads are not the scan's; and the speaker is found in it, so it opens already framed. Both steps report into the bar at the bottom of the screen, which also lists the finished clips. **Open in editor** switches to the Clip tab for subtitles, styling, framing and rendering. Nothing about rendering lives in the discovery layer.
 
@@ -338,13 +361,37 @@ three kinds of evidence and no model at all:
   does not lose those minutes.
 
 Single sentences do not make a part: a label spreads to its quiet neighbours and runs shorter than
-twenty seconds are folded into what surrounds them. A window is skipped only when it lies wholly
-inside a part a clip never comes from (welcome, songs, notices, blessing), so a moment that starts
-during the singing and runs into the sermon is still seen. Prayer and readings are kept: churches
-do post those.
+twenty seconds are folded into what surrounds them. The filter then runs per sentence: a sentence
+is dropped only when it sits in a part a clip never comes from (welcome, songs, notices, blessing),
+so a moment that starts during the singing and runs into the sermon is still seen. Prayer and
+readings are kept: churches do post those.
 
 Measured on the service in `tests/service_text.py`, 52 of 52 sentences are labelled correctly and
-11 of 24 windows are never sent.
+19 of its 59 minutes never leave the house.
+
+### One call, not sixteen
+
+Analysis used to cut the preaching into overlapping four-minute windows. A ninety-minute service
+became about sixteen calls, run three at a time, and then a second round to compare their answers:
+three waits in a row before anything appeared. Someone who wanted one clip in a hurry could scrub
+through the sermon themselves in the time that took.
+
+A sermon is around twenty thousand tokens, which fits in one call with room to spare, so that is
+what gets sent. What changed:
+
+- **Whole passages.** `LLM_PASSAGE_MINUTES` (40) decides how much goes into one call. Everything
+  under that is a single call; a marathon splits and the parts run in parallel.
+- **No duplicated text.** Four-minute windows overlapped by a minute and carried two minutes of
+  run-up each, so a quarter of the transcript was sent twice and the standing instructions went out
+  sixteen times. One passage sends each sentence once.
+- **The choosing happens in the same call.** The model that has read the whole sermon is asked for
+  the shortlist there and then. The second round only runs for a sermon that had to be split.
+- **`LLM_EFFORT` now defaults to `medium`.** With one call left, how long the model thinks is most
+  of the wait.
+
+What this does to the *suggestions* has not been measured against a real service; `evaluation/`
+still holds one invented one. `LLM_PASSAGE_MINUTES=4` in `config.env` puts the old windowing back
+if the moments get worse, at the old price in minutes.
 
 ### LLM configuration
 
@@ -352,11 +399,14 @@ Measured on the service in `tests/service_text.py`, 52 of 52 sentences are label
 | --- | --- | --- |
 | `LLM_PROVIDER` | `anthropic` | `anthropic` uses the Claude API (set `ANTHROPIC_API_KEY`); `ollama` uses a local Ollama server, so the whole pipeline stays on your machine. |
 | `LLM_MODEL` | `claude-opus-5` / `llama3.1` | Model per provider. |
-| `LLM_EFFORT` | `high` | Claude effort level (`low` … `max`). |
-| `LLM_CONCURRENCY` | `3` | Windows analysed in parallel. |
+| `LLM_EFFORT` | `medium` | Claude effort level (`low` … `max`). With a single call this is most of the wait. |
+| `LLM_PASSAGE_MINUTES` | `40` | How much of the service goes into one call. Lower splits the sermon into more, smaller calls. |
+| `LLM_CONCURRENCY` | `3` | Passages analysed in parallel. Only matters for a sermon long enough to split. |
+| `LLM_MAX_TOKENS` | `16000` | Ceiling per answer, thinking included. An answer itself is a few hundred. |
+| `LLM_TIMEOUT` | `300` | Seconds to wait for one call. A whole sermon takes longer to read than four minutes did. |
 | `OLLAMA_URL` | `http://localhost:11434` | |
 
-Only transcript text is sent to the model, never video or audio. Before you press **Beste momenten zoeken**, the interface says how many pieces of text go out, roughly how many tokens that is and what it costs at list price: about 45,000 tokens and € 0,65 for a 90-minute service with Claude Opus 5 (list price in dollars, converted at `EUR_PER_USD` from `config.env`). With `LLM_PROVIDER=ollama` it says the run is free and stays on the machine.
+Only transcript text is sent to the model, never video or audio. Before you press **Beste momenten zoeken**, the interface says whether the service goes out in one piece or several, roughly how many tokens that is and what it costs at list price, converted from Anthropic's dollar list at `EUR_PER_USD` from `config.env`. For the hour-long service in `tests/service_text.py` that is one call, about 2,700 tokens and € 0,03 with Claude Opus 5. With `LLM_PROVIDER=ollama` it says the run is free and stays on the machine.
 
 ### Measuring whether the suggestions are any good
 
@@ -434,7 +484,7 @@ give back.
   checks the job as well as the file, so a status that never reached the disk shows up as what
   it is instead of as a bar that never moves.
 - Long jobs can be stopped. Transcribing, analysing, cutting and rendering all have a **Stoppen** button; the job ends at its next checkpoint, which takes a few seconds for a render and up to half a minute for a transcription.
-- Interrupted work carries on rather than starting over. Transcription writes down what it has heard every half minute, so closing the laptop half way through a 90-minute service costs the last thirty seconds, not the last twenty minutes. Analysis keeps each window's answer, so a run that lost a few windows to a rate limit only pays for those few the next time. After a restart the service goes back to the step before with a line saying which button carries on; pressing it continues where it stopped.
+- Interrupted work carries on rather than starting over. Transcription writes down what it has heard every half minute, so closing the laptop half way through a 90-minute service costs the last thirty seconds, not the last twenty minutes. Analysis keeps each passage's answer, so a run that lost a passage to a rate limit only pays for that one the next time. After a restart the service goes back to the step before with a line saying which button carries on; pressing it continues where it stopped.
 - Project and service files are written through a temporary file and renamed, so a crash or a power cut cannot leave half a file behind.
 - One difficult piece of transcript no longer costs you the whole analysis. Each window is retried with growing pauses on a rate limit, server error or dropped connection, and a window that keeps failing is counted and skipped. You get the moments that were found plus a note saying how many pieces failed and why.
 - The interface tells the difference between "the app is not answering" and "this went wrong". Losing the connection shows a calm banner and keeps polling; the work in the black window carries on.
@@ -604,7 +654,7 @@ backend/
   subtitles.py      transcript → ASS (fonts, outline, box, margins, two-line wrapping)
   renderer.py       ffprobe metadata, crop strategies, FFmpeg render with progress
   jobs.py           in-process background jobs
-  discovery.py      transcript windows -> LLM analysis -> deduplicated, ranked ClipCandidates
+  discovery.py      transcript passages -> LLM analysis -> deduplicated, ranked ClipCandidates
   outro.py          end-screen config -> ASS + FFmpeg, rebuilt when the config changes
   fonts.py          which font families and weights templates/fonts holds
   brands.py         brand presets: church, end screen, subtitle style, music

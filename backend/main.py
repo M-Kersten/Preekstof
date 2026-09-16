@@ -839,6 +839,10 @@ def transcribe_service(service_id: str):
             how=transcription.scanning(),
         )
         save_service_transcript(service, transcript)
+        if transcription.DEVICE_NOTE:
+            # The card was asked for and could not be used. Saying so here is the difference
+            # between "this is slow today" and "something is broken".
+            service.warning = transcription.DEVICE_NOTE
 
     return run_service_job(service, "transcribing", "transcribed", work)
 

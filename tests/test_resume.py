@@ -55,81 +55,95 @@ def a_candidate() -> LlmCandidate:
     return LlmCandidate(start=0.0, end=40.0, title="Titel", summary="s", reason="r", confidence=0.8)
 
 
+def asked(window, about: str = "") -> str:
+    """Everything the model was told about this passage, which is what the cache is keyed on."""
+    return discovery.window_request(window, about, discovery.wanted_from(window, alone=True), alone=True)
+
+
 def test_an_answer_is_kept_and_read_back(tmp_path):
     window = build_windows(talk(60))[0]
-    discovery.remember_window(tmp_path, window, [a_candidate()])
-    again = discovery.cached_window(tmp_path, window)
+    discovery.remember_window(tmp_path, window, [a_candidate()], asked(window))
+    again = discovery.cached_window(tmp_path, window, asked(window))
     assert again is not None and again[0].title == "Titel"
 
 
 def test_a_window_that_was_never_answered_is_not_in_there(tmp_path):
-    windows = build_windows(talk(120))
-    discovery.remember_window(tmp_path, windows[0], [a_candidate()])
-    assert discovery.cached_window(tmp_path, windows[1]) is None
+    windows = build_windows(talk(120), length=240.0, overlap=60.0, lead=120.0)
+    discovery.remember_window(tmp_path, windows[0], [a_candidate()], asked(windows[0]))
+    assert discovery.cached_window(tmp_path, windows[1], asked(windows[1])) is None
 
 
 def test_changing_the_text_means_asking_again(tmp_path):
     """A re-transcription must not be answered with the answers to the old text."""
     window = build_windows(talk(60))[0]
-    discovery.remember_window(tmp_path, window, [a_candidate()])
+    discovery.remember_window(tmp_path, window, [a_candidate()], asked(window))
     other = build_windows([Segment(start=s.start, end=s.end, text=s.text + " Anders.") for s in talk(60)])[0]
-    assert discovery.cached_window(tmp_path, other) is None
+    assert discovery.cached_window(tmp_path, other, asked(other)) is None
+
+
+def test_asking_for_a_different_number_of_moments_means_asking_again(tmp_path):
+    """A sermon that used to be split is now one passage, and gets a different question."""
+    window = build_windows(talk(60))[0]
+    discovery.remember_window(tmp_path, window, [a_candidate()], asked(window))
+    split = discovery.window_request(window, "", discovery.wanted_from(window, alone=False), alone=False)
+    assert discovery.cached_window(tmp_path, window, split) is None
 
 
 def test_changing_the_model_means_asking_again(tmp_path, monkeypatch):
     window = build_windows(talk(60))[0]
-    discovery.remember_window(tmp_path, window, [a_candidate()])
+    discovery.remember_window(tmp_path, window, [a_candidate()], asked(window))
     monkeypatch.setattr(discovery, "LLM_MODEL", "some-other-model")
-    assert discovery.cached_window(tmp_path, window) is None
+    assert discovery.cached_window(tmp_path, window, asked(window)) is None
 
 
 def test_changing_the_instructions_means_asking_again(tmp_path, monkeypatch):
     window = build_windows(talk(60))[0]
-    discovery.remember_window(tmp_path, window, [a_candidate()])
+    discovery.remember_window(tmp_path, window, [a_candidate()], asked(window))
     monkeypatch.setattr(discovery, "SYSTEM_PROMPT", discovery.SYSTEM_PROMPT + " En let ook op humor.")
-    assert discovery.cached_window(tmp_path, window) is None
+    assert discovery.cached_window(tmp_path, window, asked(window)) is None
 
 
 def test_a_damaged_answer_is_simply_asked_again(tmp_path):
     window = build_windows(talk(60))[0]
-    discovery.remember_window(tmp_path, window, [a_candidate()])
-    discovery.window_file(tmp_path, window).write_text("{ not json", encoding="utf-8")
-    assert discovery.cached_window(tmp_path, window) is None
+    discovery.remember_window(tmp_path, window, [a_candidate()], asked(window))
+    discovery.window_file(tmp_path, window, asked(window)).write_text("{ not json", encoding="utf-8")
+    assert discovery.cached_window(tmp_path, window, asked(window)) is None
 
 
 def test_without_a_cache_nothing_is_remembered(tmp_path):
     window = build_windows(talk(60))[0]
-    discovery.remember_window(None, window, [a_candidate()])
-    assert discovery.cached_window(None, window) is None
+    discovery.remember_window(None, window, [a_candidate()], asked(window))
+    assert discovery.cached_window(None, window, asked(window)) is None
     assert list(tmp_path.iterdir()) == []
 
 
 def test_a_second_run_asks_only_about_what_failed(tmp_path, monkeypatch):
-    """The point of the cache: a run that lost two windows costs two windows to finish."""
-    transcript = Transcript(language="nl", segments=talk(300))
+    """The point of the cache: a run that lost two passages costs two passages to finish."""
+    transcript = Transcript(language="nl", segments=talk(3000))  # over three hours, so it splits
     windows, _shape, _skipped = discovery.sermon_windows(transcript.segments)
-    assert len(windows) > 4
+    assert len(windows) >= 4, "a transcript this long has to split into several passages"
 
-    asked: list[int] = []
+    seen: list[int] = []
     failing = {windows[1].index, windows[3].index}
 
-    def flaky(window, about=""):
-        asked.append(window.index)
+    def flaky(window, about="", wanted=2, alone=False):
+        seen.append(window.index)
         if window.index in failing:
             raise RuntimeError("de modelaanbieder deed even niet mee")
         return [a_candidate()]
 
     monkeypatch.setattr(discovery, "check_provider", lambda: None)
     monkeypatch.setattr(discovery, "analyze_window", flaky)
+    monkeypatch.setattr(discovery, "shortlist", lambda found, *a, **k: found)
     first = discovery.discover(transcript, cache_dir=tmp_path)
     assert first.failed == 2
-    assert len(asked) == len(windows)
+    assert len(seen) == len(windows)
 
-    asked.clear()
+    seen.clear()
     failing.clear()
     second = discovery.discover(transcript, cache_dir=tmp_path)
     assert second.failed == 0
-    assert sorted(asked) == [1, 3], "everything else was already answered"
+    assert sorted(seen) == [1, 3], "everything else was already answered"
 
 
 # --- what the user is told after a restart --------------------------------------
@@ -277,7 +291,7 @@ def test_a_finished_recording_is_not_left_waiting_for_nothing(tmp_path, fake_whi
 def test_what_the_church_told_us_about_the_sermon_is_part_of_the_cache(tmp_path):
     """Fill in the sermon title and the answers from before it were given for another question."""
     window = build_windows(talk(40))[0]
-    discovery.remember_window(tmp_path, window, [a_candidate()], "De preek heet: Rust.")
-    assert discovery.cached_window(tmp_path, window, "De preek heet: Rust.") is not None
-    assert discovery.cached_window(tmp_path, window, "De preek heet: Onderweg.") is None
-    assert discovery.cached_window(tmp_path, window) is None
+    discovery.remember_window(tmp_path, window, [a_candidate()], asked(window, "De preek heet: Rust."))
+    assert discovery.cached_window(tmp_path, window, asked(window, "De preek heet: Rust.")) is not None
+    assert discovery.cached_window(tmp_path, window, asked(window, "De preek heet: Onderweg.")) is None
+    assert discovery.cached_window(tmp_path, window, asked(window)) is None

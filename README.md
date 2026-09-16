@@ -219,12 +219,20 @@ Library cublas64_12.dll is not found or cannot be loaded
 ```
 
 The card was found; cuBLAS was not. CTranslate2 links against the CUDA libraries without shipping
-them, and pip installs them under `nvidia/` in a folder Windows does not search. `backend/gpu.py`
-adds those folders before the model is built, which is usually all it takes.
+them, and pip installs them under `nvidia/` in a folder Windows does not search.
+
+Two things now stop that being your problem. `start.bat` checks it at every start: when `config.env`
+asks for the card (`WHISPER_DEVICE=cuda` or `auto`) and `nvidia-smi` reports one, the launcher
+fetches `nvidia-cublas-cu12` and `nvidia-cudnn-cu12` if they are missing. That is about a gigabyte,
+once. And `backend/gpu.py` adds those folders to the DLL search path before the model is built,
+because pip alone leaves them somewhere Windows does not look.
+
+On the default `WHISPER_DEVICE=cpu` none of that runs and nothing is downloaded, so a church on the
+processor never waits for a gigabyte it has no use for. Ask for a card that is not there and the
+launcher says so and carries on.
 
 When it still fails, the processor takes over and the service says why, instead of the run ending
-in a traceback. Transcription is then slower, and it happens. To use the card properly, install
-what it is missing and start the app again:
+in a traceback. Transcription is then slower, and it happens. To install it by hand:
 
 ```bash
 .venv\Scripts\python -m pip install nvidia-cublas-cu12 nvidia-cudnn-cu12

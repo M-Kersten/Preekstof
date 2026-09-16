@@ -175,3 +175,111 @@ def test_what_node_reports_decides_whether_the_build_runs(tmp_path, monkeypatch)
     assert "too old" in (launcher.node_too_old(tmp_path) or "")
     monkeypatch.setattr(launcher.subprocess, "run", answer("v22.20.0\n"))
     assert launcher.node_too_old(tmp_path) is None
+
+
+# --- the graphics card ------------------------------------------------------------
+
+
+@pytest.fixture
+def machine(monkeypatch):
+    """A machine with a card, the libraries missing, and pip standing by."""
+    state = {"card": True, "ready": False, "installed": []}
+
+    def pip(command, **_kwargs):
+        assert command[1:3] == ["-m", "pip"]
+        state["installed"] = command[4:]
+        state["ready"] = True
+        return subprocess.CompletedProcess(command, 0)
+
+    monkeypatch.setattr(launcher, "card_present", lambda: state["card"])
+    monkeypatch.setattr(launcher, "cuda_libraries_ready", lambda: state["ready"])
+    monkeypatch.setattr(launcher.subprocess, "run", pip)
+    return state
+
+
+def test_the_processor_is_the_default_and_downloads_nothing(machine, monkeypatch, capsys):
+    """Almost every church runs on the processor and must not wait for a gigabyte."""
+    monkeypatch.delenv("WHISPER_DEVICE", raising=False)
+    launcher.ensure_cuda()
+    assert machine["installed"] == []
+    assert capsys.readouterr().out == ""
+
+
+@pytest.mark.parametrize("setting", ["cuda", "auto", "CUDA", " cuda "])
+def test_asking_for_the_card_fetches_what_it_needs(machine, monkeypatch, setting, capsys):
+    monkeypatch.setenv("WHISPER_DEVICE", setting)
+    launcher.ensure_cuda()
+    assert machine["installed"] == list(launcher.CUDA_PACKAGES)
+    assert "videokaart kan gebruikt worden" in capsys.readouterr().out
+
+
+def test_libraries_that_are_already_there_are_not_fetched_again(machine, monkeypatch):
+    machine["ready"] = True
+    monkeypatch.setenv("WHISPER_DEVICE", "cuda")
+    launcher.ensure_cuda()
+    assert machine["installed"] == [], "every start would otherwise wait on pip"
+
+
+def test_a_setting_that_asks_for_a_card_that_is_not_there_says_so(machine, monkeypatch, capsys):
+    machine["card"] = False
+    monkeypatch.setenv("WHISPER_DEVICE", "cuda")
+    launcher.ensure_cuda()
+    assert machine["installed"] == []
+    assert "geen NVIDIA-kaart gevonden" in capsys.readouterr().out
+
+
+def test_a_failed_download_is_not_a_reason_not_to_start(machine, monkeypatch, capsys):
+    """The app writes out on the processor; that beats a church with no app on a Sunday."""
+    monkeypatch.setenv("WHISPER_DEVICE", "cuda")
+
+    def refuse(command, **_kwargs):
+        return subprocess.CompletedProcess(command, 1)
+
+    monkeypatch.setattr(launcher.subprocess, "run", refuse)
+    launcher.ensure_cuda()  # must not raise
+    said = capsys.readouterr().out
+    assert "mislukt" in said and "processor" in said
+
+
+def test_pip_that_will_not_even_run_is_survived(machine, monkeypatch, capsys):
+    monkeypatch.setenv("WHISPER_DEVICE", "cuda")
+
+    def explode(command, **_kwargs):
+        raise OSError("pip is gone")
+
+    monkeypatch.setattr(launcher.subprocess, "run", explode)
+    launcher.ensure_cuda()
+    assert "mislukt" in capsys.readouterr().out
+
+
+def test_a_download_that_claims_success_but_installs_nothing_is_caught(machine, monkeypatch, capsys):
+    monkeypatch.setenv("WHISPER_DEVICE", "cuda")
+    monkeypatch.setattr(launcher, "cuda_libraries_ready", lambda: False)
+    launcher.ensure_cuda()
+    assert "mislukt" in capsys.readouterr().out
+
+
+def test_no_card_is_reported_when_the_driver_is_not_installed(monkeypatch):
+    monkeypatch.setattr(launcher.shutil, "which", lambda name: None)
+    assert launcher.card_present() is False
+
+
+def test_the_driver_being_there_is_what_says_a_card_is(monkeypatch):
+    monkeypatch.setattr(launcher.shutil, "which", lambda name: "/usr/bin/" + name)
+    monkeypatch.setattr(launcher.subprocess, "run",
+                        lambda command, **_k: subprocess.CompletedProcess(command, 0, stdout="GPU 0: RTX 4070"))
+    assert launcher.card_present() is True
+
+
+def test_a_driver_that_answers_with_an_error_is_no_card(monkeypatch):
+    monkeypatch.setattr(launcher.shutil, "which", lambda name: "/usr/bin/" + name)
+    monkeypatch.setattr(launcher.subprocess, "run",
+                        lambda command, **_k: subprocess.CompletedProcess(command, 9, stdout=""))
+    assert launcher.card_present() is False
+
+
+def test_the_check_and_the_fallback_look_in_the_same_place():
+    """launcher asks gpu.py, so a folder the app cannot find is never called installed."""
+    from backend import gpu
+
+    assert launcher.cuda_libraries_ready() == bool(gpu.package_dirs())

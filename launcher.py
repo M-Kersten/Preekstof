@@ -5,8 +5,9 @@ have created the Python environment. This script:
 
   1. installs or updates the Python packages when backend/requirements.txt changed,
   2. loads config.env (API key, model choices),
-  3. makes sure ffmpeg/ffprobe are available (downloads a build into tools/ if not),
-  4. starts the web server and opens the browser.
+  3. fetches the NVIDIA libraries when config.env asks for the graphics card,
+  4. makes sure ffmpeg/ffprobe are available (downloads a build into tools/ if not),
+  5. starts the web server and opens the browser.
 
 It can also be run by hand:  python launcher.py
 """
@@ -82,6 +83,71 @@ def load_config() -> None:
         key, value = key.strip(), value.strip().strip('"').strip("'")
         if key and value and key not in os.environ:
             os.environ[key] = value
+
+
+# --- the graphics card ---------------------------------------------------------
+
+# What CTranslate2 links against and does not ship. Together about a gigabyte on Windows,
+# which is why they are not in backend/requirements.txt: almost every church runs on the
+# processor and would be downloading them for nothing.
+CUDA_PACKAGES = ("nvidia-cublas-cu12", "nvidia-cudnn-cu12")
+
+
+def wants_card() -> bool:
+    """Did anyone ask for the graphics card? The default is the processor, quietly."""
+    return os.environ.get("WHISPER_DEVICE", "cpu").strip().lower() in ("cuda", "auto")
+
+
+def card_present() -> bool:
+    """Is there an NVIDIA card to talk to? nvidia-smi comes with the driver."""
+    smi = shutil.which("nvidia-smi")
+    if smi is None:
+        return False
+    try:
+        return subprocess.run([smi, "-L"], capture_output=True, text=True, timeout=30).returncode == 0
+    except (OSError, subprocess.SubprocessError):
+        return False
+
+
+def cuda_libraries_ready() -> bool:
+    """Are cuBLAS and cuDNN sitting where backend/gpu.py will point CTranslate2 at them?"""
+    from backend import gpu
+
+    return bool(gpu.package_dirs())
+
+
+def ensure_cuda() -> None:
+    """Fetch what the card needs, for the person who asked for the card.
+
+    A fresh install with WHISPER_DEVICE=cuda fails inside the speech library with "Library
+    cublas64_12.dll is not found or cannot be loaded": CTranslate2 links against cuBLAS and
+    cuDNN without shipping them. The app survives that by writing out on the processor,
+    which is not what someone who went into config.env to ask for the card was after.
+
+    Nothing at all happens on the default setting, so a church on the processor never waits
+    for a gigabyte it has no use for.
+    """
+    if not wants_card():
+        return
+    if not card_present():
+        say("WHISPER_DEVICE vraagt om de videokaart, maar er is geen NVIDIA-kaart gevonden. "
+            "Het uitschrijven gebeurt op de processor.")
+        return
+    if cuda_libraries_ready():
+        return
+    say("De NVIDIA-onderdelen voor het uitschrijven ontbreken nog. Ze worden nu opgehaald; "
+        "dat is ongeveer een gigabyte en duurt een paar minuten \u2026")
+    try:
+        done = subprocess.run([sys.executable, "-m", "pip", "install", *CUDA_PACKAGES]).returncode == 0
+    except (OSError, subprocess.SubprocessError):
+        done = False
+    if not done or not cuda_libraries_ready():
+        # Never fatal: the app runs on the processor and says so per service.
+        say("Het ophalen van de NVIDIA-onderdelen is mislukt. De app start gewoon en schrijft uit "
+            "op de processor, dat duurt alleen langer. Zet WHISPER_DEVICE=cpu in config.env om "
+            "deze melding weg te halen.")
+        return
+    say("De videokaart kan gebruikt worden.")
 
 
 # --- ffmpeg -------------------------------------------------------------------
@@ -304,6 +370,7 @@ def main() -> None:
     load_config()
     # The speech model cache falls back to copies on Windows without developer mode; that is fine.
     os.environ.setdefault("HF_HUB_DISABLE_SYMLINKS_WARNING", "1")
+    ensure_cuda()  # after load_config: WHISPER_DEVICE lives in config.env
     ensure_ffmpeg()
     ensure_frontend()
     url = f"http://localhost:{PORT}"

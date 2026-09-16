@@ -73,18 +73,63 @@ AUDIO, MODEL, TEXT = "audio", "model", "text"
 _models: dict[str, object] = {}
 _models_lock = threading.Lock()
 
+# Whisper listens to the last 223 tokens of a prompt and drops the rest without a word
+# (`previous_tokens[-(max_length // 2 - 1):]` in faster_whisper's get_prompt). Measured on this
+# vocabulary with the small model's own tokenizer: a comma list of Dutch church words runs
+# about 2.7 characters to the token, prose about 3.6, and the most expensive single word 1.75.
+# The trimming below counts characters at 2.3, which under-fills rather than overruns.
+PROMPT_TOKENS = 223
+CHARS_PER_TOKEN = 2.3
+PROMPT_CHARS = int(PROMPT_TOKENS * CHARS_PER_TOKEN)
+
+OPENING = "Opname van een Nederlandse kerkdienst. Er komen woorden in voor als:"
+
+# Ordered droppable first, precious last, inside every group and between them, because the end
+# of the list is what survives when there is not room for all of it. Words the model gets right
+# on its own earn nothing here and are left out; what is in here is what it gets wrong: church
+# jobs, the spelling of the books, the names, and the words a sermon leans on.
+DEFAULT_WORDS = {
+    "algemeen": ["gemeente", "eredienst", "kerkenraad", "schriftlezing", "voorbede",
+                 "mededelingen", "collecte", "ouderling", "diaken", "voorganger"],
+    "geloofswoorden": ["gerechtigheid", "heiliging", "wederkomst", "opstanding", "verzoening",
+                       "barmhartigheid", "ontferming", "genade", "avondmaal", "zegenbede"],
+    "bijbelboeken": ["Genesis", "Exodus", "Openbaring", "Handelingen", "Jesaja", "Jeremia",
+                     "Ezechiël", "Mattheüs", "Korinthiërs", "Galaten", "Efeziërs",
+                     "Filippenzen", "Kolossenzen", "Hebreeën"],
+    "namen": ["David", "Salomo", "Elia", "Jona", "Petrus", "Paulus", "Martha", "Lazarus",
+              "Nicodemus", "Zacheüs", "Pilatus", "Herodes", "Mozes", "Aäron", "farao",
+              "Farizeeën", "Schriftgeleerden", "Messias"],
+    "moeilijk": ["profeten", "apostelen", "discipelen", "gezang", "psalm", "liederen", "lied",
+                 "Sela", "Opwekking", "kudde", "schapen", "herders", "herder",
+                 "Heere", "Here", "HEER", "Heilige Geest", "Jezus Christus"],
+}
+
 DEFAULT_VOCABULARY = {
-    "initialPrompt": (
-        "Opname van een Nederlandse kerkdienst. Er komen woorden in voor als: gemeente, genade, geloof, "
-        "vertrouwen, gebed, zegen, Heer, Here, HEER, Jezus Christus, Heilige Geest, Vader, discipelen, "
-        "evangelie, psalm, lied, Opwekking, Bijbel, Mattheüs, Marcus, Lucas, Johannes, Handelingen, Romeinen, "
-        "Korinthiërs, Galaten, Efeziërs, Filippenzen, Kolossenzen, Hebreeën, Openbaring, avondmaal, doop, "
-        "voorganger, dominee, kerkenraad, collecte, halleluja, amen."
-    ),
+    "opening": OPENING,
+    "words": DEFAULT_WORDS,
+    # No room in the prompt is no reason to let a mishearing stand: this is applied to the
+    # finished text instead, and nothing limits how long it gets.
+    # Every one of these is a mishearing that is not itself a Dutch word, so putting it right
+    # cannot damage a sentence that meant something else. "heller" is left alone for exactly
+    # that reason, even though it is what the model used to say: it is a real word.
     "corrections": {
+        # Respellings: none of these is a Dutch word, so putting them right is safe.
         "lee": "Lied",
+        "lie": "Lied",
+        "heerder": "herder",
+        "heerders": "herders",
+        "heider": "herder",
+        "heiders": "herders",
+        "header": "herder",
+        "headers": "herders",
+        "heiligegeest": "Heilige Geest",
+        # Capitals: the words are heard right and written small.
         "here jezus": "Here Jezus",
+        "heer jezus": "Heer Jezus",
+        "jezus christus": "Jezus Christus",
         "heilige geest": "Heilige Geest",
+        "koninkrijk van god": "Koninkrijk van God",
+        "gods woord": "Gods Woord",
     },
 }
 
@@ -101,7 +146,11 @@ def load_vocabulary() -> dict:
         data = json.loads(VOCABULARY_PATH.read_text(encoding="utf-8"))
     except Exception:  # noqa: BLE001  a broken file should not stop a transcription
         return dict(DEFAULT_VOCABULARY)
-    return {"initialPrompt": data.get("initialPrompt", ""), "corrections": data.get("corrections", {})}
+    return {"opening": data.get("opening", OPENING),
+            "words": data.get("words", {}),
+            # Written before the list had groups: one ready-made sentence is all there was.
+            "initialPrompt": data.get("initialPrompt", ""),
+            "corrections": data.get("corrections", {})}
 
 
 def church_words() -> tuple[str, dict[str, str]]:
@@ -131,15 +180,47 @@ def church_words() -> tuple[str, dict[str, str]]:
     return " ".join(said), dict(vocabulary.corrections)
 
 
+def fit_words(words: list[str], room: int) -> list[str]:
+    """As many words as fit in `room` characters, counted from the back.
+
+    From the back because the back is what reaches the model: whisper keeps the tail of a
+    prompt, and the list is ordered with the words worth protecting at the end.
+    """
+    kept: list[str] = []
+    used = 0
+    for word in reversed(words):
+        cost = len(word) + 2  # ", "
+        if used + cost > room:
+            break
+        kept.append(word)
+        used += cost
+    return list(reversed(kept))
+
+
 def initial_prompt() -> str:
-    """The shared vocabulary plus what this church calls things."""
-    prompt = load_vocabulary().get("initialPrompt", "")
+    """The shared vocabulary plus what this church calls things, inside what whisper reads.
+
+    The church's own names go last and are never trimmed: a preacher's name is the one thing
+    the model cannot guess, and the shared list is only there to fill what is left.
+    """
+    vocabulary = load_vocabulary()
     mine, _fixes = church_words()
-    for sentence in mine.split(". "):
-        clean = sentence.strip(" .")
-        if clean and clean.lower() not in prompt.lower():
-            prompt = f"{prompt} {clean}."
-    return prompt.strip()
+    groups = vocabulary.get("words") or {}
+    listed = [word.strip() for group in groups.values() for word in group if word.strip()]
+    if not listed:
+        # A word list from before the groups: one ready-made sentence, left as it was written.
+        prompt = vocabulary.get("initialPrompt", "")
+        for sentence in mine.split(". "):
+            clean = sentence.strip(" .")
+            if clean and clean.lower() not in prompt.lower():
+                prompt = f"{prompt} {clean}."
+        return prompt.strip()
+
+    opening = vocabulary.get("opening") or OPENING
+    room = PROMPT_CHARS - len(opening) - len(mine) - 2
+    kept = fit_words(listed, max(0, room))
+    said = f"{opening} {', '.join(kept)}." if kept else opening
+    return f"{said} {mine}".strip() if mine else said
 
 
 def all_corrections() -> dict[str, str]:

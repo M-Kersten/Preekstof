@@ -39,7 +39,40 @@ The built web interface is committed in `frontend/dist`, so Node.js is not neede
 
 The first transcription downloads the faster-whisper model (default `small`, roughly 460 MB) into the Hugging Face cache. After that no network access is needed.
 
-Dutch church words are fed to the speech model through `templates/woordenlijst.json`: an `initialPrompt` with the vocabulary (Bible books, "gemeente", "Opwekking", "avondmaal") and a `corrections` map that repairs mistakes the model keeps making, such as "Lee 302" for "Lied 302". That file is shared by every church; `templates/woordenlijst.example.json` is the shipped copy.
+Dutch church words are fed to the speech model through `templates/woordenlijst.json`, shared by
+every church; `templates/woordenlijst.example.json` is the shipped copy, with the reasoning at the
+top of the file.
+
+**The prompt has a hard limit and it is smaller than it looks.** Whisper reads the *last* 223
+tokens of an `initial_prompt` and drops the rest without a word
+(`previous_tokens[-(max_length // 2 - 1):]` in faster-whisper's `get_prompt`). That is about 510
+characters of Dutch church vocabulary. A longer list is not a better one: past the limit it is the
+head that disappears, so a 1300-token list of everything leaves the model with whatever happened to
+land at the end.
+
+So the file holds `words` in groups, ordered from droppable to precious inside each group and
+between them, and `initial_prompt()` trims from the front until what is left fits. Words the model
+already gets right earn nothing and are left out; what is in there is what it gets wrong. A church's
+own names (preachers, series, locations, set under **Merk en afsluiter**) go last and are never
+trimmed, because a preacher's name is the one thing the model cannot guess.
+
+Whatever does not fit goes in `corrections` instead, applied to the finished text, where nothing
+limits the length. A correction only goes in when the misheard form is not itself a Dutch word, or
+when it is purely a matter of capitals: "heerder" → "herder" is safe, "heller" → "herder" is not,
+because *heller* is a word.
+
+Measured on ninety seconds of preaching about a shepherd, counting how often "herder" came out
+right:
+
+| prompt | right | wrong |
+| --- | --- | --- |
+| no prompt at all | 2 | 3 |
+| the old list | 0 | 5 |
+| the list now | 2 | 3, all of them "heerder" |
+| the list now, after `corrections` | 5 | 0 |
+
+The old list was worse than no prompt, because it spent the budget on words the model already knew
+and never mentioned a shepherd.
 
 On top of it, each brand keeps **its own words**, edited under **Merk en afsluiter**: who preaches here, the series that are running, the hymnals they sing from, the locations. Those go into the prompt in front of the audio, which is where names are won or lost.
 

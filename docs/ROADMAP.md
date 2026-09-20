@@ -245,6 +245,179 @@ mishearing, with the reason under the line itself.
 
 ---
 
+## Phase 4 · Out of your own hands
+
+A pilot at a handful of churches, with Donkey Mobile watching. The question stops being
+whether the code is good and becomes what happens on a Monday morning at a church you
+cannot see, on a computer you have never touched, run by someone who will not read a
+manual and cannot open a terminal.
+
+Everything that has been built so far assumed the developer was in the room. These steps
+remove that assumption. Three to four weeks, and the first three block everything else.
+
+**Not in this phase, on purpose.** One installation stays one church. No accounts, no
+server, no multi-tenancy, no hosting. Every pilot church runs it on their own machine
+exactly as it runs today, because the fastest way to learn whether this is worth building
+into a product is to put the thing that already works in front of five churches, and the
+slowest is to rebuild it as a service first.
+
+### Step 13 · A licence, before the repository leaves the building
+Serves (share)
+
+**Build.** A `LICENSE` file. Without one, nothing is granted: another company may read a
+public repository but may not run, modify or ship it, and a careful engineering team will
+notice that before they notice anything else. Two honest options. All rights reserved plus
+a short written permission for Donkey Mobile to evaluate and pilot it, if this may become a
+product. Or a permissive licence if it may not. Decide which, and add a `NOTICE` listing
+what the app already depends on and under what terms: FFmpeg, faster-whisper, CTranslate2,
+YuNet, YOLOv10n, yt-dlp, the bundled fonts, the Anthropic SDK.
+
+**Why.** It is one file and it is the only thing on this list that a lawyer will ask for
+first.
+
+**Done.** A `LICENSE` at the root, a `NOTICE` naming every bundled dependency and its
+licence, and a line in the README saying what a pilot church is allowed to do.
+
+### Step 14 · Shut the door the browser left open
+Serves (2)
+
+**Build.** `allow_origins=["*"]` with no authentication anywhere. While the app runs, any
+website open in the same browser can read `http://localhost:8000/services`, fetch a
+transcript, and post to delete a service or start a job. The frontend is served from the
+same origin as the API, so the wildcard buys nothing: restrict it to the app's own origin
+plus the Vite dev server, and add a test that a foreign origin is refused.
+
+**Why.** It is five lines. On one developer's laptop it is theoretical; at five churches
+with volunteers who browse while the app runs, it is a transcript of a pastoral prayer
+leaving the building.
+
+**Done.** A request carrying `Origin: https://ergens-anders.nl` comes back without an
+`access-control-allow-origin` header, the app itself still works, and a test in
+`tests/test_origins.py` fails if the wildcard ever comes back.
+
+### Step 15 · A version, said out loud
+Serves (support)
+
+**Build.** One version string, written once and read everywhere: the app bar, the readiness
+panel, the window title of the black console, and every diagnostic the app produces. A
+`CHANGELOG.md` in the repo with a line per release in plain Dutch, aimed at a volunteer
+rather than a developer.
+
+**Why.** The first question on every support call is which version they are running, and
+today nobody can answer it. It also makes "dat is vorige week opgelost" a checkable claim
+instead of a hope.
+
+**Done.** The version is visible in the interface without scrolling, appears in the
+diagnostic of step 17, and `git tag` matches what the app says.
+
+### Step 16 · Install and update without a developer
+Serves (onboarding)
+
+**Build.** Two things a volunteer cannot do today: get the app, and get the new one. Ship a
+release as a downloadable zip that contains what `git clone` gives them, so nobody installs
+git. Then add an update check: on start, the launcher asks GitHub for the newest release
+and, when there is one, says so in the black window with what changed and what to download.
+Not an auto-update, because a church rebuilding itself unattended on a Sunday morning is
+worse than a church running last month's version.
+
+The harder half is the API key. Today it goes into `config.env` with Notepad, and that is
+the single biggest wall between a willing church and a working app. Replace it with a
+first-run screen: the app opens, sees no key, and asks for one with a link to where you get
+it and a sentence about what it costs. It writes `config.env` itself. The same screen is
+where a key issued by Donkey Mobile would go later, so this step does not commit you to who
+pays.
+
+**Why.** Every pilot church that fails here never becomes a pilot church, and you will not
+hear about it.
+
+**Done.** Someone who has never seen a terminal downloads the zip, double-clicks
+`start.bat`, pastes a key into the screen the app shows them, and gets to the upload page.
+Timed on someone who has not seen the app before: under ten minutes, without you on the
+phone.
+
+### Step 17 · When it breaks, you get to see it
+Serves (support)
+
+**Build.** Every failure in this app currently ends in `print()` to a console window that
+the volunteer closes. There is nothing to send you. So: a log file next to the app,
+rotated per run and capped, holding everything the black window shows. And an "Er ging iets
+mis" button on any error that writes one zip to the desktop: the version, the operating
+system, the last few hundred log lines, the state of the service that failed, and the
+settings with the API key struck out. The volunteer mails it. Nothing is sent anywhere by
+the app itself.
+
+**Why.** A pilot where the only report is "het werkte niet" teaches you nothing, and asking
+a volunteer to reproduce a failure is asking them to stop using it. The deliberate absence
+of telemetry is also what lets a church say yes: nothing leaves their building unless a
+person attaches it to an email.
+
+**Done.** Three failures staged on purpose (no key, a corrupt recording, a full disk) each
+produce a zip that names the cause on its first page, and none of the three contains the
+API key.
+
+### Step 18 · What happens to our recording, in writing
+Serves (share)
+
+**Build.** A `PRIVACY.md` a church can hand to its own board, and a short version in the
+app where the cost estimate already is. It has to say plainly: the recording and the audio
+never leave the computer; the written-out text of the preaching goes to Anthropic and is
+not used for training under their API terms; the speech and detection models are downloaded
+once from Hugging Face; the recording is fetched from wherever the church already publishes
+it; nothing is sent to the developer. Then the parts churches actually worry about: a
+sermon transcript carries names of sick members and what was prayed for, which under the
+AVG is not ordinary personal data. Name it, say that `LLM_PROVIDER=ollama` keeps everything
+in the building for a church that will not accept it, and say how long recordings are kept
+(`KEEP_WEEKS`) and how to wipe them.
+
+**Why.** Donkey Mobile's customers will ask, and the honest answer here is a good one. It
+is only a weakness while it is undocumented.
+
+**Done.** A church council can read one page and decide. The same page answers, without
+hedging, what a transcript contains and where it goes.
+
+### Step 19 · Say what machine it needs, measured
+Serves (onboarding)
+
+**Build.** Transcription is the long pole and nobody knows how long it is on a church's
+actual computer. Add a benchmark the launcher can run once (`tools/speechbench.py` already
+does most of it) and write the answer into the README as a table: this processor, this many
+minutes for a service of ninety. Then a readiness check that says, before the first
+upload, roughly how long this machine will take. A church that learns on Sunday afternoon
+that it takes two hours has already stopped using it.
+
+**Why.** The most common pilot failure is not a bug. It is a computer that is too slow and
+an expectation nobody set.
+
+**Done.** The readiness panel states a number for the machine it is on, and that number is
+within a quarter of what the machine really does on a real service.
+
+### Step 20 · Let the pilot teach you something
+Serves (1)
+
+**Build.** `evaluation/` holds one invented service, so no claim about the quality of the
+suggestions is currently checkable. Ask each pilot church, in writing, whether one of their
+services may be kept as a test case: the transcript, and which moments they actually
+posted. Five real services turn `tools/evaluate.py` from a harness into an instrument. Log
+per run what it cost and how long it took, so at the end of the pilot there are four
+numbers per church rather than an impression.
+
+**Why.** The pilot is the only chance to find out whether reading the whole sermon in one
+call finds better moments than sixteen windows did, and whether the moments a church posts
+are the ones the app ranks first. After the pilot those services are gone.
+
+**Done.** Five real services in `evaluation/`, with permission on file, and a table showing
+precision at five and recall per church against the moments they posted themselves.
+
+### What is still open from Phase 3
+
+Step 10, review in one screen, was never finished. The transcript panel took part of it:
+the whole service is readable and searchable, and a moment can be cut by hand. What is
+missing is the timing claim, that someone who has never seen the app reviews the
+suggestions and produces four clips in under ten minutes. The pilot is where that gets
+measured rather than designed.
+
+---
+
 ## Deliberately deferred
 
 Multi-platform publishing, scheduling, an asset library, analytics, thumbnail generation, output

@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { ApiError, serviceApi, type ClipCandidate, type Service, type ServiceSummary } from '../api'
 import { useChurch } from '../church'
+import { forget, remember, remembered } from '../remember'
 import { formatTime } from '../subtitleLayout'
 import ClipSuggestions from './ClipSuggestions'
 import Section from './Section'
@@ -9,7 +10,7 @@ import ServiceTranscript from './ServiceTranscript'
 import StationServices from './StationServices'
 import Steps from './Steps'
 
-const STORAGE_KEY = 'church-reel-maker.service'
+const STORAGE_KEY = 'service'
 const BUSY = new Set(['fetching', 'transcribing', 'analyzing', 'processing'])
 const STEPS = ['Opname binnenhalen', 'Uitschrijven', 'Momenten zoeken', 'Fragmenten kiezen', 'Clips maken']
 
@@ -107,14 +108,14 @@ export default function ServiceView({ onOpenClip }: Props) {
 
   const adopt = (s: Service) => {
     setService(s)
-    localStorage.setItem(STORAGE_KEY, s.id)
+    remember(STORAGE_KEY, s.id)
   }
 
   // Restore the last service after a reload.
   useEffect(() => {
-    const saved = localStorage.getItem(STORAGE_KEY)
+    const saved = remembered(STORAGE_KEY)
     if (!saved) return
-    serviceApi.get(saved).then(setService).catch(() => localStorage.removeItem(STORAGE_KEY))
+    serviceApi.get(saved).then(setService).catch(() => forget(STORAGE_KEY))
   }, [])
 
   // What is there to go back to. Asked again whenever you are between services, so one you
@@ -260,7 +261,7 @@ export default function ServiceView({ onOpenClip }: Props) {
     setLink('')
     autoChain.current = false
     dirty.current = false
-    localStorage.removeItem(STORAGE_KEY)
+    forget(STORAGE_KEY)
   }
 
   const openEarlier = (id: string) => {

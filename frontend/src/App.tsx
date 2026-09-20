@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { remember, remembered } from './remember'
 import { useChurch } from './church'
 import BrandPanel, { type BrandTab } from './components/BrandPanel'
 import ClipEditor from './components/ClipEditor'
@@ -7,7 +8,7 @@ import StoragePanel from './components/StoragePanel'
 import SystemCheck from './components/SystemCheck'
 
 type Mode = 'clip' | 'service'
-const MODE_KEY = 'church-reel-maker.mode'
+const MODE_KEY = 'mode'
 
 /** A wide recording split into parts: the whole service. */
 const ServiceIcon = () => (
@@ -45,7 +46,7 @@ const TidyIcon = () => (
 )
 
 export default function App() {
-  const [mode, setMode] = useState<Mode>(() => (localStorage.getItem(MODE_KEY) === 'clip' ? 'clip' : 'service'))
+  const [mode, setMode] = useState<Mode>(() => (remembered(MODE_KEY) === 'clip' ? 'clip' : 'service'))
   const [projectId, setProjectId] = useState<string | null>(null)
   const [tidying, setTidying] = useState(false)
   const [branding, setBranding] = useState(false)
@@ -64,7 +65,7 @@ export default function App() {
 
   const switchMode = (next: Mode) => {
     setMode(next)
-    localStorage.setItem(MODE_KEY, next)
+    remember(MODE_KEY, next)
   }
 
   const openClip = (id: string) => {
@@ -76,7 +77,9 @@ export default function App() {
     <>
       <header className="appbar">
         <div className="brand">
-          <img src="/icon.svg" width="24" height="28" alt="" />
+          {/* The mark is one colour, so it is painted through rather than dropped in:
+              purple on the dark bar would be a smudge. */}
+          <span className="logo" aria-hidden="true" />
           <div>
             <div className="name">Preekstof</div>
             <div className="church">{church?.churchName ?? 'Kerk'}</div>

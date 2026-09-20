@@ -603,6 +603,15 @@ Prefer your own video? Put it in `templates/outro.mp4`. Because its file date is
 
 The interface is in Dutch and carries the Nieuwe Kerk Utrecht colours: a deep purple app bar, display-size page titles, quiet numbered sections, and a dark stage panel that holds the preview and the one gold call to action. Gold carries meaning rather than decoration: the active tab, the crop frame, the fragment that is playing. Flat surfaces, hairline borders, Poppins throughout. No gradients in the interface itself. The colour tokens live at the top of `frontend/src/index.css`.
 
+The mark is an open book with a waveform coming out of it, one purple vector in
+`frontend/public/icon.svg`. It is both the tab icon and the mark in the app bar, and since it
+is a single colour the app bar paints it through a CSS mask rather than dropping it in: purple
+on the deep-purple bar would be a smudge, and this way it takes whatever colour the bar has.
+
+Anything in `frontend/public/` is copied into the build as-is. That is the only place a brand
+asset can live, because `npm run build` empties `frontend/dist` first and the launcher rebuilds
+by itself whenever the source is newer than the build.
+
 ## Fonts
 
 `templates/fonts/` holds the families the app offers, subset to the Latin characters Dutch needs (SIL Open Font License, licence texts included):
@@ -705,14 +714,21 @@ backend/
   mac.py            speech on the graphics chip of an Apple Silicon Mac, via mlx-whisper
   vision.py         the two ONNX detectors: faces (YuNet) and people (YOLOv10n)
   tracking.py       detections -> one calm path for the crop window to walk
+frontend/public/
+  icon.svg                     the mark: tab icon and app bar, one purple vector
+  icons.svg                    the social glyphs the end-screen editor draws from
 frontend/src/
   App.tsx                      tab switch between Full service and Clip
   api.ts                       typed API client (projects + services)
+  remember.ts                  the handful of things kept between visits, under one prefix
   subtitleLayout.ts            layout constants shared with subtitles.py
   crop.ts, track.ts            the crop window and the tracking path, mirrored from renderer.py
   components/ClipEditor.tsx    single-clip editor: project state, API calls, auto-save, render polling
   components/ServiceView.tsx   full-service upload, states, progress, processed clips
   components/ClipSuggestions.tsx  ranked candidate list: preview, select, adjust boundaries
+  components/ServiceTranscript.tsx  the whole service to read, search and cut from
+  components/ServiceTimeline.tsx    the shape of the service with the fragments on it
+  transcriptSearch.ts          hits, highlighting and what a run of sentences covers
   components/BrandPanel.tsx    brand switch, church details and the end-screen editor
   components/MusicPanel.tsx    background music under the clip
   components/LogoPanel.tsx     the church logo in a corner of the clip

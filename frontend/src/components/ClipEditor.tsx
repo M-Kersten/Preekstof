@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { ApiError, api, type CropWindow, type MusicSettings, type Project, type RenderStatus, type Segment, type Style, type Watermark } from '../api'
 import { useChurch } from '../church'
+import { forget, remember, remembered } from '../remember'
 import FramingPanel from './FramingPanel'
 import LogoPanel from './LogoPanel'
 import MusicPanel from './MusicPanel'
@@ -11,7 +12,7 @@ import WordSuggestions from './WordSuggestions'
 import VideoPreview, { type PreviewHandle } from './VideoPreview'
 
 const IDLE: RenderStatus = { status: 'idle', progress: 0, message: '', error: null }
-const STORAGE_KEY = 'church-reel-maker.project'
+const STORAGE_KEY = 'project'
 const CLEAN = { transcript: false, style: false, crop: false, music: false, watermark: false }
 
 interface Props {
@@ -63,13 +64,13 @@ export default function ClipEditor({ projectId, onProjectChange }: Props) {
     setMusic(p.music)
     setWatermark(p.watermark)
     setSegments(p.transcriptData?.segments ?? [])
-    localStorage.setItem(STORAGE_KEY, p.id)
+    remember(STORAGE_KEY, p.id)
     onProjectChange(p.id)
   }, [onProjectChange])
 
   // Open the requested project (or the last one after a page reload).
   useEffect(() => {
-    const wanted = projectId ?? localStorage.getItem(STORAGE_KEY)
+    const wanted = projectId ?? remembered(STORAGE_KEY)
     if (!wanted || wanted === project?.id) return
     api
       .getProject(wanted)
@@ -83,7 +84,7 @@ export default function ClipEditor({ projectId, onProjectChange }: Props) {
         // A transcription that is still running survives a page reload.
         if (transcribe.status === 'running') setTranscribeStatus(transcribe)
       })
-      .catch(() => localStorage.removeItem(STORAGE_KEY))
+      .catch(() => forget(STORAGE_KEY))
   }, [projectId, project?.id, adopt])
 
   // The brand lives in its own menu now; when it is saved the end screen is made again.

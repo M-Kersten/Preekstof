@@ -32,7 +32,7 @@ function declare(families: FontFamily[]): FontFamily[] {
       ),
     )
   const style = document.createElement('style')
-  style.dataset.fonts = 'church-reel-maker'
+  style.dataset.fonts = 'preekstof'
   style.textContent = rules.join('\n')
   document.head.appendChild(style)
   return families

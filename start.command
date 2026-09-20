@@ -1,5 +1,5 @@
 #!/bin/bash
-# Church Reel Maker launcher for macOS (double-click this file).
+# Preekstof launcher for macOS (double-click this file).
 cd "$(dirname "$0")" || exit 1
 
 fail() {

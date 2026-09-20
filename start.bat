@@ -1,6 +1,6 @@
 @echo off
 setlocal
-title Church Reel Maker
+title Preekstof
 cd /d "%~dp0"
 
 rem --- 1. Find Python 3.10+ (install it with winget when missing) ---------------

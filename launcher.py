@@ -1,4 +1,4 @@
-"""One-click launcher for Church Reel Maker.
+"""One-click launcher for Preekstof.
 
 Started by start.bat (Windows) or start.command (macOS) after those scripts
 have created the Python environment. This script:
@@ -44,7 +44,7 @@ FFMPEG_DOWNLOADS = {
 
 
 def say(message: str) -> None:
-    print(f"[Church Reel Maker] {message}", flush=True)
+    print(f"[Preekstof] {message}", flush=True)
 
 
 # --- python packages ----------------------------------------------------------

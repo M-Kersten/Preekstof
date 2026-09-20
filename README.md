@@ -1,4 +1,4 @@
-# Church Reel Maker
+# Preekstof
 
 Turns a short Dutch church-service clip into a finished vertical video (1080×1920, H.264 + AAC, 30 fps) for Instagram Reels and YouTube Shorts. Everything runs locally.
 

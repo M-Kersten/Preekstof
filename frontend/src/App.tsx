@@ -76,13 +76,9 @@ export default function App() {
     <>
       <header className="appbar">
         <div className="brand">
-          <svg width="24" height="28" viewBox="0 0 24 28" aria-hidden="true">
-            <path d="M12 1C6.2 1 1.5 5.7 1.5 11.5V27h21V11.5C22.5 5.7 17.8 1 12 1Z" fill="#FFFFFF" />
-            <path d="M9.6 10.4 17 14.7l-7.4 4.3z" fill="#2A1140" />
-            <circle cx="12" cy="5.6" r="1.6" fill="#C9971C" />
-          </svg>
+          <img src="/icon.svg" width="24" height="28" alt="" />
           <div>
-            <div className="name">Church Reel Maker</div>
+            <div className="name">Preekstof</div>
             <div className="church">{church?.churchName ?? 'Kerk'}</div>
           </div>
         </div>

@@ -1,4 +1,4 @@
-"""Church Reel Maker API. Run from the repository root:
+"""Preekstof API. Run from the repository root:
 
     uvicorn backend.main:app --reload --port 8000
 """
@@ -46,7 +46,7 @@ async def lifespan(app: FastAPI):
     yield
 
 
-app = FastAPI(title="Church Reel Maker", lifespan=lifespan)
+app = FastAPI(title="Preekstof", lifespan=lifespan)
 app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_methods=["*"], allow_headers=["*"])
 jobs = JobManager()
 

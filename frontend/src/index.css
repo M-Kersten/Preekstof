@@ -504,54 +504,84 @@ input[type='checkbox'] { accent-color: var(--purple); width: 1rem; height: 1rem;
   color: var(--muted); font-size: 0.78rem; font-family: var(--mono);
 }
 
-/* the first five minutes */
+/* the first five minutes
+   No rules under headings, no boxed feature grid, no uppercase labels. What carries it is
+   the size of the question, the room around it, and one drawing of what comes out. */
 .appbar.bare-bar { justify-content: flex-start; }
-.welcome { max-width: 46rem; margin: 0 auto; }
-.welcome-steps {
-  list-style: none; display: flex; flex-wrap: wrap; gap: 0.2rem 1.2rem; margin: 0 0 1.2rem; padding: 0;
-  font-size: 0.82rem; color: var(--muted);
-}
-.welcome-steps li { display: flex; align-items: center; gap: 0.4rem; }
-.welcome-steps .dot {
-  display: grid; place-items: center; width: 1.3rem; height: 1.3rem; border-radius: 50%;
-  border: 1px solid var(--line); font-size: 0.7rem; font-weight: 700; background: var(--white);
-}
-.welcome-steps .past { color: var(--purple); }
-.welcome-steps .past .dot { background: var(--purple); border-color: var(--purple); color: var(--white); }
-.welcome-steps .now { color: var(--purple); font-weight: 600; }
-.welcome-steps .now .dot { border-color: var(--purple); color: var(--purple); box-shadow: 0 0 0 3px rgba(75, 30, 120, 0.12); }
+.welcome { max-width: 54rem; margin: 2.2rem auto 0; }
 
-.welcome-card { padding: 1.8rem 2rem 1.7rem; }
-.welcome-card h1 { font-size: 1.7rem; margin-bottom: 0.6rem; }
-.welcome-card .lead { max-width: 58ch; font-size: 1rem; color: var(--ink); margin: 0 0 1.1rem; }
-.welcome-card label { display: block; font-weight: 600; font-size: 0.85rem; margin: 0.9rem 0 0.35rem; }
-.welcome-card > input { width: 100%; box-sizing: border-box; font-size: 0.95rem; }
-.welcome-card .acts { display: flex; align-items: center; gap: 0.6rem; flex-wrap: wrap; margin-top: 1.3rem; }
-.welcome-card .row { display: flex; gap: 0.5rem; margin-top: 0.4rem; }
-.welcome-card .row input { flex: 1; font-size: 0.95rem; }
-.welcome-card code {
-  font-family: var(--mono); font-size: 0.85rem; background: var(--lavender);
-  border-radius: 4px; padding: 0 0.3rem;
+/* Where you are, said once and quietly, with a hairline that fills as you go. */
+.welcome-where {
+  display: flex; align-items: baseline; justify-content: space-between;
+  font-size: 0.85rem; font-weight: 600; color: var(--purple); margin-bottom: 0.45rem;
+}
+.welcome-rail { height: 2px; background: var(--line); border-radius: 2px; overflow: hidden; }
+.welcome-rail span { display: block; height: 100%; background: var(--purple); transition: width 0.35s ease; }
+
+.welcome-body { padding: 2.4rem 0 0; }
+.welcome-split { display: grid; grid-template-columns: 1fr 17rem; gap: 2.6rem; align-items: center; }
+.welcome-one { max-width: 34rem; }
+
+.welcome h1 {
+  font-size: clamp(1.7rem, 3.4vw, 2.3rem); line-height: 1.08; letter-spacing: -0.03em;
+  margin-bottom: 0.7rem; max-width: 24ch;
+}
+.welcome-one h1 { max-width: 22ch; }
+.welcome .lead { font-size: 1.02rem; line-height: 1.55; color: var(--ink); max-width: 46ch; margin: 0; }
+.welcome .hint { max-width: 46ch; }
+
+/* Facts, not a feature grid: no borders, no columns, nothing to look at but the words. */
+.welcome ul.plain { list-style: none; margin: 1.3rem 0 0; padding: 0; }
+.welcome ul.plain li {
+  position: relative; padding-left: 1.1rem; margin-bottom: 0.45rem;
+  font-size: 0.92rem; color: var(--muted); line-height: 1.5;
+}
+.welcome ul.plain li::before {
+  content: ''; position: absolute; left: 0; top: 0.62em; width: 5px; height: 5px;
+  border-radius: 50%; background: var(--gold);
 }
 
-/* three reasons, side by side, none of them shouting */
-.why { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1rem; margin: 1.3rem 0 0.4rem; }
-.why > div { display: flex; flex-direction: column; gap: 0.25rem; padding-top: 0.7rem; border-top: 2px solid var(--purple); }
-.why strong { color: var(--purple); font-size: 0.95rem; }
-.why span { font-size: 0.86rem; color: var(--muted); line-height: 1.45; }
-@media (max-width: 720px) { .why { grid-template-columns: 1fr; } }
+.welcome label {
+  display: block; font-size: 0.82rem; font-weight: 600; color: var(--purple);
+  margin: 1.5rem 0 0.4rem;
+}
+.welcome input { width: 100%; box-sizing: border-box; font-size: 1rem; padding: 0.6rem 0.8rem; }
+.welcome .two { display: grid; grid-template-columns: 1fr 1fr; gap: 0 1rem; }
+.welcome .two label { margin-top: 1.1rem; }
+.welcome .two-up { display: flex; gap: 0.6rem; }
+.welcome .two-up input { flex: 1; }
+.welcome .two-up button { flex: none; padding: 0.6rem 1.1rem; }
 
-.doing { margin: 0 0 0.4rem; padding-left: 1.2rem; font-size: 0.92rem; }
-.doing li { margin-bottom: 0.35rem; }
-.next { margin: 0.4rem 0 0; padding-left: 1.2rem; font-size: 0.9rem; color: var(--muted); }
-.next li { margin-bottom: 0.35rem; }
-.sample { display: block; background: var(--lavender); border-radius: 8px; padding: 0.55rem 0.8rem; margin: 0 0 0.8rem; }
-.sample strong { color: var(--purple); }
-.good { color: var(--green); font-size: 0.9rem; font-weight: 600; margin: 0.7rem 0 0; }
-.found-station { display: flex; flex-direction: column; gap: 0.15rem; padding: 0.7rem 0.9rem; background: #F0F7F3; border-radius: 8px; }
-.found-station span { color: var(--ink); font-weight: 400; }
-.welcome-foot { margin-top: 1rem; text-align: center; font-size: 0.8rem; color: var(--muted); }
-.welcome-foot button { color: var(--muted); text-decoration: underline; text-underline-offset: 2px; padding: 0; }
+/* The address bar fragment, with the bit they are looking for lit up. */
+.welcome .address {
+  font-family: var(--mono); font-size: 0.92rem; color: var(--muted);
+  background: var(--lavender); border-radius: 9px; padding: 0.65rem 0.9rem; margin: 1.3rem 0 0;
+}
+.welcome .address mark { background: none; color: var(--purple); font-weight: 700; }
+
+.welcome .acts { display: flex; align-items: center; gap: 0.9rem; flex-wrap: wrap; margin-top: 1.8rem; }
+.welcome .acts .primary { padding: 0.6rem 1.4rem; font-size: 0.98rem; }
+.welcome button.quiet {
+  border: none; background: none; padding: 0; color: var(--muted);
+  font-size: 0.88rem; font-weight: 500;
+}
+.welcome button.quiet:hover:not(:disabled) { color: var(--purple); background: none; }
+.welcome .good { color: var(--green); font-size: 0.9rem; font-weight: 600; margin: 0.9rem 0 0; }
+.welcome-error { margin: 1.4rem 0 0; }
+
+/* what the app makes, drawn once */
+.scene { width: 100%; height: auto; display: block; }
+@media (max-width: 860px) {
+  .welcome-split { grid-template-columns: 1fr; gap: 1.8rem; }
+  .scene { max-width: 15rem; }
+  .welcome .two { grid-template-columns: 1fr; }
+}
+/* On a phone the drawing would sit between the button and the footer, pushing the one
+   thing to press away from the thumb. It says nothing the words do not. */
+@media (max-width: 620px) { .scene { display: none; } }
+
+.welcome-foot { margin-top: 2.6rem; font-size: 0.8rem; color: var(--muted); }
+.welcome-foot button.quiet { font-size: 0.8rem; text-decoration: underline; text-underline-offset: 2px; }
 
 /* a moment somebody cut out of the transcript themselves */
 .timeline .mark.own { background: var(--gold); }

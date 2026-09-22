@@ -434,12 +434,15 @@ class Service(BaseModel):
     accurate: bool = False  # hear the clips of this recording with the slower, better model
     sermonTitle: str = ""  # what the preaching was about, when the church knows it beforehand
     series: str = ""  # the series it belongs to, if there is one
+    preacher: str = ""  # who spoke, as the church wrote it on its own page
+    poster: str | None = None  # our own copy of the platform's still, next to the recording
     shape: list[dict] = []  # the parts of the service: welcome, songs, sermon, notices...
     candidates: list[ClipCandidate] = []
     clips: list[ProcessedClip] = []
 
 
 class ServiceDetail(Service):
+    posterUrl: str | None = None  # where the browser gets the still; `poster` is the file
     transcriptData: Transcript | None = None
     analysis: dict | None = None  # what an analysis run would send and cost
     job: dict | None = None

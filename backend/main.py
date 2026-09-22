@@ -699,6 +699,7 @@ def service_detail(service: Service) -> ServiceDetail:
     transcript = load_service_transcript(service)
     return ServiceDetail(
         **service.model_dump(),
+        posterUrl=poster_link(service),
         transcriptData=transcript,
         analysis=discovery.estimate(transcript, service.sourceInfo.duration if service.sourceInfo else None)
         if transcript else None,
@@ -790,6 +791,8 @@ def list_services(limit: int = 12):
             "hasFootage": (service_dir(service.id) / service.sourceVideo).is_file(),
             "clips": len(service.clips),
             "moments": len(service.candidates),
+            "preacher": service.preacher,
+            "poster": poster_link(service),
         })
     found.sort(key=lambda s: s["createdAt"], reverse=True)
     return found[:max(1, min(limit, 50))]
@@ -825,11 +828,22 @@ def upload_service_video(service_id: str, file: UploadFile):
     return service_detail(service)
 
 
-def adopt_recording(service: Service, target: Path, title: str) -> None:
-    """Make `target` the recording of this service, whichever way it arrived."""
+def adopt_recording(service: Service, target: Path, title: str,
+                    preacher: str = "", poster: Path | None = None) -> None:
+    """Make `target` the recording of this service, whichever way it arrived.
+
+    A different recording is a different service in everything but its id, so what the
+    last one brought with it goes as well. A file dragged in carries neither, and leaving
+    the previous preacher standing under it would be worse than an empty line.
+    """
     service.sourceVideo = target.name
     service.sourceInfo = renderer.probe(target)
     service.title = title
+    service.preacher = preacher
+    if poster is None:
+        for old in service_dir(service.id).glob("poster.*"):
+            old.unlink(missing_ok=True)
+    service.poster = poster.name if poster else None
     service.transcript = None
     service.candidates = []
     set_status(service, "uploaded")
@@ -847,7 +861,8 @@ def read_station(station_id: str):
         "name": found.name,
         "url": found.url,
         "services": [{"id": s.id, "title": s.title, "when": s.when, "url": s.url,
-                      "duration": s.duration} for s in found.services],
+                      "duration": s.duration, "preacher": s.preacher, "poster": s.poster}
+                     for s in found.services],
     }
 
 
@@ -869,7 +884,8 @@ def fetch_service_video(service_id: str, url: str = Body(default="", embed=True)
 
         if service.sourceVideo:
             (service_dir(service.id) / service.sourceVideo).unlink(missing_ok=True)
-        target, title = fetch.fetch(address, service_dir(service.id), on_progress, job.check)
+        got = fetch.fetch(address, service_dir(service.id), on_progress, job.check)
+        target = got.file
         try:
             info = renderer.probe(target)
         except Exception as exc:  # noqa: BLE001
@@ -878,10 +894,38 @@ def fetch_service_video(service_id: str, url: str = Body(default="", embed=True)
         if not info.hasAudio:
             target.unlink(missing_ok=True)
             raise RuntimeError("Wat er binnenkwam heeft geen geluid, dus er valt niets uit te schrijven.")
-        adopt_recording(service, target, title)
+        adopt_recording(service, target, got.title, got.preacher, got.poster)
         save_service(service)
 
     return run_service_job(service, "fetching", "uploaded", work)
+
+
+def poster_file(service: Service) -> Path | None:
+    """This service's still on disk, or nothing.
+
+    `poster` is a bare filename the app wrote itself, and this is the one place that is
+    checked rather than assumed. A service.json that has been edited by hand, or written
+    by an older version, must not be able to name a path of its own and have it served.
+    """
+    name = service.poster
+    if not name or name != Path(name).name or name.startswith("."):
+        return None
+    path = service_dir(service.id) / name
+    return path if path.is_file() else None
+
+
+def poster_link(service: Service) -> str | None:
+    """Where the browser can get this service's still, or nothing if there is none."""
+    return f"/services/{service.id}/poster" if poster_file(service) else None
+
+
+@app.get("/services/{service_id}/poster")
+def read_service_poster(service_id: str):
+    """The still that came with the recording, from our own copy rather than the platform."""
+    path = poster_file(get_service(service_id))
+    if path is None:
+        raise HTTPException(404, "Bij deze dienst hoort geen afbeelding")
+    return FileResponse(path)
 
 
 @app.get("/services/{service_id}/source")
@@ -940,6 +984,10 @@ def sermon_context(service: Service) -> str:
         said.append(f"De preek van deze dienst heet: {service.sermonTitle.strip()}.")
     if service.series.strip():
         said.append(f"Hij hoort bij de serie: {service.series.strip()}.")
+    if service.preacher.strip():
+        # Said as a name and nothing more. Most churches write an initial and a surname,
+        # which says nothing about who is standing there, and the app does not fill that in.
+        said.append(f"De spreker staat aangekondigd als: {service.preacher.strip()}.")
     return " ".join(said)
 
 

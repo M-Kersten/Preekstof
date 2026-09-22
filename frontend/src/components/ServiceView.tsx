@@ -8,6 +8,7 @@ import Section from './Section'
 import ServiceTimeline from './ServiceTimeline'
 import ServiceTranscript from './ServiceTranscript'
 import StationServices from './StationServices'
+import Still from './Still'
 import Steps from './Steps'
 
 const STORAGE_KEY = 'service'
@@ -438,8 +439,10 @@ export default function ServiceView({ onOpenClip }: Props) {
         <>
           <section className="card">
             <header className="service-head">
+              {hasVideo && service.posterUrl && <Still src={service.posterUrl} />}
               <div>
                 <h2>{hasVideo ? service.title : service.status === 'error' ? 'Deze link werkte niet' : STATUS_LABEL[service.status]}</h2>
+                {hasVideo && service.preacher && <span className="preacher">{service.preacher}</span>}
                 {hasVideo && (
                   <span className="meta">{formatTime(service.sourceInfo!.duration)} · {service.sourceInfo!.width}×{service.sourceInfo!.height}</span>
                 )}
@@ -696,8 +699,12 @@ function Earlier({ services, disabled, onOpen }: {
             title={`${s.title} · ${new Date(s.createdAt).toLocaleDateString('nl-NL')}`}
             onClick={() => onOpen(s.id)}
           >
-            <strong>{s.title}</strong>
-            <span className="meta">{tells(s)}</span>
+            <Still src={s.poster} />
+            <span className="what">
+              <strong>{s.title}</strong>
+              {s.preacher && <span className="preacher">{s.preacher}</span>}
+              <span className="meta">{tells(s)}</span>
+            </span>
           </button>
         ))}
       </div>

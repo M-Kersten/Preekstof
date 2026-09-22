@@ -76,10 +76,12 @@ Anthropic (api.anthropic.com)
     The written-out text of the preaching, to find the moments. Under the church's own API
     key and Anthropic's commercial terms. No audio or video is ever sent. See PRIVACY.md.
 
-Kerkdienstgemist (kerkdienstgemist.nl)
+Kerkdienstgemist (kerkdienstgemist.nl, and its media on amazonaws.com)
     Only when a church fills in its station number: the list of its own public services and
     the recording behind the site's own download button, requested the same way a visitor's
-    browser requests it.
+    browser requests it. The list carries a still of each service, which the browser loads
+    from the platform's storage on S3 exactly as that church's own page does. Once a service
+    is taken in, the app saves its own copy of that one still and never asks again.
 
 Hugging Face (huggingface.co)
     Model downloads only, listed above.

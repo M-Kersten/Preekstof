@@ -123,9 +123,9 @@ def test_an_answer_holding_no_video_file_gives_nothing(monkeypatch):
 
 
 def test_fetch_asks_the_resolver_before_the_downloader(answered):
-    url, title = fetch.resolve(PAGE)
-    assert url.split("?")[0].endswith(".mp4")
-    assert title == "Kerkdienst ochtend · 30 augustus 2026"
+    found = fetch.resolve(PAGE)
+    assert found.url.split("?")[0].endswith(".mp4")
+    assert found.title == "Kerkdienst ochtend · 30 augustus 2026"
 
 
 def test_a_link_this_platform_does_not_own_is_left_alone():
@@ -191,6 +191,49 @@ def test_each_service_carries_what_it_takes_to_choose_and_to_fetch(listed):
     assert first.duration == 5398
     # The page address, which is the one thing the app already knows how to fetch.
     assert first.url == f"https://kerkdienstgemist.nl/stations/1341/events/recording/{first.id}"
+
+
+def test_a_service_brings_the_still_the_platform_keeps_of_it(listed):
+    """A list of Sundays reads faster with a picture than with four identical titles."""
+    first = kdg.station("1341").services[0]
+    assert first.poster.split("?")[0].endswith("poster_medium.jpg")
+
+
+def test_the_middle_size_is_the_one_taken():
+    """Large is a page-wide banner; a row 44 pixels high has no use for it."""
+    sizes = {"large": "http://x/l.jpg", "medium": "http://x/m.jpg",
+             "small": "http://x/s.jpg", "thumb": "http://x/t.jpg"}
+    assert kdg.poster_of({"poster": sizes}) == "http://x/m.jpg"
+
+
+@pytest.mark.parametrize("video", [
+    {}, {"poster": None}, {"poster": {}}, {"poster": []},
+    {"poster": {"medium": ""}}, {"poster": {"medium": 12}},
+    {"poster": {"medium": "/relative/only.jpg"}},
+])
+def test_a_recording_without_a_usable_still_says_so_rather_than_guessing(video):
+    assert kdg.poster_of(video) is None
+
+
+def test_a_missing_size_falls_through_to_the_next_one():
+    assert kdg.poster_of({"poster": {"small": "http://x/s.jpg"}}) == "http://x/s.jpg"
+
+
+def test_who_preached_comes_across_as_the_church_typed_it():
+    """Including the trailing note some churches put there: cutting it risks the name."""
+    assert kdg.preacher_of({"artist": "  Ds. A. Langeweg - Viering Heilig Avondmaal "}) == (
+        "Ds. A. Langeweg - Viering Heilig Avondmaal")
+
+
+@pytest.mark.parametrize("said", [{}, {"artist": None}, {"artist": ""}, {"artist": "   "},
+                                  {"artist": 7}])
+def test_a_service_nobody_filled_a_preacher_in_for_is_an_empty_line(said):
+    assert kdg.preacher_of(said) == ""
+
+
+def test_this_station_left_the_preacher_blank_and_that_is_not_an_error(listed):
+    """The fixture is a church that does not use the field. Most of them do."""
+    assert kdg.station("1341").services[0].preacher == ""
 
 
 def test_the_newest_service_is_at_the_top(listed):
@@ -262,7 +305,8 @@ def test_the_endpoint_hands_the_page_what_it_needs(listed):
     said = answer.json()
     assert said["name"] == "Nieuwe Kerk Utrecht (Wittevrouwen)"
     assert len(said["services"]) == 10
-    assert set(said["services"][0]) == {"id", "title", "when", "url", "duration"}
+    assert set(said["services"][0]) == {"id", "title", "when", "url", "duration",
+                                        "preacher", "poster"}
 
 
 def test_a_number_the_platform_will_not_talk_about_is_a_400_with_the_reason(monkeypatch):

@@ -301,6 +301,10 @@ export interface ServiceSummary {
   hasFootage: boolean
   clips: number
   moments: number
+  /** Who preached, as the church wrote it. Empty when nobody filled it in. */
+  preacher: string
+  /** Where to get the still that came with the recording, or null when there is none. */
+  poster: string | null
 }
 
 /** One service standing on a church's page there. */
@@ -310,6 +314,10 @@ export interface StationService {
   when: string
   url: string
   duration: number | null
+  /** Who preached, as the church wrote it. Empty when nobody filled it in. */
+  preacher: string
+  /** A still, straight off the platform. The link is signed, so it does not keep. */
+  poster: string | null
 }
 
 export interface StationServices {
@@ -507,6 +515,10 @@ export interface Service {
   /** What the preaching is about, when the church knows beforehand. */
   sermonTitle: string
   series: string
+  /** Who preached, as the church wrote it on its own page. */
+  preacher: string
+  /** Where to get the still that came with this recording, or null when there is none. */
+  posterUrl: string | null
   shape: ServiceBlock[]
   candidates: ClipCandidate[]
   clips: ProcessedClip[]

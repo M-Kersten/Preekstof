@@ -29,10 +29,14 @@ def when(days_ago: float) -> str:
 
 def a_service(sid: str, days_ago: float = 0, *, recording: bool = True, on_disk: bool = True,
               status: str = "uploaded", clips: int = 0, moments: int = 0,
-              title: str = "Kerkdienst") -> Service:
+              title: str = "Kerkdienst", preacher: str = "", poster: bool = False) -> Service:
     folder = models.service_dir(sid)
     folder.mkdir(parents=True, exist_ok=True)
-    service = Service(id=sid, createdAt=when(days_ago), title=title, status=status)
+    service = Service(id=sid, createdAt=when(days_ago), title=title, status=status,
+                      preacher=preacher)
+    if poster:
+        (folder / "poster.jpg").write_bytes(b"\xff\xd8x")
+        service.poster = "poster.jpg"
     if recording:
         service.sourceVideo = "source.mp4"
         service.sourceInfo = VideoInfo(width=1280, height=720, duration=5400, fps=25,
@@ -79,7 +83,31 @@ def test_each_entry_says_what_it_is_worth_opening_for(client):
     only = client.get("/services").json()[0]
     assert only == {"id": "service-1", "title": "Kerkdienst", "status": "ready",
                     "createdAt": only["createdAt"], "duration": 5400.0,
-                    "hasFootage": True, "clips": 2, "moments": 6}
+                    "hasFootage": True, "clips": 2, "moments": 6,
+                    "preacher": "", "poster": None}
+
+
+def test_an_entry_carries_the_preacher_and_the_picture_so_you_recognise_it(client):
+    """Four Sundays in a row are all called "Kerkdienst"; these are what tell them apart."""
+    a_service("service-1", preacher="ds. M. Kreuk", poster=True)
+    only = client.get("/services").json()[0]
+    assert only["preacher"] == "ds. M. Kreuk"
+    assert only["poster"] == "/services/service-1/poster"
+
+
+def test_the_picture_outlives_the_recording_it_came_from(client):
+    """Cleaning up frees gigabytes; the hundred kilobytes that make the list readable stay."""
+    a_service("service-gone", on_disk=False, poster=True)
+    only = client.get("/services").json()[0]
+    assert only["hasFootage"] is False
+    assert only["poster"] == "/services/service-gone/poster"
+
+
+def test_a_picture_that_is_no_longer_on_disk_is_not_offered(client):
+    """Deleting the file by hand should give an empty slot, not a broken image."""
+    a_service("service-1", poster=True)
+    (models.service_dir("service-1") / "poster.jpg").unlink()
+    assert client.get("/services").json()[0]["poster"] is None
 
 
 def test_a_damaged_service_file_does_not_empty_the_list(client):
@@ -97,3 +125,16 @@ def test_the_list_stays_short_enough_to_read(client):
     assert len(client.get("/services?limit=3").json()) == 3
     assert len(client.get("/services?limit=999").json()) == 20, "capped at 50, and there are 20"
     assert len(client.get("/services?limit=0").json()) == 1, "never nothing"
+
+
+@pytest.mark.parametrize("name", [
+    "../../../etc/passwd", "sub/poster.jpg", "/etc/passwd", ".hidden", "..",
+])
+def test_a_poster_field_naming_a_path_is_not_served(client, name):
+    """`poster` is a bare filename the app wrote. A hand-edited one names nothing else."""
+    a_service("service-1", poster=True)
+    service = models.load_service("service-1")
+    service.poster = name
+    models.save_service(service)
+    assert client.get("/services").json()[0]["poster"] is None
+    assert client.get("/services/service-1/poster").status_code == 404

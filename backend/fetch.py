@@ -13,6 +13,9 @@ wrong when a link cannot be used.
 """
 
 import re
+import urllib.error
+import urllib.request
+from dataclasses import dataclass
 from pathlib import Path
 from typing import Callable
 from urllib.parse import urlparse
@@ -46,15 +49,65 @@ SITE_ADVICE = {
 RESOLVERS = (kerkdienstgemist,)
 
 
-def resolve(url: str) -> tuple[str, str] | None:
-    """Where a site's own player would get the video, and what it calls the recording."""
+def resolve(url: str) -> kerkdienstgemist.Recording | None:
+    """What a site's own player knows about this page: where the video is, and the rest.
+
+    The rest is worth having. A church that fills in who preached, and a platform that
+    keeps a still of every service, are handing over two things the file itself does not
+    carry and nobody wants to type again.
+    """
     for site in RESOLVERS:
-        if not site.handles(url):
-            continue
-        found = site.resolve(url)
-        if found:
-            return found.url, found.title
+        if site.handles(url):
+            found = site.resolve(url)
+            if found:
+                return found
     return None
+
+
+@dataclass
+class Grabbed:
+    """A recording that came in, and whatever the place it came from knew about it."""
+
+    file: Path
+    title: str
+    preacher: str = ""
+    poster: Path | None = None  # a still, already on disk next to the recording
+
+
+# A still is a picture off a church's own page, so there is a ceiling on it and a check on
+# what came back. Anything larger or of another kind is dropped rather than written down.
+POSTER_MAX_BYTES = 4 * 1024 * 1024
+POSTER_TYPES = {"image/jpeg": ".jpg", "image/png": ".png", "image/webp": ".webp"}
+
+
+def save_poster(url: str, folder: Path, timeout: float = 20.0) -> Path | None:
+    """Keep our own copy of the still, because the platform's link is signed and expires.
+
+    Never fatal. A service with no picture is a service; a fetch that fell over on one
+    would be a fetch nobody could explain.
+    """
+    # urlopen speaks file:// and ftp:// as readily as http, and this address comes off a
+    # platform's answer rather than out of this app. Two schemes, and no others.
+    if urlparse(url).scheme not in {"http", "https"}:
+        return None
+    try:
+        with urllib.request.urlopen(url, timeout=timeout) as answer:
+            kind = (answer.headers.get("Content-Type") or "").split(";")[0].strip().lower()
+            if kind not in POSTER_TYPES:
+                return None
+            said = answer.headers.get("Content-Length")
+            if said and said.isdigit() and int(said) > POSTER_MAX_BYTES:
+                return None
+            data = answer.read(POSTER_MAX_BYTES + 1)
+    except (urllib.error.URLError, OSError, ValueError):
+        return None
+    if not data or len(data) > POSTER_MAX_BYTES:
+        return None
+    for old in folder.glob("poster.*"):
+        old.unlink(missing_ok=True)
+    target = folder / f"poster{POSTER_TYPES[kind]}"
+    target.write_bytes(data)
+    return target
 
 
 class LinkNotUsable(RuntimeError):
@@ -159,8 +212,8 @@ def sweep(folder: Path) -> None:
 
 
 def fetch(url: str, folder: Path, on_progress: ProgressCallback | None = None,
-          should_stop: Callable[[], None] | None = None) -> tuple[Path, str]:
-    """Download what `url` points at into `folder`. Returns the file and its own title."""
+          should_stop: Callable[[], None] | None = None) -> Grabbed:
+    """Download what `url` points at into `folder`, with what the source knew about it."""
     url = tidy(url)
     # A page whose player knows better than the page does. Failing here is not fatal: the
     # link goes on to the ordinary route, which ends in the note for that site.
@@ -168,7 +221,7 @@ def fetch(url: str, folder: Path, on_progress: ProgressCallback | None = None,
     known = resolve(url)
     named = ""
     if known:
-        url, named = known
+        url, named = known.url, known.title
 
     try:
         import yt_dlp
@@ -227,4 +280,9 @@ def fetch(url: str, folder: Path, on_progress: ProgressCallback | None = None,
                             "het bestand en sleep het hierboven naar binnen.")
     # A resolved recording brings the name the church gave it; a signed S3 link does not.
     heard = (info or {}).get("title", "") if isinstance(info, dict) else ""
-    return written[0], safe_title(named or heard)
+    return Grabbed(
+        file=written[0],
+        title=safe_title(named or heard),
+        preacher=known.preacher if known else "",
+        poster=save_poster(known.poster, folder) if known and known.poster else None,
+    )

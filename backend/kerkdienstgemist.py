@@ -50,6 +50,8 @@ class Recording:
     title: str
     duration: float | None = None
     sermon_starts: float | None = None  # the platform's own guess at where the preaching begins
+    preacher: str = ""  # who spoke, when the church filled it in
+    poster: str | None = None  # a still from the recording, signed like the video itself
 
 
 @dataclass
@@ -61,6 +63,8 @@ class Service:
     when: str  # 2026-08-30T10:00:00+02:00, as the platform gives it
     url: str  # the page address, which is what the app knows how to fetch
     duration: float | None = None
+    preacher: str = ""  # who spoke, when the church filled it in
+    poster: str | None = None  # a still from the recording, signed like the video itself
 
 
 @dataclass
@@ -122,6 +126,40 @@ def dutch_date(stamp: str) -> str:
     return f"{int(day)} {MONTHS[int(month) - 1]} {year}"
 
 
+# The platform keeps four sizes of the same still. Medium is the one a list of services
+# wants: large is a page-wide banner nobody is going to look at in a row 44 pixels high.
+POSTER_SIZES = ("medium", "small", "large", "thumb")
+
+
+def poster_of(video: dict) -> str | None:
+    """The still belonging to a recording, in the smallest size worth looking at.
+
+    Signed like the video is, so it goes stale the way the download link goes stale. Fine
+    for a list that is fetched fresh every time it is shown, and the reason the app saves
+    its own copy the moment a service is actually taken in.
+    """
+    sizes = video.get("poster")
+    if not isinstance(sizes, dict):
+        return None
+    for name in POSTER_SIZES:
+        found = sizes.get(name)
+        if isinstance(found, str) and found.startswith("http"):
+            return found
+    return None
+
+
+def preacher_of(said: dict) -> str:
+    """Who preached. The platform files this under `artist`, the way it files a musician.
+
+    Churches write it how they like: "ds. M. Kreuk", "Ds. A. Langeweg - Viering Heilig
+    Avondmaal", a first name, or nothing at all. It is handed on exactly as typed, because
+    anything clever enough to strip the trailing note is clever enough to cut a real name
+    in half.
+    """
+    name = said.get("artist")
+    return name.strip() if isinstance(name, str) else ""
+
+
 def read(answer: dict) -> Recording | None:
     """Pull the download link out of what the API said, or decide there is none."""
     data = answer.get("data") or {}
@@ -139,6 +177,8 @@ def read(answer: dict) -> Recording | None:
             title=f"{name} · {when}" if when else name,
             duration=video.get("duration"),
             sermon_starts=video.get("sermon_start_time"),
+            preacher=preacher_of(said),
+            poster=poster_of(video),
         )
     return None
 
@@ -185,6 +225,8 @@ def services_in(answer: dict, station_id: str, site: str) -> list[Service]:
             when=said.get("start_at") or video.get("recorded_at") or "",
             url=page_url(station_id, str(item.get("id", "")), site),
             duration=video.get("duration"),
+            preacher=preacher_of(said),
+            poster=poster_of(video),
         ))
     return out
 

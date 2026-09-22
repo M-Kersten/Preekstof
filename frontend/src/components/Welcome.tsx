@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { ApiError, serviceApi, setupApi, type SetupState, type StationService } from '../api'
+import { said } from '../serviceTimes'
 import { announceBrandChange } from '../church'
 
 interface Props {
@@ -108,13 +109,13 @@ const Services = ({ found }: { found: { name: string; services: StationService[]
   return (
     <figure className="mock lineup">
       <strong className="head">{found.name}</strong>
-      {(found.services.length
-        ? found.services.slice(0, 4)
-        : []
-      ).map((s) => (
+      {found.services.slice(0, 4).map((s) => (
         <div key={s.id} className="row">
-          <span className="when">{s.when}</span>
-          <span className="title">{s.title}</span>
+          <span className="shot">{s.poster && <img src={s.poster} alt="" loading="lazy" />}</span>
+          <span className="what">
+            <span className="title">{s.title}</span>
+            <span className="when">{s.preacher || said(s.when)}</span>
+          </span>
         </div>
       ))}
       {found.services.length === 0 && <p className="none">Er staan nu geen diensten op.</p>}

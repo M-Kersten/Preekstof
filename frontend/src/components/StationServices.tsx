@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { ApiError, serviceApi, type StationServices as Listing } from '../api'
 import { openBrand } from '../church'
 import { minutes, said } from '../serviceTimes'
+import Still from './Still'
 
 interface Props {
   /** The number from the brand, empty when the church has not filled one in. */
@@ -87,9 +88,11 @@ export default function StationServices({ station, disabled, onPick }: Props) {
         <ul>
           {listing.services.map((s) => (
             <li key={s.id}>
+              <Still src={s.poster} length={minutes(s.duration)} />
               <div className="what">
                 <strong>{said(s.when)}</strong>
-                <span className="meta">{s.title}{minutes(s.duration) ? ` · ${minutes(s.duration)}` : ''}</span>
+                <span className="meta">{s.title}</span>
+                {s.preacher && <span className="preacher">{s.preacher}</span>}
               </div>
               <button className="small" disabled={disabled} onClick={() => onPick(s.url)}>Ophalen</button>
             </li>

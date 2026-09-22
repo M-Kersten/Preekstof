@@ -16,6 +16,12 @@ app vanzelf op het tabblad om een bestand te kiezen. Alles wat je hier invult bl
 aanpasbaar onder **Merk instellen**, en via **Instellen opnieuw** loop je de stappen nog een
 keer langs.
 
+**Je ziet welke dienst je kiest.** De lijst van Kerkdienstgemist stond vol met vier keer
+"Morgendienst" onder elkaar. Nu staat er een beeldje uit de opname naast, en wie er
+voorging als je kerk dat invult op je eigen pagina. Dat beeldje loopt mee naar binnen: het
+blijft bij de dienst staan in de app, ook nadat de opname is opgeruimd. Wie voorging gaat
+ook mee naar Claude, als naam en verder niets, dus namen worden beter verstaan.
+
 **Geen Kladblok meer nodig.** De sleutel hoeft niet meer met de hand in config.env. Hij
 wordt geschreven én meteen in gebruik genomen, dus de app hoeft er niet voor herstart.
 

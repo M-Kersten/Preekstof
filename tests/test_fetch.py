@@ -117,3 +117,105 @@ def test_stopping_is_a_cancellation_and_not_a_broken_link(tmp_path, monkeypatch)
     monkeypatch.setattr(yt_dlp.YoutubeDL, "extract_info", refuse)
     with pytest.raises(Cancelled):
         fetch.fetch("https://youtu.be/abc", tmp_path)
+
+
+# --- keeping our own copy of the still ------------------------------------------
+
+
+class Answered:
+    """What urlopen hands back, as far as save_poster is concerned."""
+
+    def __init__(self, body: bytes, kind: str = "image/jpeg", length: str | None = None):
+        self.body = body
+        self.headers = {"Content-Type": kind}
+        if length is not None:
+            self.headers["Content-Length"] = length
+
+    def read(self, limit: int | None = None) -> bytes:
+        return self.body[:limit] if limit else self.body
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, *_):
+        return False
+
+
+def answering(monkeypatch, answer):
+    def reply(url, timeout=None):
+        if isinstance(answer, Exception):
+            raise answer
+        return answer
+
+    monkeypatch.setattr(fetch.urllib.request, "urlopen", reply)
+
+
+def test_the_still_is_written_next_to_the_recording(tmp_path, monkeypatch):
+    """The platform's link is signed and expires; the list has to keep working after that."""
+    answering(monkeypatch, Answered(b"\xff\xd8jpeg bytes"))
+    kept = fetch.save_poster("https://s3.example/poster_medium.jpg", tmp_path)
+    assert kept == tmp_path / "poster.jpg"
+    assert kept.read_bytes() == b"\xff\xd8jpeg bytes"
+
+
+@pytest.mark.parametrize("kind, suffix", [
+    ("image/jpeg", ".jpg"), ("image/png", ".png"), ("image/webp", ".webp"),
+    ("image/jpeg; charset=binary", ".jpg"), ("IMAGE/PNG", ".png"),
+])
+def test_the_name_follows_what_came_back_rather_than_the_address(tmp_path, monkeypatch, kind, suffix):
+    answering(monkeypatch, Answered(b"x", kind))
+    assert fetch.save_poster("https://s3.example/poster", tmp_path).name == f"poster{suffix}"
+
+
+@pytest.mark.parametrize("kind", ["text/html", "application/json", "image/svg+xml", ""])
+def test_something_that_is_not_a_picture_is_not_written_down(tmp_path, monkeypatch, kind):
+    """A login page answering 200 is still not a still."""
+    answering(monkeypatch, Answered(b"<html>", kind))
+    assert fetch.save_poster("https://s3.example/poster", tmp_path) is None
+    assert list(tmp_path.glob("poster.*")) == []
+
+
+def test_a_picture_that_says_it_is_enormous_is_left_alone(tmp_path, monkeypatch):
+    answering(monkeypatch, Answered(b"x", length=str(fetch.POSTER_MAX_BYTES + 1)))
+    assert fetch.save_poster("https://s3.example/poster", tmp_path) is None
+
+
+def test_a_picture_that_lies_about_its_size_is_dropped_once_it_is_read(tmp_path, monkeypatch):
+    """No Content-Length, or a wrong one, still cannot fill the disk."""
+    answering(monkeypatch, Answered(b"x" * (fetch.POSTER_MAX_BYTES + 1)))
+    assert fetch.save_poster("https://s3.example/poster", tmp_path) is None
+    assert list(tmp_path.glob("poster.*")) == []
+
+
+def test_an_empty_answer_is_not_a_picture(tmp_path, monkeypatch):
+    answering(monkeypatch, Answered(b""))
+    assert fetch.save_poster("https://s3.example/poster", tmp_path) is None
+
+
+@pytest.mark.parametrize("gone", [
+    fetch.urllib.error.URLError("no route"), OSError("connection reset"), ValueError("nonsense"),
+])
+def test_a_still_that_will_not_come_never_fails_the_fetch(tmp_path, monkeypatch, gone):
+    """A service with no picture is a service. A fetch that died on one is a support call."""
+    answering(monkeypatch, gone)
+    assert fetch.save_poster("https://s3.example/poster", tmp_path) is None
+
+
+@pytest.mark.parametrize("address", [
+    "file:///etc/passwd", "file:///C:/Windows/win.ini", "ftp://host/poster.jpg",
+    "data:image/jpeg;base64,AAAA", "poster.jpg", "",
+])
+def test_only_a_web_address_is_ever_opened(tmp_path, monkeypatch, address):
+    """urlopen reads local files just as happily; the address comes off someone's API."""
+    monkeypatch.setattr(fetch.urllib.request, "urlopen",
+                        lambda *a, **k: pytest.fail("should not have opened anything"))
+    assert fetch.save_poster(address, tmp_path) is None
+
+
+def test_a_new_still_replaces_the_one_that_was_there(tmp_path, monkeypatch):
+    """Otherwise poster.png from last week stays behind next to this week's poster.jpg."""
+    (tmp_path / "poster.png").write_bytes(b"old")
+    answering(monkeypatch, Answered(b"\xff\xd8new"))
+    kept = fetch.save_poster("https://s3.example/poster", tmp_path)
+    assert kept.name == "poster.jpg"
+    assert [p.name for p in sorted(tmp_path.glob("poster.*"))] == ["poster.jpg"]

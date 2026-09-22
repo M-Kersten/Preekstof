@@ -18,17 +18,26 @@ frontend/node_modules/.tmp/
 # service recordings and their transcripts
 services/
 
+# What the black window said, kept so a failure leaves something to send.
+logs/
+
 # the person model is fetched on first use, like FFmpeg; the face model does ship with us
 vision/person.onnx
 vision/*.part
 
-# launcher: downloaded FFmpeg and personal settings
-tools/
+# launcher: the FFmpeg build it downloads. The Python in tools/ is part of the project and
+# is tracked; CI runs tools/evaluate.py and a release is built by tools/release.py, and
+# ignoring the whole folder meant neither of them was ever in the repository.
+tools/ffmpeg/
+tools/__pycache__/
 config.env
 
 # your church's own details, made on first start from templates/church.example.json.
 # It used to ship filled in, which gave every new install another church's name.
 templates/church.json
+
+# how fast this particular computer writes out a service, learned from its own runs
+templates/speed.json
 
 # end screen: your own settings and the generated video (see templates/outro.example.json)
 templates/outro.json

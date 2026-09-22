@@ -310,8 +310,18 @@ instead of a hope.
 **Done.** The version is visible in the interface without scrolling, appears in the
 diagnostic of step 17, and `git tag` matches what the app says.
 
-### Step 16 · Install and update without a developer
+### Step 16 · Install and update without a developer — gedaan (0.9.0)
 Serves (onboarding)
+
+**Wat er staat.** Een tag bouwt `preekstof-<versie>.zip` uit wat git bijhoudt en zet hem op
+Releases; `tools/release.py` doet dat ook met de hand. De zip weigert zichzelf als de tag en
+`backend/version.py` iets anders zeggen, of als de meegecommitte `frontend/dist` niet is wat
+die code bouwt. Bij het starten kijkt `backend/updates.py` één keer bij GitHub en zegt in het
+zwarte venster wat er is en waar het staat; installeren doet hij nooit zelf. Het scherm voor de
+sleutel kwam er al in dezelfde versie.
+
+**Nog niet gedaan.** Niemand heeft de tien minuten geklokt op iemand die de app nog nooit zag.
+Dat is de eigenlijke test en die moet bij de eerste pilotkerk.
 
 **Build.** Two things a volunteer cannot do today: get the app, and get the new one. Ship a
 release as a downloadable zip that contains what `git clone` gives them, so nobody installs
@@ -335,8 +345,18 @@ hear about it.
 Timed on someone who has not seen the app before: under ten minutes, without you on the
 phone.
 
-### Step 17 · When it breaks, you get to see it
+### Step 17 · When it breaks, you get to see it — gedaan (0.9.0)
 Serves (support)
+
+**Wat er staat.** Alles wat het zwarte venster zegt gaat naar `logs/preekstof.log`, per keer,
+met de vier vorige ernaast en een plafond erop. Naast elke foutmelding en onderin het
+gereedheidspaneel staat **Melding opslaan**: één zip met de melding, de gereedheidscontroles,
+de laatste vierhonderd regels, de instellingen, de dienst die vastliep en `runs.jsonl`. De
+sleutel wordt er twee keer uit gefilterd. De app stuurt zelf niets, ergens heen.
+
+**Gecontroleerd.** De drie gevraagde storingen zijn nagespeeld in `tests/test_diagnose.py`:
+geen sleutel, een opname die niet te lezen is, en een volle schijf. Alle drie noemen de
+oorzaak op de eerste pagina en geen van de drie bevat de sleutel.
 
 **Build.** Every failure in this app currently ends in `print()` to a console window that
 the volunteer closes. There is nothing to send you. So: a log file next to the app,
@@ -355,8 +375,15 @@ person attaches it to an email.
 produce a zip that names the cause on its first page, and none of the three contains the
 API key.
 
-### Step 18 · What happens to our recording, in writing
+### Step 18 · What happens to our recording, in writing — gedaan (0.9.0)
 Serves (share)
+
+**Wat er staat.** `PRIVACY.md`, één pagina voor een kerkenraad, en de korte versie in de app
+naast de kosten. Het benoemt wat er in een uitgeschreven preek kan staan waar niemand aan
+denkt, zegt dat dat onder de AVG bijzondere persoonsgegevens zijn, en wijst de uitweg aan
+(`LLM_PROVIDER=ollama`) voor een kerk die dat niet wil. `tests/test_privacy.py` houdt de
+belofte tegen de code aan: een module die met de buitenwereld praat en niet in de pagina staat,
+laat de test vallen.
 
 **Build.** A `PRIVACY.md` a church can hand to its own board, and a short version in the
 app where the cost estimate already is. It has to say plainly: the recording and the audio
@@ -375,8 +402,19 @@ is only a weakness while it is undocumented.
 **Done.** A church council can read one page and decide. The same page answers, without
 hedging, what a transcript contains and where it goes.
 
-### Step 19 · Say what machine it needs, measured
+### Step 19 · Say what machine it needs, measured — half gedaan (0.9.0)
 Serves (onboarding)
+
+**Wat er staat.** Het gereedheidspaneel heeft een regel **Snelheid**. Elke keer uitschrijven
+schrijft op hoeveel audio er in hoeveel tijd ging, en vanaf de tweede dienst citeert het paneel
+de mediaan van wat déze computer echt deed. Meer dan twee uur voor één dienst staat niet op
+groen: dat is niet traag, dat is onbruikbaar.
+
+**Wat er niet staat.** De tabel in de README heeft één echt gemeten rij: vier kernen x86_64,
+`small` op de processor, 0,20 seconde werk per seconde audio, dus 18 minuten voor anderhalf
+uur dienst. De rijen voor Apple Silicon en voor een NVIDIA-kaart staan er als *niet gemeten*,
+omdat een geraden getal het getal is waar een kerk haar zondag op plant. Die moeten op een
+echte MacBook en een echte pc gedraaid worden; `tools/speechbench.py` doet het werk.
 
 **Build.** Transcription is the long pole and nobody knows how long it is on a church's
 actual computer. Add a benchmark the launcher can run once (`tools/speechbench.py` already
@@ -391,8 +429,19 @@ an expectation nobody set.
 **Done.** The readiness panel states a number for the machine it is on, and that number is
 within a quarter of what the machine really does on a real service.
 
-### Step 20 · Let the pilot teach you something
+### Step 20 · Let the pilot teach you something — klaargezet, wacht op kerken
 Serves (1)
+
+**Wat er staat.** `evaluation/TOESTEMMING.md` is de mail die verstuurd moet worden, inclusief
+de twee dingen die een kerk zelf moet nakijken voordat ze ja zegt. `tools/adopt.py` maakt van
+een dienst die de app gedaan heeft een meetgeval, met als antwoordblad de clips die echt
+gemaakt zijn; een dienst zonder clips wordt geweigerd in plaats van met een leeg antwoordblad
+opgenomen. En de app schrijft tijdens het werken elke keer op wat het kostte en hoe lang het
+duurde, in `logs/runs.jsonl`, waar geen kerknaam en geen woord uitgeschreven tekst in staat.
+`tools/pilot.py` maakt daar de vier getallen van.
+
+**Wat er niet staat.** Vijf echte diensten. Die bestaan alleen als er kerken zijn, en pas als
+er toestemming ligt.
 
 **Build.** `evaluation/` holds one invented service, so no claim about the quality of the
 suggestions is currently checkable. Ask each pilot church, in writing, whether one of their

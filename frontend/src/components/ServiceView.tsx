@@ -8,6 +8,7 @@ import Section from './Section'
 import ServiceTimeline from './ServiceTimeline'
 import ServiceTranscript from './ServiceTranscript'
 import StationServices from './StationServices'
+import Report from './Report'
 import Still from './Still'
 import Steps from './Steps'
 
@@ -73,9 +74,38 @@ function CostNote({ analysis }: { analysis: NonNullable<Service['analysis']> }) 
       )}. Dat kost tokens: ongeveer <strong>{analysis.tokens.toLocaleString('nl-NL')} tokens</strong>, dus rond de{' '}
       <strong>€ {analysis.costEur.toFixed(2).replace('.', ',')}</strong> met {analysis.model}. De video en het geluid blijven
       op deze computer.
+      <Privacy />
     </p>
   )
 }
+
+/**
+ * The short version, where somebody is already reading about what goes out.
+ *
+ * Folded shut on purpose. A volunteer cutting a clip does not need this every Sunday, and a
+ * church council deciding whether to allow the app at all needs more than four sentences,
+ * which is what the link is for. What it must not be is absent: the honest answer here is a
+ * good one, and it is only a weakness while nobody has written it down.
+ */
+const Privacy = () => (
+  <details className="privacy">
+    <summary>Wat gaat er precies naar buiten?</summary>
+    <p>
+      Alleen de uitgeschreven tekst van de preek, naar Anthropic, met jullie eigen sleutel.
+      Nooit beeld of geluid. Onder de zakelijke voorwaarden van de API wordt die tekst niet
+      gebruikt om modellen te trainen. Naar de maker van deze app gaat niets; er zit geen
+      telemetrie in.
+    </p>
+    <p>
+      Let op wat er in zo&apos;n tekst kan staan. Noemt de voorganger tijdens de preek de naam
+      van iemand die ziek is, dan gaat die naam mee. Wil de kerk dat niet, dan houdt{' '}
+      <code>LLM_PROVIDER=ollama</code> in <code>config.env</code> alles binnen het gebouw.
+    </p>
+    <p>
+      <a href="/privacy" target="_blank" rel="noreferrer">De hele pagina, om aan de kerkenraad te geven ↗</a>
+    </p>
+  </details>
+)
 
 export default function ServiceView({ onOpenClip }: Props) {
   const [service, setService] = useState<Service | null>(null)
@@ -352,7 +382,12 @@ export default function ServiceView({ onOpenClip }: Props) {
       <Steps steps={STEPS} current={service && hasVideo ? STEP_FOR_STATUS[service.status] : 0} />
 
       {offline && <div className="offline">Geen verbinding met de app. Staat het zwarte venster nog open? Het werk gaat daar gewoon door; zodra de verbinding terug is, zie je de voortgang weer.</div>}
-      {error && <div className="error">{error}</div>}
+      {error && (
+        <div className="error">
+          {error}
+          <Report trouble={error} service={service?.id} small />
+        </div>
+      )}
 
       {showSource && !hasVideo && uploading === null && (
         <div className="seg source-pick">
@@ -459,7 +494,12 @@ export default function ServiceView({ onOpenClip }: Props) {
             {/* Without a recording the failure is the link's, and its own message says more
                 than the general "try the last step again" would. */}
             {(hasVideo || service.status !== 'error') && <p className="say">{STATUS_TEXT[service.status]}</p>}
-            {service.status === 'error' && <div className="error" style={{ marginTop: '0.8rem', marginBottom: 0 }}>{service.error}</div>}
+            {service.status === 'error' && (
+              <div className="error" style={{ marginTop: '0.8rem', marginBottom: 0 }}>
+                {service.error}
+                <Report trouble={service.error ?? ''} service={service.id} small />
+              </div>
+            )}
             {service.warning && <div className="warning">{service.warning}</div>}
             {busy && stopping && <p className="hint">Stoppen kan een halve minuut duren; de app maakt het huidige stukje eerst af.</p>}
             {/* Making the clips reports in the dock, which is on screen wherever you have

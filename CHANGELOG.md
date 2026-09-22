@@ -22,6 +22,23 @@ voorging als je kerk dat invult op je eigen pagina. Dat beeldje loopt mee naar b
 blijft bij de dienst staan in de app, ook nadat de opname is opgeruimd. Wie voorging gaat
 ook mee naar Claude, als naam en verder niets, dus namen worden beter verstaan.
 
+**Als het misgaat, heb je iets om te sturen.** Alles wat het zwarte venster zegt komt nu ook
+in `logs/preekstof.log` te staan, met de vier vorige keren ernaast. Naast elke foutmelding, en
+onderin het gereedheidspaneel, staat **Melding opslaan**: dat zet één bestand bij je downloads
+met wat er misging, deze computer, de laatste regels van het logboek en je instellingen. De
+sleutel is eruit gehaald. Er gaat niets automatisch ergens heen; jij mailt het, of je mailt het
+niet.
+
+**Een download in plaats van een clone.** Bij Releases op GitHub staat nu een zip die alles
+bevat wat de app nodig heeft. Uitpakken, start.bat of start.command aanklikken, klaar. Bij het
+starten kijkt de app één keer of er een nieuwere is en zegt dat in het zwarte venster, met wat
+er verandert en waar je hem haalt. Bijwerken doe je zelf, wanneer het jou uitkomt.
+
+**Op papier wat er naar buiten gaat.** `PRIVACY.md` staat erbij: één pagina voor een
+kerkenraad, over wat er op de computer blijft, wat er naar Claude gaat, en wat er in een
+uitgeschreven preek kan staan waar je niet aan denkt. De korte versie staat in de app, bij de
+kosten.
+
 **Geen Kladblok meer nodig.** De sleutel hoeft niet meer met de hand in config.env. Hij
 wordt geschreven én meteen in gebruik genomen, dus de app hoeft er niet voor herstart.
 

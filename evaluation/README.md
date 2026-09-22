@@ -5,6 +5,19 @@ measured on, so "better" is a number rather than an impression.
 
 ## Adding a service
 
+Out of a service the app has already done, which is the short way:
+
+```bash
+.venv/bin/python -m tools.adopt service-a1b2c3d4 --as 2026-03-08-kruispunt
+```
+
+That copies the transcript across and takes the moments from the clips that were actually
+made, which is the honest answer to "what did this church post". A service with no clips is
+refused rather than adopted with an empty answer key. Fill in `church` and `permission`
+afterwards; **ask first**, and see `TOESTEMMING.md` for the mail to send.
+
+By hand, when the service is not in this installation:
+
 One folder per service, named however you like:
 
 ```text
@@ -48,3 +61,18 @@ what people said. Keep them here locally, or in a private folder pointed at with
 ```
 
 Write down the baseline before changing a prompt, and compare after.
+
+## What the pilot itself measured
+
+The app writes down what each run took while it works, in `logs/runs.jsonl`. No church name,
+no title, no word of anybody's transcript, so a pilot church can mail that file without
+reading it first. It also rides along in the zip that **Melding opslaan** makes.
+
+```bash
+.venv/bin/python -m tools.pilot
+.venv/bin/python -m tools.pilot --file ~/meldingen/kruispunt/runs.jsonl --json
+```
+
+The one to watch is *uit de top 5*: how many of the clips a church actually made were among
+the five the app put first. That is the question the whole pilot is for, and it is the one
+number no impression will ever give you.

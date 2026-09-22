@@ -10,8 +10,8 @@ export default defineConfig({
     // Everything the API answers on. A route missing here fails in dev only, as index.html
     // coming back where JSON was expected, so the list is kept complete on purpose.
     proxy: Object.fromEntries(
-      ['/brands', '/church', '/fonts', '/health', '/kerkdienstgemist', '/logos', '/music',
-       '/outro', '/projects', '/services', '/setup', '/storage', '/templates', '/words'].map((path) => [path, backend]),
+      ['/brands', '/church', '/diagnose', '/fonts', '/health', '/kerkdienstgemist', '/logos', '/music',
+       '/outro', '/privacy', '/projects', '/services', '/setup', '/storage', '/templates', '/words'].map((path) => [path, backend]),
     ),
   },
 })

@@ -1,0 +1,61 @@
+# Tag a commit and a church gets something to download.
+#
+#   git tag v0.9.1 && git push origin v0.9.1
+#
+# The tag has to match backend/version.py, because the number the app says out loud during a
+# support call and the number on the download page being different is worse than either
+# being wrong. The build below refuses the tag rather than shipping the mismatch.
+name: release
+
+on:
+  push:
+    tags: ["v*"]
+
+permissions:
+  contents: write
+
+jobs:
+  zip:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: The tag and the app must say the same number
+        run: |
+          tagged="${GITHUB_REF_NAME#v}"
+          said=$(python -c "import sys; sys.path.insert(0, '.'); from backend import version; print(version.VERSION)")
+          echo "tag: $tagged   backend/version.py: $said"
+          if [ "$tagged" != "$said" ]; then
+            echo "::error::De tag zegt $tagged en backend/version.py zegt $said."
+            exit 1
+          fi
+
+      # The interface is committed so a church needs no Node, but a release must never ship
+      # a build that is older than the code in the same zip.
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+      - run: npm ci
+        working-directory: frontend
+      - run: npm run build
+        working-directory: frontend
+      - name: The committed interface must be the one this code builds
+        run: git diff --exit-code frontend/dist
+
+      - run: python -m tools.release --out dist --version "${GITHUB_REF_NAME#v}"
+
+      - name: What a church downloads
+        uses: softprops/action-gh-release@v2
+        with:
+          files: dist/*.zip
+          body_path: CHANGELOG.md
+          draft: true
+          fail_on_unmatched_files: true

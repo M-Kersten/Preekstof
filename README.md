@@ -21,7 +21,9 @@ There are two entry points on the page:
 
 ## Quick start (no technical knowledge needed)
 
-1. Download this project as a folder (green **Code** button → **Download ZIP** on GitHub, then unzip) or clone it.
+1. Download the newest release: **Releases** on GitHub → `preekstof-<versie>.zip`, and unzip it
+   wherever you like. That zip holds everything the app needs to run, so no git and no Node.
+   (The green **Code** button works too, and so does a clone.)
 2. Start it:
    - **Windows**: double-click `start.bat`.
    - **macOS**: double-click `start.command`. If macOS says the file cannot be opened, right-click it, choose **Open**, and confirm once.
@@ -36,10 +38,22 @@ editable under **Merk instellen**, and **Instellen opnieuw** walks through it ag
 
 Settings live in `config.env` next to `start.bat` (created on first start). The welcome writes
 the key there; `LLM_PROVIDER=ollama` keeps everything on the machine for a church that will not
-send transcript text anywhere. The speech model (about 460 MB) is downloaded on the first
+send transcript text anywhere. What goes where, in one page a church council can read, is
+`PRIVACY.md`; the short version sits in the app next to the cost estimate. The speech model (about 460 MB) is downloaded on the first
 transcription.
 
 The built web interface is committed in `frontend/dist`, so Node.js is not needed to run the app. Developers who change the frontend run `npm run build` in `frontend/` and commit the result.
+
+On every start the app asks GitHub once whether there is a newer release, and says so in the
+black window with one line about what changed and where to get it. It never installs anything
+by itself: a church rebuilding unattended at ten to ten on a Sunday morning is a worse outcome
+than a church running last month's version. No internet, or GitHub not answering, means the
+app starts without mentioning updates at all.
+
+Making a release, for whoever maintains this: bump `backend/version.py`, write what changed in
+`CHANGELOG.md`, commit, then `git tag v0.9.1 && git push origin v0.9.1`. The tag builds the zip
+and opens a draft release. It refuses the tag if the number does not match `version.py`, or if
+the committed `frontend/dist` is not what the code in that commit builds.
 
 ## Requirements
 
@@ -52,6 +66,30 @@ The built web interface is committed in `frontend/dist`, so Node.js is not neede
   - Windows: a full build from https://www.gyan.dev/ffmpeg/builds/ (added to `PATH`)
 
 The first transcription downloads the faster-whisper model (default `small`, roughly 460 MB) into the Hugging Face cache. After that no network access is needed.
+
+### How long a service takes, measured
+
+Transcription is the long pole, and the most common way a pilot fails is a computer that is
+too slow and an expectation nobody set. So the readiness panel states a number for the machine
+it is running on, before the first upload. The table it falls back to holds only machines that
+were really timed, with the `small` model on a real Dutch service:
+
+| Machine | Engine | Seconds of work per second of audio | A service of 90 minutes |
+| --- | --- | ---: | ---: |
+| 4-core x86_64 (a container, 493 s of preaching) | faster-whisper, processor | 0.20 | 18 minutes |
+| Apple Silicon, processor | faster-whisper | not measured | — |
+| Apple Silicon, graphics chip | mlx-whisper | not measured | — |
+| NVIDIA card | faster-whisper, CUDA | not measured | — |
+
+The rows that say *not measured* say that on purpose. A guessed row is worse than no row,
+because it is the number a church plans its Sunday around. Filling one in: run a real service,
+open `templates/speed.json`, and add the number to `MEASURED` in `backend/speed.py` with the
+processor as `platform.processor()` reports it.
+
+Until a machine has written out one service, the panel quotes the table as a range and says it
+is an indication. From the second service onwards it quotes the median of what this computer
+has really done, which cannot be argued with. Over two hours for one service is not green:
+that is not slow, it is unusable, and the panel says so.
 
 Dutch church words are fed to the speech model through `templates/woordenlijst.json`, shared by
 every church; `templates/woordenlijst.example.json` is the shipped copy, with the reasoning at the
@@ -463,6 +501,22 @@ if the moments get worse, at the old price in minutes.
 
 Only transcript text is sent to the model, never video or audio. Before you press **Beste momenten zoeken**, the interface says whether the service goes out in one piece or several, roughly how many tokens that is and what it costs at list price, converted from Anthropic's dollar list at `EUR_PER_USD` from `config.env`. For the hour-long service in `tests/service_text.py` that is one call, about 2,700 tokens and € 0,03 with Claude Opus 5. With `LLM_PROVIDER=ollama` it says the run is free and stays on the machine.
 
+### What a pilot measured
+
+While the app works it writes one line per run into `logs/runs.jsonl`: how long writing out
+took, what a search cost and how long it took, how many moments were offered and how many
+became clips, and how many of those were in the five the app put first. No church name, no
+title, no word of anybody's transcript, so that file can be mailed without reading it first.
+
+```bash
+.venv/bin/python -m tools.pilot            # the four numbers, in words
+.venv/bin/python -m tools.pilot --json     # the same, for a spreadsheet
+```
+
+The one that matters is how many made clips came out of the top five. A church that makes four
+clips and finds three of them at the top is being served by the ranking; one that finds them at
+number nine is not, and no impression would have told you which.
+
 ### Measuring whether the suggestions are any good
 
 Prompt changes feel like improvements. `evaluation/` is the fixed set that says whether they
@@ -527,6 +581,14 @@ give back.
 ## When something goes wrong
 
 - The app bar shows a check of everything the app needs: FFmpeg, the speech model, the analysis model, free disk space and writable folders. It opens by itself when a check fails and says what to do.
+- Everything the black window says is kept in `logs/preekstof.log`, and the four previous runs
+  sit beside it. The file is capped, so a job that loops all night cannot fill the disk the
+  recording needs.
+- Next to any error, and at the bottom of the readiness panel, sits **Melding opslaan**. It
+  downloads one zip: what went wrong, this machine, the readiness checks, the last four hundred
+  log lines, `config.env`, and the state of the service that failed. The API key is struck out
+  of all of it, twice over. Nothing is sent anywhere by the app; a person attaches it to a mail
+  or does not. That is the whole of the telemetry in this program.
 - Windows lets go of a file when it feels like it. Every save goes through a temporary file
   and a rename, and Windows refuses a rename onto a file that anything else has open, which
   includes the virus scanner reading what was just written. `models.write_atomic` gives each

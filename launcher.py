@@ -47,6 +47,20 @@ def say(message: str) -> None:
     print(f"[Preekstof] {message}", flush=True)
 
 
+def keep_the_window() -> None:
+    """Write down what this window says, so a failure leaves something to send.
+
+    Everything after this point goes to logs/preekstof.log as well as to the screen. It
+    runs after the packages are installed, because it needs the backend, and before
+    anything else, because the failures worth reading about are the early ones.
+    """
+    from backend import logbook
+
+    kept = logbook.begin()
+    if kept is None:
+        say("Het logboek kon niet geopend worden; de app draait gewoon door.")
+
+
 def announce() -> None:
     """Say which version this is, in the window and on its title bar.
 
@@ -370,6 +384,27 @@ def ensure_frontend() -> None:
 # --- server -------------------------------------------------------------------
 
 
+def mention_updates() -> None:
+    """Say once, on start, that there is a newer one. Never install it.
+
+    On its own thread with a short timeout, because a church whose internet is down must
+    not wait on GitHub to get to its own app. Anything that goes wrong here is silence.
+    """
+    def ask() -> None:
+        try:
+            from backend import updates
+
+            said = updates.note()
+        except Exception:  # noqa: BLE001  never a reason not to start
+            return
+        for line in said.splitlines():
+            say(line)
+
+    thread = threading.Thread(target=ask, daemon=True)
+    thread.start()
+    thread.join(timeout=8)
+
+
 def port_in_use(port: int) -> bool:
     with socket.socket() as s:
         return s.connect_ex(("127.0.0.1", port)) == 0
@@ -387,6 +422,7 @@ def open_browser_when_ready(url: str) -> None:
 def main() -> None:
     os.chdir(ROOT)
     ensure_requirements()
+    keep_the_window()  # before anything else has a chance to fail
     announce()  # after the install, so the import of backend.version can succeed
     load_config()
     # The speech model cache falls back to copies on Windows without developer mode; that is fine.
@@ -394,6 +430,7 @@ def main() -> None:
     ensure_cuda()  # after load_config: WHISPER_DEVICE lives in config.env
     ensure_ffmpeg()
     ensure_frontend()
+    mention_updates()
     url = f"http://localhost:{PORT}"
     if port_in_use(PORT):
         say(f"Something is already running on port {PORT}; opening {url}.")

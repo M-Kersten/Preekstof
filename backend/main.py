@@ -6,19 +6,20 @@
 import os
 import shutil
 import statistics
+import time
 from pathlib import Path
 
 import traceback
 
 from fastapi import Body, FastAPI, HTTPException, Request, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import FileResponse, JSONResponse
+from fastapi.responses import FileResponse, JSONResponse, Response
 from fastapi.staticfiles import StaticFiles
 
 from contextlib import asynccontextmanager
 from datetime import datetime, timezone
 
-from . import brands, clips, discovery, fetch, fonts, health, kerkdienstgemist, outro, renderer, settings, setup, storage, tracking, transcription, version, wordlearn
+from . import brands, clips, diagnose, discovery, fetch, fonts, health, journal, kerkdienstgemist, outro, renderer, settings, setup, speed, storage, tracking, transcription, version, wordlearn
 from .jobs import Cancelled, Estimator, Job, JobManager
 from .models import (ROOT, SERVICES_DIR, TEMPLATES_DIR, ChurchInfo, ClipCandidate, ClipOrigin, CropWindow, MusicSettings, ProcessedClip, Project, Watermark,
                      ProjectDetail, Service, ServiceDetail, Style, Track, Transcript, load_church_info, load_project,
@@ -623,6 +624,41 @@ def read_health():
     return health.report()
 
 
+PRIVACY = ROOT / "PRIVACY.md"
+
+
+@app.get("/privacy")
+def read_privacy():
+    """The page a church council reads, served from the file that ships with the app.
+
+    Plain text rather than a rendered page: it is a document to print and hand over, and
+    the copy on disk is the one that travels with this version. A church reading it in the
+    app and a church reading it in the folder read the same words.
+    """
+    if not PRIVACY.is_file():
+        raise HTTPException(404, "PRIVACY.md staat niet naast de app.")
+    return Response(content=PRIVACY.read_text(encoding="utf-8"),
+                    media_type="text/plain; charset=utf-8")
+
+
+@app.get("/diagnose")
+def read_diagnosis(trouble: str = "", service: str = ""):
+    """One zip to attach to a mail: what went wrong, on which machine, with which settings.
+
+    A download rather than a file dropped on the desktop, because the browser then says
+    where it landed and the volunteer already knows how to find it. Nothing is sent
+    anywhere by the app; this hands the church a file and stops there.
+    """
+    sid = service.strip() or None
+    if sid and not (SERVICES_DIR / sid / "service.json").is_file():
+        sid = None  # a service that is gone is no reason to refuse the report
+    return Response(
+        content=diagnose.build(trouble, sid),
+        media_type="application/zip",
+        headers={"Content-Disposition": f'attachment; filename="{diagnose.name_for(sid)}"'},
+    )
+
+
 @app.get("/fonts", response_model=list[fonts.FontFamily])
 def read_fonts():
     """Font families found in templates/fonts, plus the system font."""
@@ -963,11 +999,21 @@ def transcribe_service(service_id: str):
 
         # A scan, not the finished article: only a few minutes of an hour and a half ever
         # become clips, and those are written out again in process_selected, properly.
+        how = transcription.scanning()
+        began = time.monotonic()
         transcript = transcription.transcribe(
             service_dir(service.id) / service.sourceVideo, service_dir(service.id) / "work",
             on_progress=on_progress, duration=service.sourceInfo.duration, should_stop=job.check,
-            how=transcription.scanning(),
+            how=how,
         )
+        # What this really took on this machine, so the readiness panel can stop guessing.
+        # A run that resumed after a closed laptop counts the whole recording against the
+        # time it took this once; the median over several services washes that out.
+        took = time.monotonic() - began
+        speed.remember(service.sourceInfo.duration, took, transcription.engine(), how.model)
+        journal.note("uitschrijven", service=service.id, audio=service.sourceInfo.duration,
+                     seconds=took, engine=transcription.engine(), model=how.model,
+                     accurate=service.accurate)
         save_service_transcript(service, transcript)
         if transcription.DEVICE_NOTE:
             # The card was asked for and could not be used. Saying so here is the difference
@@ -1026,9 +1072,17 @@ def analyze_service(service_id: str):
             job.advance(fraction)
             job.message = message
 
+        began = time.monotonic()
         result = discovery.discover(transcript, on_progress, should_stop=job.check, cache_dir=cache,
                                     duration=service.sourceInfo.duration if service.sourceInfo else None,
                                     about=sermon_context(service))
+        told = discovery.estimate(transcript, service.sourceInfo.duration if service.sourceInfo else None)
+        journal.note("zoeken", service=service.id, seconds=time.monotonic() - began,
+                     windows=result.windows, failed=result.failed,
+                     found=len(result.candidates),
+                     shortlisted=sum(1 for c in result.candidates if c.shortlisted),
+                     tokens=told.get("tokens"), cost=told.get("costEur"),
+                     model=told.get("model"))
         # Read back what was cut by hand while this was running, before writing.
         service.candidates = keep_own(service.id, result.candidates)
         service.shape = result.shape
@@ -1290,6 +1344,13 @@ def process_selected(service_id: str):
         # makes the time left worth printing.
         left = Estimator(settle=8.0)
         each = 1 / len(selected)
+        began = time.monotonic()
+        # Which of the suggestions were taken, counted against how many the app offered and
+        # how many it put first. This is the number the whole pilot is for.
+        offered = len(service.candidates)
+        shortlisted = [c.id for c in service.candidates if c.shortlisted][:5]
+        from_top5 = sum(1 for c in selected if c.id in shortlisted)
+        own = sum(1 for c in selected if c.source != "found")
         for n, cand in enumerate(selected, start=1):
             job.check()
             share = (n - 1) * each
@@ -1320,6 +1381,10 @@ def process_selected(service_id: str):
                 if c.id == cand.id:
                     c.selected = False
             save_service(service)
+
+        journal.note("clips", service=service.id, seconds=time.monotonic() - began,
+                     offered=offered, made=len(selected), fromTop5=from_top5, ownCuts=own,
+                     accurate=service.accurate)
 
     return run_service_job(service, "processing", "complete", work)
 

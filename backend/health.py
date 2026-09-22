@@ -8,7 +8,7 @@ from pathlib import Path
 
 from pydantic import BaseModel
 
-from . import discovery, mac, storage, transcription, version, vision
+from . import discovery, mac, speed, storage, transcription, version, vision
 from .models import PROJECTS_DIR, ROOT, SERVICES_DIR, TEMPLATES_DIR
 from .transcription import MODEL_SIZE
 
@@ -52,6 +52,22 @@ def _whisper() -> Check:
                      detail=f"{MODEL_SIZE} op de processor. Deze Mac kan het op de grafische chip, "
                             "wat een stuk sneller is: installeer backend/requirements-mac.txt.")
     return Check(name="Spraakmodel", ok=True, detail=f"{MODEL_SIZE} {where}, klaar voor gebruik")
+
+
+def _speed() -> Check:
+    """How long a service takes on this computer.
+
+    The most common pilot failure is a computer that is too slow and an expectation nobody
+    set. A church that reads this before the first upload can decide to use a different
+    machine; one that finds out on Sunday afternoon has already stopped using the app.
+    """
+    said = speed.sentence(transcription.engine(), MODEL_SIZE)
+    rate = speed.known(transcription.engine(), MODEL_SIZE)
+    # Two hours for one service is not broken, it is unusable, and it should not be green.
+    workable = rate is None or rate.minutes_for() <= 120
+    return Check(name="Snelheid", ok=workable, detail=said if workable else
+                 said + " Dat is te lang om vol te houden. Een computer met een snellere "
+                        "processor, of een Mac met mlx-whisper, scheelt hier het meest.")
 
 
 def _tracking() -> Check:
@@ -112,7 +128,7 @@ def _folders() -> Check:
 
 
 def report() -> dict:
-    checks = [_ffmpeg(), _whisper(), _tracking(), _llm(), _disk(), _folders()]
+    checks = [_ffmpeg(), _whisper(), _speed(), _tracking(), _llm(), _disk(), _folders()]
     # The version rides along with the checks because this is the panel somebody already
     # opens when something is wrong, and it is the first thing a support call asks for.
     return {"ok": all(c.ok for c in checks), "version": version.full(),

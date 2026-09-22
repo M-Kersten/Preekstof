@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { api, type Health } from '../api'
+import Report from './Report'
 
 /** Shows whether the app has everything it needs. Opens by itself when something is wrong. */
 export default function SystemCheck() {
@@ -55,8 +56,14 @@ export default function SystemCheck() {
             </li>
           ))}
           {/* The first question on every support call, in the panel somebody already opens
-              when something is wrong. */}
-          <li className="syscheck-version">Preekstof {report.version}</li>
+              when something is wrong. Next to it, the thing to send along: a volunteer who
+              has got this far has already been told something is not right. */}
+          <li className="syscheck-version">
+            <span>Preekstof {report.version}</span>
+            <Report trouble={failing.length
+              ? `Gemeld vanuit het gereedheidspaneel. Niet in orde: ${failing.map((c) => c.name).join(', ')}.`
+              : 'Gemeld vanuit het gereedheidspaneel, terwijl alle controles op groen stonden.'} />
+          </li>
         </ul>
       )}
     </div>

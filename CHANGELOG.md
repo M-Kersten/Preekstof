@@ -22,6 +22,16 @@ voorging als je kerk dat invult op je eigen pagina. Dat beeldje loopt mee naar b
 blijft bij de dienst staan in de app, ook nadat de opname is opgeruimd. Wie voorging gaat
 ook mee naar Claude, als naam en verder niets, dus namen worden beter verstaan.
 
+**Meer kerkwoorden bereiken het spraakmodel.** Van de zeventig woorden in de woordenlijst
+kwamen er dertig helemaal niet aan, waaronder alle bijbelboeken: Whisper leest maar een stukje
+van zo'n lijst en de rest valt eraf zonder dat iemand dat merkt. Er blijkt een tweede plek te
+zijn die net zo groot is, en die was ongebruikt. Alles wat niet paste gaat daar nu heen. Op een
+voorgelezen testzin kwamen er zo 11 van de 12 kerkwoorden terug in plaats van 7, en op een
+tweede zin 4 van de 8 in plaats van nul. In
+`woordenlijst.json` staat nu ook een lijst `hotwords` waar je zelf woorden bij kunt zetten.
+
+Op een Mac met mlx-whisper bestaat die tweede plek niet, dus daar verandert er niets.
+
 **Eén keer klikken op Windows.** Had je nog geen Python, dan installeerde start.bat hem en
 vroeg daarna om het venster te sluiten en opnieuw te beginnen. Dat hoeft niet meer: hij zoekt
 zelf op waar Python terechtkwam en gaat door. En start.bat praat nu Nederlands.

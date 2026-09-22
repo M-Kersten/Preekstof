@@ -105,6 +105,32 @@ characters of Dutch church vocabulary. A longer list is not a better one: past t
 head that disappears, so a 1300-token list of everything leaves the model with whatever happened to
 land at the end.
 
+**There is a second budget of the same size.** The same `get_prompt` takes `hotwords` and gives it
+its own 223 tokens next to the prompt rather than a share of it, so the two together carry roughly
+twice what either can. It is cut off at the *other* end (`hotwords_tokens[:max_length // 2 - 1]`),
+which is why the two lists in `templates/woordenlijst.json` run in opposite orders: `words` is
+droppable-first because the prompt keeps its tail, `hotwords` is precious-first because this keeps
+its head.
+
+Whatever the prompt has no room for goes there by itself, and with the shipped list that is thirty
+of the seventy words, every Bible book among them. Measured with the `small` model at the settings
+the scan really uses (`WHISPER_SCAN_BEAM=1`), on two spoken sentences, counting the church words
+that came back:
+
+| | zin 1 (8 woorden) | zin 2 (12 woorden) |
+| --- | ---: | ---: |
+| no prompt at all | 0 | 7 |
+| `initial_prompt` only (up to 0.9.0) | 0 | 7 |
+| prompt plus `hotwords` | 4 | 11 |
+
+Two sentences of synthetic speech, so the size of the gain is not measured, only its direction.
+What is certain without measuring anything is that thirty words which reached the model nowhere
+at all now reach it. Worth reading twice: on sentence 1 the prompt on its own scored the same as
+no prompt, which is what a list looks like once everything in it has fallen off the front.
+
+On a Mac with mlx-whisper there is no second budget: mlx takes `initial_prompt` and nothing else,
+so that path keeps only what fits in the prompt.
+
 So the file holds `words` in groups, ordered from droppable to precious inside each group and
 between them, and `initial_prompt()` trims from the front until what is left fits. Words the model
 already gets right earn nothing and are left out; what is in there is what it gets wrong. A church's

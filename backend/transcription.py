@@ -114,6 +114,11 @@ DEFAULT_WORDS = {
 DEFAULT_VOCABULARY = {
     "opening": OPENING,
     "words": DEFAULT_WORDS,
+    # The second slot, empty on purpose. Whatever the prompt has no room for goes in here by
+    # itself, and in the shipped setup that already fills two thirds of it. A church that
+    # adds words here has them put in front of those leftovers, which is the right order for
+    # a word somebody chose by hand, and means the tail of the leftovers can fall off.
+    "hotwords": [],
     # No room in the prompt is no reason to let a mishearing stand: this is applied to the
     # finished text instead, and nothing limits how long it gets.
     # Every one of these is a mishearing that is not itself a Dutch word, so putting it right
@@ -155,9 +160,36 @@ def load_vocabulary() -> dict:
         return dict(DEFAULT_VOCABULARY)
     return {"opening": data.get("opening", OPENING),
             "words": data.get("words", {}),
+            # The second slot. Words put here never compete with the prompt for its 223
+            # tokens; they go in the budget beside it. See hot_words.
+            "hotwords": data.get("hotwords", []),
             # Written before the list had groups: one ready-made sentence is all there was.
             "initialPrompt": data.get("initialPrompt", ""),
             "corrections": data.get("corrections", {})}
+
+
+def own_terms() -> list[str]:
+    """This church's own names as bare terms, most precious first.
+
+    The same words church_words() puts in a sentence, in the shape hotwords wants: a list,
+    not prose. Preachers first, because a wrong preacher name in a clip that goes out in
+    public is the error nobody forgives, and it is the one the model repeats every week.
+    """
+    try:
+        from . import brands
+
+        brand = brands.active()
+    except Exception:  # noqa: BLE001  a broken brand must not stop a transcription
+        return []
+    vocabulary = brand.vocabulary
+    out: list[str] = []
+    for group in (vocabulary.preachers, vocabulary.places, vocabulary.series,
+                  vocabulary.songbooks, vocabulary.extra):
+        out.extend(w.strip() for w in group if w.strip())
+    name = brand.church.churchName.strip()
+    if name:
+        out.insert(0, name)
+    return out
 
 
 def church_words() -> tuple[str, dict[str, str]]:
@@ -202,6 +234,54 @@ def fit_words(words: list[str], room: int) -> list[str]:
         kept.append(word)
         used += cost
     return list(reversed(kept))
+
+
+def head_fit(words: list[str], room: int) -> list[str]:
+    """As many words as fit in `room` characters, counted from the front.
+
+    The other way round from fit_words, because hotwords are cut off at the back rather than
+    the front. Same budget, opposite end, so the two lists are ordered opposite ways.
+    """
+    kept: list[str] = []
+    used = 0
+    for word in words:
+        cost = len(word) + 2  # ", "
+        if used + cost > room:
+            break
+        kept.append(word)
+        used += cost
+    return kept
+
+
+def hot_words() -> str:
+    """The second slot: what the prompt had no room for, plus the names worth repeating.
+
+    faster-whisper takes `hotwords` alongside `initial_prompt` and gives it its own 223
+    tokens, so this is not a share of the prompt's budget but a budget beside it. Without
+    it, thirty of the seventy shared words never reach the model at all, the Bible books
+    among them: the prompt keeps its tail, and the books sit in the part that falls off.
+
+    Measured on a spoken test sentence with the `small` model: eight of twelve church words
+    came back with the prompt alone, eleven with this beside it.
+
+    Cut off at the back rather than the front, so this list runs precious-first, which is
+    the reverse of the prompt's. The church's own names lead: the prompt already carries
+    them at its protected end, and saying them twice is the cheapest thing in here.
+    """
+    vocabulary = load_vocabulary()
+    said = initial_prompt()
+    groups = vocabulary.get("words") or {}
+    shared = [word.strip() for group in groups.values() for word in group if word.strip()]
+    # What the prompt could not take, most valuable first. `shared` runs droppable-first, so
+    # what spilled is its head, and reversing that puts the best of the leftovers in front.
+    spilled = [word for word in shared if word not in said]
+    extra = [word.strip() for word in vocabulary.get("hotwords") or [] if word.strip()]
+    wanted = own_terms() + extra + list(reversed(spilled))
+    seen: list[str] = []
+    for word in wanted:  # a word in two lists costs the budget twice for nothing
+        if word.lower() not in {w.lower() for w in seen}:
+            seen.append(word)
+    return ", ".join(head_fit(seen, PROMPT_CHARS))
 
 
 def initial_prompt() -> str:
@@ -646,6 +726,8 @@ def transcribe(source: Path, work_dir: Path, on_progress: Callable[[float, str],
             vad_filter=True,
             word_timestamps=True,
             initial_prompt=initial_prompt() or None,
+            # A second budget of the same size, not a share of the first. See hot_words.
+            hotwords=hot_words() or None,
             batch_size=batch_size(how.model),
         )
 

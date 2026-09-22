@@ -1,16 +1,30 @@
 {
   "_lees_dit": [
-    "Whisper leest alleen de laatste 223 tokens van deze prompt en gooit de rest weg zonder",
-    "iets te zeggen. Dat is ongeveer 510 tekens. Een langere lijst is dus geen betere lijst:",
-    "voorbij de grens verdwijnt de kop, niet de staart.",
-    "Daarom staat deze lijst op volgorde van weggooibaar naar kostbaar, binnen elke groep en",
-    "tussen de groepen. De app knipt vanaf het begin tot wat overblijft past.",
+    "Er zijn twee plekken waar woorden naar het spraakmodel gaan, met allebei hun eigen",
+    "ruimte van 223 tokens (ongeveer 510 tekens). Ze delen die ruimte niet.",
+    "",
+    "1. 'words' wordt een zin die als prompt meegaat. Whisper leest daarvan alleen het",
+    "   LAATSTE stuk, dus wat vooraan staat valt eraf. Daarom staat deze lijst op volgorde",
+    "   van weggooibaar naar kostbaar: de app knipt vanaf het begin.",
+    "2. 'hotwords' is de tweede plek. Daar wordt juist het EERSTE stuk gelezen en valt de",
+    "   staart eraf, dus die lijst loopt andersom: kostbaar eerst.",
+    "",
+    "Wat niet in de prompt paste gaat vanzelf naar hotwords, en dat scheelt: gemeten op een",
+    "voorgelezen testzin kwamen er met alleen de prompt 7 van de 12 kerkwoorden terug, en",
+    "met hotwords erbij 11. Zonder hotwords haalden de bijbelboeken het model helemaal niet.",
+    "",
+    "Zet je hier zelf woorden in 'hotwords', dan gaan die voor die restanten. In de",
+    "standaardopstelling is ongeveer 120 tekens over; wat daar niet meer bij past valt af.",
+    "",
     "Zet er alleen woorden in die het model fout hoort. Woorden die het toch al goed",
     "verstaat ('geloof', 'gebed', 'kerk') kosten ruimte en leveren niets op.",
     "Namen van je eigen voorgangers, series en locaties horen niet hier maar in het merk,",
-    "onder Merk en afsluiter. Die worden altijd achteraan gezet en nooit weggeknipt.",
-    "Wat niet in de prompt past, zet je bij 'corrections': dat wordt achteraf op de tekst",
-    "toegepast en daar zit geen grens aan."
+    "onder Merk en afsluiter. Die gaan altijd naar allebei de plekken en vallen nooit af.",
+    "Wat nergens meer bij past, zet je bij 'corrections': dat wordt achteraf op de tekst",
+    "toegepast en daar zit geen grens aan.",
+    "",
+    "Let op: op een Mac met mlx-whisper bestaat die tweede plek niet. Daar gaat alleen de",
+    "prompt mee, en blijft het dus bij wat daarin past."
   ],
   "opening": "Opname van een Nederlandse kerkdienst. Er komen woorden in voor als:",
   "words": {
@@ -95,6 +109,7 @@
       "Jezus Christus"
     ]
   },
+  "hotwords": [],
   "corrections": {
     "lee": "Lied",
     "lie": "Lied",

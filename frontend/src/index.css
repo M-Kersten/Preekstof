@@ -505,82 +505,91 @@ input[type='checkbox'] { accent-color: var(--purple); width: 1rem; height: 1rem;
 }
 
 /* the first five minutes
-   No rules under headings, no boxed feature grid, no uppercase labels. What carries it is
-   the size of the question, the room around it, and one drawing of what comes out. */
+   Two ends on the dark panel, three questions on white in between, so the pitch looks like
+   a pitch and the work looks like work. No rules under headings, no boxed feature grid, no
+   uppercase labels: the size of the question and the room around it carry it. */
 .appbar.bare-bar { justify-content: flex-start; }
-.welcome { max-width: 54rem; margin: 2.2rem auto 0; }
+.welcome { max-width: 52rem; margin: 2.4rem auto 0; }
 
-/* Where you are, said once and quietly, with a hairline that fills as you go. */
+/* Where you are, in one line: the name, a hairline that fills, the count. */
 .welcome-where {
-  display: flex; align-items: baseline; justify-content: space-between;
-  font-size: 0.85rem; font-weight: 600; color: var(--purple); margin-bottom: 0.45rem;
+  display: flex; align-items: center; gap: 1rem; margin-bottom: 0.9rem;
+  font-size: 0.82rem; font-weight: 600; color: var(--purple);
 }
-.welcome-rail { height: 2px; background: var(--line); border-radius: 2px; overflow: hidden; }
+.welcome-rail { flex: 1; height: 2px; background: var(--line); border-radius: 2px; overflow: hidden; }
 .welcome-rail span { display: block; height: 100%; background: var(--purple); transition: width 0.35s ease; }
+.welcome-where .tc { color: var(--muted); font-weight: 500; }
 
-.welcome-body { padding: 2.4rem 0 0; }
-.welcome-split { display: grid; grid-template-columns: 1fr 17rem; gap: 2.6rem; align-items: center; }
-.welcome-one { max-width: 34rem; }
+.welcome .panel {
+  background: var(--white); border: 1px solid var(--line); border-radius: 20px;
+  padding: 2.5rem 2.6rem;
+}
+.welcome .panel.dim {
+  background: var(--deep); border-color: transparent; color: var(--deep-ink);
+  box-shadow: 0 18px 46px rgba(42, 17, 64, 0.24);
+}
+.welcome .spread { display: grid; grid-template-columns: 1fr 14.5rem; gap: 2.6rem; align-items: center; }
+.welcome .column { max-width: 33rem; }
 
 .welcome h1 {
-  font-size: clamp(1.7rem, 3.4vw, 2.3rem); line-height: 1.08; letter-spacing: -0.03em;
-  margin-bottom: 0.7rem; max-width: 24ch;
+  font-size: clamp(1.75rem, 3.5vw, 2.35rem); line-height: 1.06; letter-spacing: -0.035em;
+  margin-bottom: 0.8rem; max-width: 17ch;
 }
-.welcome-one h1 { max-width: 22ch; }
-.welcome .lead { font-size: 1.02rem; line-height: 1.55; color: var(--ink); max-width: 46ch; margin: 0; }
-.welcome .hint { max-width: 46ch; }
+.welcome .column h1 { max-width: 20ch; }
+.welcome .lead { font-size: 1.02rem; line-height: 1.55; max-width: 44ch; }
+.welcome .aside { font-size: 0.88rem; line-height: 1.55; color: var(--muted); max-width: 44ch; margin-top: 1rem; }
+.welcome .hint { max-width: 44ch; }
+.welcome .soft { font-size: 0.85rem; color: var(--muted); }
 
-/* Facts, not a feature grid: no borders, no columns, nothing to look at but the words. */
-.welcome ul.plain { list-style: none; margin: 1.3rem 0 0; padding: 0; }
-.welcome ul.plain li {
-  position: relative; padding-left: 1.1rem; margin-bottom: 0.45rem;
-  font-size: 0.92rem; color: var(--muted); line-height: 1.5;
-}
-.welcome ul.plain li::before {
-  content: ''; position: absolute; left: 0; top: 0.62em; width: 5px; height: 5px;
-  border-radius: 50%; background: var(--gold);
-}
+/* the dark end panels */
+.panel.dim h1 { color: var(--white); }
+.panel.dim .lead { color: rgba(237, 230, 244, 0.92); }
+.panel.dim .aside { color: rgba(237, 230, 244, 0.6); }
+.panel.dim .soft { color: rgba(237, 230, 244, 0.55); }
+/* One gold call to action on the dark, the same as the render button on the stage. */
+.panel.dim .primary { background: var(--gold); border-color: var(--gold); color: var(--deep); box-shadow: none; }
+.panel.dim .primary:hover:not(:disabled) { background: #DCA829; border-color: #DCA829; }
 
 .welcome label {
-  display: block; font-size: 0.82rem; font-weight: 600; color: var(--purple);
-  margin: 1.5rem 0 0.4rem;
+  display: block; font-size: 0.8rem; font-weight: 600; color: var(--purple);
+  margin: 1.6rem 0 0.4rem;
 }
-.welcome input { width: 100%; box-sizing: border-box; font-size: 1rem; padding: 0.6rem 0.8rem; }
+.welcome input { width: 100%; box-sizing: border-box; font-size: 1rem; padding: 0.62rem 0.8rem; }
 .welcome .two { display: grid; grid-template-columns: 1fr 1fr; gap: 0 1rem; }
-.welcome .two label { margin-top: 1.1rem; }
-.welcome .two-up { display: flex; gap: 0.6rem; }
-.welcome .two-up input { flex: 1; }
-.welcome .two-up button { flex: none; padding: 0.6rem 1.1rem; }
+.welcome .two label { margin-top: 1.2rem; }
+.welcome .beside { display: flex; gap: 0.6rem; }
+.welcome .beside input { flex: 1; }
+.welcome .beside button { flex: none; padding: 0.62rem 1.2rem; }
 
-/* The address bar fragment, with the bit they are looking for lit up. */
+/* the address, with the bit they are hunting for lit up */
 .welcome .address {
   font-family: var(--mono); font-size: 0.92rem; color: var(--muted);
-  background: var(--lavender); border-radius: 9px; padding: 0.65rem 0.9rem; margin: 1.3rem 0 0;
+  background: var(--lavender); border-radius: 10px; padding: 0.7rem 0.9rem; margin-top: 1.3rem;
 }
 .welcome .address mark { background: none; color: var(--purple); font-weight: 700; }
+.welcome code { font-family: var(--mono); font-size: 0.88rem; }
 
-.welcome .acts { display: flex; align-items: center; gap: 0.9rem; flex-wrap: wrap; margin-top: 1.8rem; }
-.welcome .acts .primary { padding: 0.6rem 1.4rem; font-size: 0.98rem; }
+.welcome .acts { display: flex; align-items: center; gap: 1rem; flex-wrap: wrap; margin-top: 1.9rem; }
+.welcome .acts .primary { padding: 0.62rem 1.5rem; font-size: 0.98rem; }
 .welcome button.quiet {
-  border: none; background: none; padding: 0; color: var(--muted);
-  font-size: 0.88rem; font-weight: 500;
+  border: none; background: none; padding: 0; color: var(--muted); font-size: 0.88rem; font-weight: 500;
 }
 .welcome button.quiet:hover:not(:disabled) { color: var(--purple); background: none; }
-.welcome .good { color: var(--green); font-size: 0.9rem; font-weight: 600; margin: 0.9rem 0 0; }
-.welcome-error { margin: 1.4rem 0 0; }
+.welcome .good { color: var(--green); font-size: 0.9rem; font-weight: 600; margin-top: 1rem; max-width: 44ch; }
+.welcome-error { margin: 1.5rem 0 0; }
 
-/* what the app makes, drawn once */
-.scene { width: 100%; height: auto; display: block; }
+.reel { width: 100%; height: auto; display: block; }
 @media (max-width: 860px) {
-  .welcome-split { grid-template-columns: 1fr; gap: 1.8rem; }
-  .scene { max-width: 15rem; }
+  .welcome .panel { padding: 1.9rem 1.5rem; }
+  .welcome .spread { grid-template-columns: 1fr; gap: 1.8rem; }
+  .reel { max-width: 13rem; }
   .welcome .two { grid-template-columns: 1fr; }
 }
-/* On a phone the drawing would sit between the button and the footer, pushing the one
-   thing to press away from the thumb. It says nothing the words do not. */
-@media (max-width: 620px) { .scene { display: none; } }
+/* On a phone it would sit between the button and the foot, pushing the one thing to press
+   away from the thumb. It says nothing the words do not. */
+@media (max-width: 620px) { .reel { display: none; } }
 
-.welcome-foot { margin-top: 2.6rem; font-size: 0.8rem; color: var(--muted); }
+.welcome-foot { margin-top: 1.6rem; font-size: 0.8rem; color: var(--muted); }
 .welcome-foot button.quiet { font-size: 0.8rem; text-decoration: underline; text-underline-offset: 2px; }
 
 /* a moment somebody cut out of the transcript themselves */

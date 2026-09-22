@@ -174,6 +174,30 @@ export interface Health {
   checks: HealthCheck[]
 }
 
+/** One step of the proof: whether it ran, what it found, and how long it took. */
+export interface SelfTestStep {
+  step: string
+  name: string
+  ok: boolean
+  detail: string
+  seconds: number
+  skipped: boolean
+}
+
+export interface SelfTestResult {
+  ok: boolean
+  /** What the speech model read back out of the spoken sentence. */
+  heard: string
+  steps: SelfTestStep[]
+  at: string
+}
+
+export interface SelfTest {
+  last: SelfTestResult | null
+  hasClip: boolean
+  job: RenderStatus | null
+}
+
 /** What the welcome still has to ask a church, and what it can already fill in. */
 export interface SetupState {
   done: boolean
@@ -431,6 +455,9 @@ export const api = {
   render: (id: string) => request<RenderStatus>(`/projects/${id}/render`, { method: 'POST' }),
   stopRender: (id: string) => request<RenderStatus>(`/projects/${id}/render/stop`, { method: 'POST' }),
   health: () => request<Health>('/health'),
+  /** Ten seconds through the whole chain, so nobody finds out on a Sunday. */
+  selfTest: () => request<SelfTest>('/selftest'),
+  runSelfTest: () => request<RenderStatus>('/selftest', { method: 'POST' }),
   storage: () => request<StorageReport>('/storage'),
   cleanOne: (kind: StorageItem['kind'], id: string) =>
     request<StorageReport>('/storage/clean', json('POST', { kind, id })),

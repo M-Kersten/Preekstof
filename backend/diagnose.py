@@ -26,7 +26,7 @@ import zipfile
 from datetime import datetime
 from pathlib import Path
 
-from . import health, journal, logbook, settings, version
+from . import health, journal, logbook, selftest, settings, version
 from .models import ROOT, SERVICES_DIR
 
 CONFIG = ROOT / "config.env"
@@ -101,6 +101,18 @@ def first_page(trouble: str, service_id: str | None) -> str:
     for name, value in about_this_machine().items():
         said.append(f"{name}: {value}")
     said.append("")
+    said.append("--- deed deze computer het werk ooit ---")
+    proof = selftest.last()
+    if not proof:
+        said.append("De proef is hier nooit gedraaid. Vraag erom: die zegt binnen een minuut "
+                    "welke stap het begeeft, en hij staat onderin het gereedheidspaneel.")
+    else:
+        when = str(proof.get("at", ""))[:16].replace("T", " ")
+        for step in proof.get("steps", []):
+            mark = "ok  " if step.get("ok") else "FOUT"
+            said.append(f"{mark} {step.get('name', '?')}: {step.get('detail', '')}")
+        said.append(f"(de proef liep op {when})")
+    said.append("")
     said.append("--- wat er niet klaarstond ---")
     report = health.report()
     missing = [c for c in report["checks"] if not c["ok"]]
@@ -126,6 +138,11 @@ def build(trouble: str = "", service_id: str | None = None) -> bytes:
     with zipfile.ZipFile(kept, "w", zipfile.ZIP_DEFLATED) as out:
         out.writestr("melding.txt", first_page(trouble, service_id))
         out.writestr("gereedheid.json", json.dumps(health.report(), indent=2, ensure_ascii=False))
+        # Whether this machine ever did the work, as opposed to whether the files are there.
+        # It answers the first question a support mail raises and nobody thinks to ask.
+        proof = selftest.last()
+        if proof:
+            out.writestr("proef.json", json.dumps(proof, indent=2, ensure_ascii=False))
         out.writestr("logboek.txt", logbook.without_secrets(logbook.tail(LOG_LINES))
                      or "(er is deze keer niets opgeschreven)")
         out.writestr("instellingen.txt", settings_as_text())

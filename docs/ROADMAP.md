@@ -467,6 +467,149 @@ measured rather than designed.
 
 ---
 
+## Phase 5 · Believable on the first Sunday
+
+Phase 4 made the app shippable. This phase is about the hour after it is shipped.
+
+A pilot does not fail on a crash. It fails in the first hour, at the moment somebody cannot
+tell whether the thing is working or hung, and again three weeks later when it stops for a
+reason nobody can read. Both of those are quiet. Nobody writes to say "I waited eleven
+minutes at four percent and gave up"; they simply stop opening it, and you find out at the
+end of the pilot that two of the five churches used it twice.
+
+So the question here is not whether the app can do the work. It can. The question is
+whether a volunteer, alone in a church office on a Sunday afternoon, keeps believing it is
+doing the work.
+
+**Not in this phase, on purpose.** No new output, no new panel, no better clips. Everything
+below either shortens the time somebody spends not knowing, or turns a silent failure into
+a sentence.
+
+### Step 21 · Prove it works, in one minute, before it matters — gedaan (0.9.0)
+Serves (onboarding, support)
+
+**Wat er staat.** Onderin het gereedheidspaneel staat **Doe de proef**. Die haalt
+`selftest/proef.opus`, één gesproken Nederlandse zin van negen seconden en 22 kB, door
+dezelfde vier stappen als een echte dienst: geluid eruit met FFmpeg, het spraakmodel dat de
+zin terugleest, de detectoren over elk beeld, en een render naar 1080×1920 met een ondertitel
+erin gebrand. Elke stap zegt of hij liep en hoe lang hij deed. De clip komt eronder te staan
+om te bekijken, en wat het model terugleest staat er in zijn eigen woorden bij, fouten en al.
+
+**Gemeten.** Op de machine waar dit gebouwd is: 1,4 + 6,5 + 1,3 + 5,5 seconden, met het model
+al in de cache. De eerste keer op een lege machine kost het de 460 MB download erbij.
+
+**Waarom het niet perfect hoeft.** De zin is met espeak-ng gemaakt, dus niemands stem, en
+whisper verstaat hem niet woord voor woord. De proef kijkt of genoeg ankerwoorden terugkomen
+in plaats van of de zin klopt; een test die perfectie eist zou afgaan op een machine die het
+prima doet.
+
+**Ook.** De uitkomst gaat mee in de zip van **Melding opslaan**, en `melding.txt` opent er nu
+mee. Een melding van een machine die de proef nooit gedraaid heeft zegt dat ook, want dat is
+het eerste wat je terug zou vragen.
+
+**Build.** One button that runs ten seconds of built-in audio through the whole chain:
+audio out of a file, the speech model, following a face, a rendered clip with a caption on
+it. It says which of the four worked and how long each took, and it leaves the result on
+screen to look at.
+
+**Why.** Today a church finds out that FFmpeg is missing, or the model never downloaded, or
+the card cannot be used, twenty minutes into its first real service. Everything in the
+readiness panel is a check on whether a file exists; none of it is a check on whether the
+work actually runs. This is also the first thing to ask for in a support mail, and the
+answer fits in the report `Melding opslaan` already makes.
+
+**Done.** A fresh install with no speech model downloaded presses one button and, within a
+few minutes, either has a clip on screen or a line naming which step failed and why. The
+outcome rides along in the diagnostic zip.
+
+### Step 22 · Never stand still without saying why — gedaan (0.9.0)
+Serves (onboarding)
+
+**Wat er staat.** De eerste keer uitschrijven haalt het spraakmodel op, en dat staat nu in de
+balk: *Spraakmodel wordt opgehaald · 147 van 148 MB · dit gebeurt één keer*. Ongeveer één
+melding per megabyte, dus leesbaar in plaats van flikkerend. `WhisperModel(size)` haalde het
+zelf op en zei niets; het gebeurt nu in `fetch_model`, waar het geteld kan worden. FFmpeg in
+het zwarte venster zegt nu ook hoeveel van hoeveel.
+
+**Drie dingen die dit lastiger maakten dan het klinkt.** De download van faster-whisper zet
+de voortgangsbalk hard uit, dus die weg is dicht. Sinds hf-xet worden de bestanden ergens
+anders in elkaar gezet en blijft de cachemap leeg tot het eind, dus bytes op schijf tellen
+geeft vijf megabyte van vierhonderd en dan een sprong. En Hugging Face maakt twee balken over
+dezelfde download, één voor de lijn en één voor het weer in elkaar zetten, dus optellen telt
+elke megabyte dubbel. Het wordt nu geteld in onze eigen subclass, de verste van de twee telt,
+en tqdm's eigen teller wordt niet gelezen omdat die stilvalt zodra de balk uit staat, wat
+deze app zelf veroorzaakt in `quiet_hub_notices`.
+
+**Gaat er iets mis, dan verandert er niets.** Elke fout in dit pad geeft de maat ongewijzigd
+terug en laat `WhisperModel` het zelf ophalen, stil, zoals het altijd ging.
+
+**Build.** The speech model is 460 MB, downloaded on the first transcription. While that
+happens the panel says "Het spraakmodel wordt geladen" and the bar sits at four percent, for
+as long as the church's line takes. Report the download itself: megabytes, a moving bar, and
+a sentence saying this happens once. The same for FFmpeg in the launcher, which already has
+a percentage in the black window and nothing in the browser.
+
+**Why.** It is the only place in the app where nothing moves and nothing is said, and it
+falls on the very first run, which is the run that decides whether there is a second.
+
+**Done.** A first transcription on a machine with an empty cache shows megabytes arriving
+and the words "dit gebeurt één keer". Nobody has to look at the black window to know the
+app is alive.
+
+### Step 23 · Refuse the job you cannot finish
+Serves (2)
+
+**Build.** Estimate what a job needs before starting it, from the size of the recording, and
+refuse with a number when the disk cannot hold it. Point at **Ruimte vrijmaken** and say how
+much is standing there.
+
+**Why.** A render that fills the disk at eighty percent is the worst failure this app has:
+it costs the work already done, and it leaves nothing free to clean up with. The readiness
+panel warns below three gigabytes, which is a different thing from knowing that this
+particular service will not fit.
+
+**Done.** A disk with too little room says so before the first byte is written, with the
+number it needs and the number it has. Staged on purpose in a test.
+
+### Step 24 · Let the first start be one start
+Serves (onboarding)
+
+**Build.** On a machine without Python, `start.bat` installs it and then asks the volunteer
+to close the window and run the file again. Ship an embeddable Python in the release zip
+instead, so the first double-click is the only double-click. Nothing about the installer
+question changes; this works inside the zip that already exists.
+
+**Why.** That second action is where a willing church stops, and it is the failure you will
+never hear about, because it happens before there is anything to report.
+
+**Done.** A Windows machine with no Python runs the app from one double-click, and the
+winget branch is gone from `start.bat`.
+
+### Step 25 · Say "op" when it is op
+Serves (support)
+
+**Build.** A rate limit and an empty account both arrive as a 429. The first is worth
+waiting out and the app does, with growing pauses. The second never comes good, and the app
+waits anyway and then reports a limit. Tell them apart, and say the one that means money.
+While there: one heavy job at a time per machine, so two browser tabs cannot make each other
+slow for no visible reason.
+
+**Why.** "Het zegt dat het vol is" is what a church reports when the answer is that somebody
+has to put twenty euro on an account. Weeks of a pilot can go that way.
+
+**Done.** An account with no credit says so in one sentence naming the console page, without
+retrying first. Starting a second heavy job says what is already running.
+
+### What this phase is measured on
+
+Not a feature list. Three things, at the end of the pilot:
+
+- every church got to a first clip without a phone call;
+- every stop the app made was one somebody could read;
+- `logs/runs.jsonl` came back from more than one church.
+
+---
+
 ## Deliberately deferred
 
 Multi-platform publishing, scheduling, an asset library, analytics, thumbnail generation, output

@@ -100,3 +100,8 @@ def test_what_git_does_not_track_cannot_end_up_in_a_release():
 def test_the_privacy_page_travels_with_the_app(built):
     """A church council reads the copy that belongs to the version they are running."""
     assert "PRIVACY.md" in inside(built)
+
+
+def test_the_sentence_the_proof_uses_travels_with_the_app(built):
+    """Without it the proof cannot run, and the proof is what a new church presses first."""
+    assert "selftest/proef.opus" in inside(built)

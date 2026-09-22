@@ -200,7 +200,10 @@ def download(url: str, target: Path) -> None:
             out.write(chunk)
             done += len(chunk)
             if total:
-                print(f"\r  {done * 100 // total:3d}%  ({done // 1_000_000} MB)", end="", flush=True)
+                # Of how many, not just how far: "12 MB" says nothing about how long this is
+                # going to take, and this is the first thing a new install waits on.
+                print(f"\r  {done * 100 // total:3d}%  ({done // 1_000_000} of "
+                      f"{total // 1_000_000} MB)", end="", flush=True)
         print()
 
 

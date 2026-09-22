@@ -65,7 +65,7 @@ the committed `frontend/dist` is not what the code in that commit builds.
   - Ubuntu/Debian: `sudo apt install ffmpeg`
   - Windows: a full build from https://www.gyan.dev/ffmpeg/builds/ (added to `PATH`)
 
-The first transcription downloads the faster-whisper model (default `small`, roughly 460 MB) into the Hugging Face cache. After that no network access is needed.
+The first transcription downloads the faster-whisper model (default `small`, roughly 460 MB) into the Hugging Face cache, and says so while it happens: *Spraakmodel wordt opgehaald · 147 van 484 MB · dit gebeurt één keer*. After that no network access is needed.
 
 ### How long a service takes, measured
 
@@ -581,6 +581,13 @@ give back.
 ## When something goes wrong
 
 - The app bar shows a check of everything the app needs: FFmpeg, the speech model, the analysis model, free disk space and writable folders. It opens by itself when a check fails and says what to do.
+- Every one of those checks asks whether a file is where it should be. **Doe de proef**, at the
+  bottom of that same panel, asks whether the work runs: it takes the nine-second spoken
+  sentence in `selftest/` through audio extraction, the speech model, the detectors and a
+  1080×1920 render with a burned-in caption, and says per step whether it worked and how long
+  it took. An FFmpeg built without libass, a model that half-downloaded, a card that cannot
+  decode: all of those show up here in a minute instead of twenty minutes into a real service.
+  The outcome travels in the report below.
 - Everything the black window says is kept in `logs/preekstof.log`, and the four previous runs
   sit beside it. The file is capped, so a job that loops all night cannot fill the disk the
   recording needs.

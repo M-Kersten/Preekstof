@@ -203,7 +203,7 @@ def fake_whisper(monkeypatch):
     import faster_whisper
 
     monkeypatch.setattr(faster_whisper, "BatchedInferencePipeline", FakePipeline)
-    monkeypatch.setattr(transcription, "get_model", lambda size=None: object())
+    monkeypatch.setattr(transcription, "get_model", lambda size=None, on_progress=None: object())
     monkeypatch.setattr(transcription, "initial_prompt", lambda: "")
     monkeypatch.setattr(transcription, "load_vocabulary", lambda: {"corrections": {}})
     asked: list[dict] = []

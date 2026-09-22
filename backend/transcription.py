@@ -1,5 +1,6 @@
 """Dutch speech-to-text with faster-whisper."""
 
+import io
 import json
 import logging
 import os
@@ -312,6 +313,149 @@ def quiet_hub_notices() -> None:
         logging.getLogger(name).setLevel(logging.ERROR)
 
 
+# What the speech models weigh, so a bar can move before the first byte is counted. These
+# are the download, not what they take on disk after unpacking.
+MODEL_MB = {"tiny": 75, "base": 145, "small": 484, "medium": 1530, "large-v2": 3090,
+            "large-v3": 3090, "distil-large-v3": 1510}
+
+
+def model_repo(size: str) -> str | None:
+    """Which Hugging Face repository holds this model."""
+    if "/" in size:
+        return size
+    try:
+        from faster_whisper import utils
+
+        return utils._MODELS.get(size)
+    except Exception:  # noqa: BLE001
+        return f"Systran/faster-whisper-{size}" if size else None
+
+
+def base_bar() -> type:
+    """The tqdm class Hugging Face uses, to inherit from rather than imitate.
+
+    `huggingface_hub.utils.tqdm` is a class until something imports the submodule of that
+    name, after which the attribute is the module and subclassing it raises. Both spellings
+    turn up depending on what else has been imported, so both are tried, and plain tqdm is
+    there for the day they rename it again.
+    """
+    try:
+        from huggingface_hub.utils import tqdm as maybe
+
+        if isinstance(maybe, type):
+            return maybe
+        found = getattr(maybe, "tqdm", None)
+        if isinstance(found, type):
+            return found
+    except Exception:  # noqa: BLE001
+        pass
+    from tqdm.auto import tqdm
+
+    return tqdm
+
+
+class Arriving:
+    """What has come in so far, out of the progress bars Hugging Face keeps.
+
+    Since hf-xet came along the files are assembled somewhere else and the cache folder
+    stays empty until the very end, so counting bytes on disk reports five megabytes of
+    four hundred and then jumps. The bars are the only honest signal left.
+
+    There are two of them over the same download, one for what comes over the wire and one
+    for what gets put back together. Adding them up counts every megabyte twice, so this
+    takes the furthest-along of them and the largest total, each on its own. Neither can
+    overshoot the download, and a release of theirs that adds a third bar changes nothing.
+
+    What it must not do is read tqdm's own counter. A bar that is switched off keeps taking
+    updates and quietly stops adding them up, and this app switches them off itself, in
+    quiet_hub_notices, to keep Hugging Face's housekeeping advice out of the window. So the
+    bytes are added up here, where nothing else can decide they do not matter.
+    """
+
+    def __init__(self, expected: float, report: Callable[[float, str], None]):
+        self.expected = expected
+        self.report = report
+        self.bars: list = []
+        self.lock = threading.Lock()
+        self.said = -1.0
+
+    def note(self) -> None:
+        with self.lock:
+            done = max((b.seen for b in self.bars), default=0.0)
+            widest = max((float(getattr(b, "total", 0) or 0) for b in self.bars), default=0.0)
+            total = max(widest, self.expected, done)
+            share = min(0.99, done / total) if total else 0.0
+            # Once per megabyte is plenty. A callback per chunk is thousands of writes to a
+            # job message nobody reads faster than they can blink.
+            if done and abs(done - self.said) < 1e6:
+                return
+            self.said = done
+        self.report(share, f"Spraakmodel wordt opgehaald \u00b7 {done / 1e6:.0f} van "
+                           f"{total / 1e6:.0f} MB \u00b7 dit gebeurt \u00e9\u00e9n keer")
+
+    def bar(self):
+        """A progress bar Hugging Face can use, that counts instead of drawing.
+
+        Built on their own tqdm rather than from scratch. Their downloader reaches for more
+        of tqdm than a progress bar looks like it needs, and which parts differ per version;
+        inheriting means a new release cannot take the download down over a method nobody
+        here has heard of. The drawing goes to a sink, because the window already has the
+        line this writes.
+        """
+        counter = self
+        hub_tqdm = base_bar()
+
+        class Counted(hub_tqdm):
+            def __init__(self, *args, **kwargs):
+                kwargs["file"] = io.StringIO()
+                kwargs["leave"] = False
+                self.seen = float(kwargs.get("initial") or 0)
+                super().__init__(*args, **kwargs)
+                with counter.lock:
+                    counter.bars.append(self)
+                counter.note()
+
+            def update(self, n=1):
+                done = super().update(n)
+                self.seen += float(n or 0)
+                counter.note()
+                return done
+
+        return Counted
+
+
+def fetch_model(size: str, on_progress: Callable[[float, str], None] | None = None) -> str:
+    """Fetch the model with the download in plain sight, and hand back the folder.
+
+    `WhisperModel(size)` downloads it silently. On a first run that is 460 MB of nothing
+    happening while the interface says "Het spraakmodel wordt geladen" and the bar sits at
+    four percent, which is the one moment in this app where it looks broken and is not.
+
+    faster-whisper's own `download_model` hard-codes a disabled progress bar, so this asks
+    Hugging Face directly with the same patterns it uses. Anything that goes wrong hands the
+    size back unchanged and lets `WhisperModel` do its own downloading, quietly, the way it
+    always did; a model that is already here comes back in a moment and says nothing.
+    """
+    repo = model_repo(size)
+    if on_progress is None or not repo:
+        return size
+    try:
+        import huggingface_hub
+    except Exception:  # noqa: BLE001
+        return size
+
+    counter = Arriving(MODEL_MB.get(size, 0) * 1e6, on_progress)
+    try:
+        return huggingface_hub.snapshot_download(
+            repo,
+            allow_patterns=["config.json", "preprocessor_config.json", "model.bin",
+                            "tokenizer.json", "vocabulary.*"],
+            tqdm_class=counter.bar(),
+        )
+    except Exception:  # noqa: BLE001  never a reason not to transcribe
+        return size
+
+
 def compute_for(device: str) -> str:
     """Which number format to decode in. int8 on the processor, float16 on a card."""
     if COMPUTE_TYPE:
@@ -319,7 +463,7 @@ def compute_for(device: str) -> str:
     return CPU_COMPUTE if device == "cpu" else "float16"
 
 
-def load_whisper(size: str):
+def load_whisper(size: str, on_progress: Callable[[float, str], None] | None = None):
     """Build the model on the card when there is one, and on the processor when there is not.
 
     A Windows machine with WHISPER_DEVICE=cuda and no CUDA libraries used to take the whole
@@ -333,6 +477,9 @@ def load_whisper(size: str):
     from faster_whisper import WhisperModel
 
     gpu.make_findable()
+    # Downloaded here, where it can be counted, rather than inside WhisperModel where it
+    # cannot. Hands back the same string when there is nothing to fetch or nobody watching.
+    size = fetch_model(size, on_progress)
     device = "cuda" if DEVICE == "auto" else DEVICE
     if device == "cpu":
         return WhisperModel(size, device="cpu", compute_type=compute_for("cpu"))
@@ -348,16 +495,16 @@ def load_whisper(size: str):
         return WhisperModel(size, device="cpu", compute_type=CPU_COMPUTE)
 
 
-def get_model(size: str | None = None):
+def get_model(size: str | None = None, on_progress: Callable[[float, str], None] | None = None):
     """The loaded model of this size, kept for the life of the process."""
     size = size or MODEL_SIZE
     with _models_lock:
         if size not in _models:
             quiet_hub_notices()
-            from faster_whisper import WhisperModel
+            from faster_whisper import WhisperModel  # noqa: F401  checked before we go on
 
             try:
-                _models[size] = load_whisper(size)
+                _models[size] = load_whisper(size, on_progress)
             except Exception as exc:  # noqa: BLE001
                 raise RuntimeError(
                     f"Het spraakmodel '{size}' kon niet geladen worden. De eerste keer wordt het gedownload; "
@@ -483,7 +630,12 @@ def transcribe(source: Path, work_dir: Path, on_progress: Callable[[float, str],
     else:
         from faster_whisper import BatchedInferencePipeline
 
-        model = get_model(how.model)
+        # The model phase owns its own slice of the bar, and on a first run that slice is a
+        # 460 MB download. Everything reported from in there lands inside it.
+        def while_fetching(share: float, message: str) -> None:
+            report(EXTRACT_SHARE + MODEL_SHARE * share, message)
+
+        model = get_model(how.model, while_fetching)
         if should_stop:
             should_stop()
         report(base + (1 - base) * (done_to / duration) if duration else base, TEXT)

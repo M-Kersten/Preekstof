@@ -19,7 +19,7 @@ from fastapi.staticfiles import StaticFiles
 from contextlib import asynccontextmanager
 from datetime import datetime, timezone
 
-from . import brands, clips, diagnose, discovery, fetch, fonts, health, journal, kerkdienstgemist, outro, renderer, settings, setup, speed, storage, tracking, transcription, version, wordlearn
+from . import brands, clips, diagnose, discovery, fetch, fonts, health, journal, kerkdienstgemist, outro, renderer, selftest, settings, setup, speed, storage, tracking, transcription, version, wordlearn
 from .jobs import Cancelled, Estimator, Job, JobManager
 from .models import (ROOT, SERVICES_DIR, TEMPLATES_DIR, ChurchInfo, ClipCandidate, ClipOrigin, CropWindow, MusicSettings, ProcessedClip, Project, Watermark,
                      ProjectDetail, Service, ServiceDetail, Style, Track, Transcript, load_church_info, load_project,
@@ -198,7 +198,7 @@ def transcribe_project(project_id: str):
                 seen["phase"] = phase
                 job.start_phase()
             job.advance(fraction)
-            wording = SPEECH_PHASE[phase]
+            wording = SPEECH_PHASE.get(phase, phase)
             job.message = left.note(fraction, wording) if phase == transcription.TEXT else wording
 
         transcript = transcription.transcribe(
@@ -624,6 +624,56 @@ def read_health():
     return health.report()
 
 
+SELFTEST = "zelftest"  # the job key; there is only ever one of these running
+
+
+@app.post("/selftest")
+def start_selftest():
+    """Run ten seconds through the whole chain and say which parts worked.
+
+    A job rather than a request that waits: on a machine that has never downloaded the
+    speech model this takes minutes, and the progress is the point.
+    """
+    if jobs.is_running(SELFTEST):
+        raise HTTPException(409, "De proef loopt al.")
+
+    def work(job: Job) -> None:
+        shutil.rmtree(selftest.WORK, ignore_errors=True)
+
+        def on_progress(fraction: float, message: str) -> None:
+            job.advance(fraction)
+            job.message = SPEECH_PHASE.get(message, message)
+
+        result = selftest.run(selftest.WORK, on_progress)
+        selftest.remember(result)
+        journal.note("zelftest", ok=result.ok,
+                     **{o.step: round(o.seconds, 1) for o in result.outcomes})
+        if not result.ok:
+            broke = [o.name for o in result.outcomes if not o.ok and not o.skipped]
+            raise RuntimeError(f"Dit werkte niet: {', '.join(broke) or 'onbekend'}. "
+                               "Hieronder staat per stap wat er misging.")
+
+    return jobs.start(SELFTEST, work).to_dict()
+
+
+@app.get("/selftest")
+def read_selftest():
+    """What the last run said, and whether one is going on now."""
+    job = jobs.get(SELFTEST)
+    said = selftest.last()
+    return {"last": said, "hasClip": selftest.clip_path() is not None,
+            "job": job.to_dict() if job.status != "idle" else None}
+
+
+@app.get("/selftest/clip")
+def read_selftest_clip():
+    """The clip the proof made, so somebody can see it rather than read that it worked."""
+    made = selftest.clip_path()
+    if made is None:
+        raise HTTPException(404, "Er staat geen proefclip klaar. Draai de proef eerst.")
+    return FileResponse(made, media_type="video/mp4", filename="preekstof-proef.mp4")
+
+
 PRIVACY = ROOT / "PRIVACY.md"
 
 
@@ -994,7 +1044,7 @@ def transcribe_service(service_id: str):
                 seen["phase"] = phase
                 job.start_phase()
             job.advance(fraction)
-            wording = SPEECH_PHASE[phase]
+            wording = SPEECH_PHASE.get(phase, phase)
             job.message = left.note(fraction, wording) if phase == transcription.TEXT else wording
 
         # A scan, not the finished article: only a few minutes of an hour and a half ever
@@ -1227,7 +1277,7 @@ def write_out(project: Project, accurate: bool = False, on_progress=None, should
         source, start, length = clips.source_of(project)
         if project.sourceInfo is None or not project.sourceInfo.hasAudio:
             return project
-        said = (lambda f, phase: on_progress(f, SPEECH_PHASE[phase])) if on_progress else None
+        said = (lambda f, phase: on_progress(f, SPEECH_PHASE.get(phase, phase))) if on_progress else None
         heard = transcription.transcribe(
             source, project_dir(project.id) / "work", on_progress=said,
             duration=length, should_stop=should_stop, start=start,

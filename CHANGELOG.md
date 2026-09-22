@@ -22,6 +22,17 @@ voorging als je kerk dat invult op je eigen pagina. Dat beeldje loopt mee naar b
 blijft bij de dienst staan in de app, ook nadat de opname is opgeruimd. Wie voorging gaat
 ook mee naar Claude, als naam en verder niets, dus namen worden beter verstaan.
 
+**Niet meer stilstaan zonder iets te zeggen.** De eerste keer uitschrijven haalt een
+spraakmodel van 460 MB op. Tot nu toe zei de balk "Het spraakmodel wordt geladen" en stond
+hij op vier procent, hoe lang het ook duurde. Nu staat er hoeveel megabyte binnen is, van
+hoeveel, en dat het één keer gebeurt.
+
+**Doe de proef.** Onderin het gereedheidspaneel staat een knop die tien seconden gesproken
+tekst door de hele molen haalt: geluid eruit, uitschrijven, beelden nakijken, een clip maken.
+Je ziet per stap of het werkte en hoe lang het duurde, en de clip komt eronder te staan. Gaat
+er iets mis, dan weet je dat binnen een minuut in plaats van twintig minuten nadat je een
+dienst van anderhalf uur hebt ingezet. Wat eruit komt gaat mee in een melding.
+
 **Als het misgaat, heb je iets om te sturen.** Alles wat het zwarte venster zegt komt nu ook
 in `logs/preekstof.log` te staan, met de vier vorige keren ernaast. Naast elke foutmelding, en
 onderin het gereedheidspaneel, staat **Melding opslaan**: dat zet één bestand bij je downloads

@@ -5,6 +5,7 @@ import { useChurch } from './church'
 import BrandPanel, { type BrandTab } from './components/BrandPanel'
 import ClipEditor from './components/ClipEditor'
 import ServiceView from './components/ServiceView'
+import ProofPanel from './components/ProofPanel'
 import StoragePanel from './components/StoragePanel'
 import SystemCheck from './components/SystemCheck'
 import Welcome from './components/Welcome'
@@ -56,6 +57,7 @@ export default function App() {
   const [mode, setMode] = useState<Mode>(() => (remembered(MODE_KEY) === 'clip' ? 'clip' : 'service'))
   const [projectId, setProjectId] = useState<string | null>(null)
   const [tidying, setTidying] = useState(false)
+  const [proving, setProving] = useState(false)
   const [branding, setBranding] = useState(false)
   const [brandTab, setBrandTab] = useState<BrandTab>('church')
   const [setup, setSetup] = useState<SetupState | null>(null)
@@ -145,7 +147,7 @@ export default function App() {
           </button>
         </nav>
 
-        <SystemCheck />
+        <SystemCheck onProve={() => setProving(true)} />
 
         {/* Things that open on top of your work and close again. Outlined, never filled, so
             they cannot be mistaken for the page you are on. */}
@@ -181,6 +183,7 @@ export default function App() {
       </main>
       {branding && <BrandPanel tab={brandTab} onClose={() => setBranding(false)} />}
       {tidying && <StoragePanel onClose={() => setTidying(false)} />}
+      {proving && <ProofPanel onClose={() => setProving(false)} />}
     </>
   )
 }

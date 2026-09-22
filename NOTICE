@@ -20,6 +20,10 @@ Nunito, Open Sans, Oswald, Poppins, Roboto
     SIL Open Font License 1.1. Each family's licence text sits next to the files as
     templates/fonts/OFL-<family>.txt.
 
+selftest/proef.opus — the sentence the self-test speaks
+    Not third-party and nobody's voice: made with espeak-ng, whose output is not a recording
+    of a person. See selftest/README.md for the command that produced it.
+
 frontend/public/icon.svg, the Preekstof name and mark
     Not third-party. Copyright Merijn Kersten, covered by LICENSE, and not granted for use
     apart from this software.

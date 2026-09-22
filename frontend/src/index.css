@@ -941,6 +941,49 @@ input[type='checkbox'] { accent-color: var(--purple); width: 1rem; height: 1rem;
 .syscheck-list li span:last-child { color: var(--muted); }
 .syscheck-list li.bad span:last-child { color: var(--danger); }
 
+/* The proof: ten seconds through the whole chain, with a clip at the end of it. */
+.syscheck-list li.syscheck-prove {
+  grid-template-columns: 10px 1fr auto; align-items: center; gap: 0.5rem 0.6rem;
+  margin-top: 0.4rem; padding-top: 0.6rem; border-top: 1px solid var(--line);
+}
+.syscheck-prove .dot { background: var(--purple); }
+.syscheck-prove div { display: flex; flex-direction: column; gap: 0.1rem; min-width: 0; }
+.syscheck-prove .meta { font-size: 0.78rem; }
+
+.proof .asked {
+  display: flex; align-items: flex-start; justify-content: space-between; gap: 1.2rem;
+  flex-wrap: wrap; margin-bottom: 1rem;
+}
+.proof .asked > div { flex: 1; min-width: 14rem; }
+.proof .asked strong { font-size: 0.98rem; }
+.proof .asked .hint { margin-top: 0.25rem; }
+
+.proof-steps { list-style: none; margin: 1rem 0 0; padding: 0; }
+.proof-steps li {
+  display: grid; grid-template-columns: 10px 1fr auto; gap: 0.5rem 0.7rem;
+  align-items: start; padding: 0.55rem 0; border-bottom: 1px solid var(--line);
+}
+.proof-steps li:last-child { border-bottom: none; }
+.proof-steps li > div { display: flex; flex-direction: column; gap: 0.12rem; min-width: 0; }
+.proof-steps strong { font-size: 0.92rem; }
+.proof-steps .meta { font-size: 0.82rem; line-height: 1.45; }
+.proof-steps .dot {
+  width: 10px; height: 10px; border-radius: 50%; background: var(--green); margin-top: 0.36rem;
+}
+.proof-steps li.bad .dot { background: var(--danger); }
+.proof-steps li.bad .meta { color: var(--danger); }
+.proof-steps li.skipped .dot { background: var(--line); }
+.proof-steps .tc { font-size: 0.8rem; color: var(--muted); white-space: nowrap; }
+
+/* What the model read back, in its own words, mistakes and all. Somebody who sees their
+   own sentence come back knows more than any green dot could tell them. */
+.proof .heard { margin-top: 0.9rem; }
+.proof .heard q { color: var(--ink); font-style: italic; }
+.proof-clip {
+  display: block; width: min(15rem, 100%); margin: 1rem auto 0; border-radius: 12px;
+  background: #000; aspect-ratio: 9 / 16;
+}
+
 /* offline banner */
 .offline {
   background: #FFF6E5; border: 1px solid #EAD5A8; color: #7A5A12; border-radius: 10px;

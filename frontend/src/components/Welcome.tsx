@@ -24,41 +24,80 @@ function say(e: unknown): string {
 }
 
 /**
- * A reel, drawn on the dark panel: the wide recording behind it, and in front the upright
- * clip with a word lit up in the caption.
+ * A clip playing, with the word being said lighting up as it goes.
  *
- * That lit word is what this app actually does to a sentence, and no other welcome screen
- * has it. No figure, because a circle with shoulders under it is the icon every app uses
- * for "a user" and it would say nothing about a preacher. Flat fills, tuned for the deep
- * purple it sits on.
+ * The app really does this to a caption, so the welcome does it too rather than describe
+ * it. Anybody who has asked their machine to calm down gets the still frame instead.
  */
-const Reel = () => (
-  <svg className="reel" viewBox="0 0 220 204" role="img"
-       aria-label="De brede opname van een dienst, en de rechtopstaande clip met ondertiteling die eruit komt">
-    {/* the recording as it came in, wide and long */}
-    <rect x="0" y="62" width="132" height="76" rx="8" fill="#FFFFFF" opacity="0.07" />
-    <g fill="#EDE6F4" opacity="0.32">
-      <rect x="16" y="91" width="6" height="18" rx="3" />
-      <rect x="30" y="83" width="6" height="34" rx="3" />
-      <rect x="44" y="96" width="6" height="8" rx="3" />
-      <rect x="58" y="77" width="6" height="46" rx="3" />
-      <rect x="72" y="89" width="6" height="22" rx="3" />
-      <rect x="86" y="95" width="6" height="10" rx="3" />
-    </g>
-    {/* the clip it becomes. Light housing, so the shape reads at a glance on the dark. */}
-    <rect x="112" y="6" width="104" height="192" rx="16" fill="#EDE6F4" />
-    <rect x="119" y="13" width="90" height="178" rx="11" fill="#1A0B28" />
-    {/* light falling on somebody, without drawing a person */}
-    <ellipse cx="164" cy="82" rx="44" ry="40" fill="#FFFFFF" opacity="0.055" />
-    {/* the caption, with the word being said lit up */}
-    <rect x="130" y="138" width="31" height="10" rx="5" fill="#FFFFFF" opacity="0.9" />
-    <rect x="165" y="138" width="33" height="10" rx="5" fill="#C9971C" />
-    <rect x="130" y="154" width="25" height="10" rx="5" fill="#FFFFFF" opacity="0.9" />
-    <rect x="159" y="154" width="29" height="10" rx="5" fill="#FFFFFF" opacity="0.9" />
-    <rect x="130" y="177" width="68" height="3" rx="1.5" fill="#FFFFFF" opacity="0.2" />
-    <rect x="130" y="177" width="26" height="3" rx="1.5" fill="#C9971C" />
-  </svg>
+const Playing = () => (
+  <figure className="mock reel">
+    <div className="phone">
+      <div className="screen">
+        <span className="spot" aria-hidden="true" />
+        <p className="caption">
+          <span>Rust</span> <span>is</span> <span>geen</span> <span>zwakte</span>
+        </p>
+        <span className="scrub" aria-hidden="true"><span /></span>
+      </div>
+    </div>
+    <figcaption>Ondertiteld, rechtop, klaar om te posten</figcaption>
+  </figure>
 )
+
+/** What the sleutel buys: a handful of moments, best first, with the reason underneath. */
+const Moments = () => (
+  <figure className="mock moments">
+    {[
+      { title: 'Rust is geen zwakte', when: '22:20 – 23:20', why: 'Begint bij het onderwerp zelf' },
+      { title: 'Wat als loslaten de plek is', when: '36:00 – 37:10', why: 'Maakt de gedachte af' },
+      { title: 'De vrouw die niet durft te stoppen', when: '29:56 – 31:10', why: 'Een verhaal met een clou' },
+    ].map((m, i) => (
+      <div key={m.title} className={`moment ${i === 0 ? 'top' : ''}`}>
+        <strong>{m.title}</strong>
+        <span className="tc">{m.when}</span>
+        <span className="why">{m.why}</span>
+      </div>
+    ))}
+    <figcaption>Zo komt een dienst terug</figcaption>
+  </figure>
+)
+
+/** The end screen, filling itself in while they type. */
+const EndScreen = ({ name, times, insta }: { name: string; times: string; insta: string }) => (
+  <figure className="mock outro">
+    <div className="outro-card">
+      <span className="mark" aria-hidden="true" />
+      <strong>{name.trim() || 'Jullie kerk'}</strong>
+      <span className="times">{times.trim() || 'Zondag 10:00'}</span>
+      <span className="insta">{insta.trim() || '@jullie_kerk'}</span>
+    </div>
+    <figcaption>Zo sluit elke video af</figcaption>
+  </figure>
+)
+
+/** What the number gets you: the church's own services, ready to pick from. */
+const Services = ({ found }: { found: { name: string; services: StationService[] } | null }) => {
+  const rows = found?.services.length
+    ? found.services.slice(0, 4).map((s) => ({ when: s.when, title: s.title }))
+    : [
+      { when: 'Zondag 10:00', title: 'Morgendienst' },
+      { when: 'Zondag 18:30', title: 'Avonddienst' },
+      { when: 'Vorige zondag', title: 'Morgendienst' },
+      { when: 'Vorige zondag', title: 'Avonddienst' },
+    ]
+  return (
+    <figure className={`mock station ${found ? 'live' : ''}`}>
+      <strong className="head">{found?.name ?? 'Jullie kerk'}</strong>
+      {rows.map((s, i) => (
+        <div key={i} className="row">
+          <span className="when">{s.when}</span>
+          <span className="title">{s.title}</span>
+        </div>
+      ))}
+      <figcaption>{found ? 'Klaar om op te halen' : 'Vul het nummer in en kijk of dit klopt'}</figcaption>
+    </figure>
+  )
+}
 
 /**
  * The first five minutes, for whoever does the socials at a church.
@@ -67,9 +106,13 @@ const Reel = () => (
  * empty upload box tells them nothing. So it says what it is in their own terms, asks the
  * three things it cannot work without, and checks each answer straight away.
  *
- * The two ends are on the dark panel and the three questions in between are light, so the
- * work looks like work and the pitch looks like a pitch. Nothing is a dead end: the church
- * can be typed by hand, kerkdienstgemist can be skipped, and it is all editable later.
+ * The screen is split across the whole window: the question on the left, and on the right
+ * a dark panel showing what that answer is going to get them. It fills in while they type,
+ * so the name they enter is already standing on the end screen before they press anything,
+ * and the number they look up brings back their own services.
+ *
+ * Nothing is a dead end. The church can be typed by hand, kerkdienstgemist can be skipped,
+ * and every answer stays editable later under Merk instellen.
  */
 export default function Welcome({ state, onDone }: Props) {
   const [step, setStep] = useState<Step>(state.missing.includes('key') ? 'why' : 'church')
@@ -85,7 +128,6 @@ export default function Welcome({ state, onDone }: Props) {
   const [found, setFound] = useState<{ name: string; services: StationService[] } | null>(null)
 
   const at = ORDER.indexOf(step)
-  const dark = step === 'why' || step === 'ready'
   const go = (next: Step) => {
     setError(null)
     setStep(next)
@@ -112,7 +154,7 @@ export default function Welcome({ state, onDone }: Props) {
     instagram: insta.trim(),
   }), 'station')
 
-  /** Look it up before saving, so a verkeerd nummer says so here and not volgende zondag. */
+  /** Look it up before saving, so a wrong number says so here and not next Sunday. */
   const lookUp = async () => {
     const id = station.trim()
     if (!id) return
@@ -133,25 +175,33 @@ export default function Welcome({ state, onDone }: Props) {
   const finish = (skipped: boolean) => attempt(() => setupApi.done(skipped), 'ready')
   const church = now.churchName && now.churchName !== 'Example Church' ? now.churchName : ''
 
+  const beside = {
+    why: <Playing />,
+    key: <Moments />,
+    church: <EndScreen name={name} times={times} insta={insta} />,
+    station: <Services found={found} />,
+    ready: <Playing />,
+  }[step]
+
   return (
     <div className="welcome">
-      <div className="welcome-where">
-        <span>{LABEL[step]}</span>
-        <span className="welcome-rail" aria-hidden="true">
-          <span style={{ width: `${(at / (ORDER.length - 1)) * 100}%` }} />
-        </span>
-        <span className="tc">{at + 1}/{ORDER.length}</span>
-      </div>
+      <div className="asking">
+        <div className="where">
+          <span>{LABEL[step]}</span>
+          <span className="rail" aria-hidden="true">
+            <span style={{ width: `${(at / (ORDER.length - 1)) * 100}%` }} />
+          </span>
+          <span className="tc">{at + 1}/{ORDER.length}</span>
+        </div>
 
-      <div className={`panel ${dark ? 'dim' : ''}`}>
-        {step === 'why' && (
-          <div className="spread">
-            <div>
+        <div className="asked">
+          {step === 'why' && (
+            <>
               <h1>Er moet weer iets online van zondag</h1>
               <p className="lead">
-                Je weet meestal wel welk stuk je zoekt. Het terugvinden is het werk, en daarna
-                moet het nog geknipt en ondertiteld worden. Preekstof neemt dat over. Jij
-                luistert na en zegt wat eruit mag.
+                Je weet meestal wel welk stuk je zoekt. Het terugvinden is het werk, en daarna moet
+                het nog geknipt en ondertiteld worden. Preekstof neemt dat over. Jij luistert na en
+                zegt wat eruit mag.
               </p>
               <p className="aside">
                 De opname blijft op deze computer staan. Alleen de uitgeschreven tekst gaat naar
@@ -161,126 +211,115 @@ export default function Welcome({ state, onDone }: Props) {
                 <button className="primary" onClick={() => go('key')}>Aan de slag</button>
                 <span className="soft">Kost je een paar minuten</span>
               </div>
-            </div>
-            <Reel />
-          </div>
-        )}
+            </>
+          )}
 
-        {step === 'key' && (
-          <div className="column">
-            <h1>Eerst een sleutel van Claude</h1>
-            <p className="lead">
-              Claude leest de preek door en zoekt de stukken die op zichzelf staan. Daar heb je
-              een eigen sleutel voor nodig. Reken op drie cent per dienst. Uitschrijven en knippen
-              gebeurt hier op de computer en kost niets.
-            </p>
-            <label htmlFor="key">Plak je sleutel hier</label>
-            <input
-              id="key"
-              type="password"
-              value={key}
-              autoComplete="off"
-              spellCheck={false}
-              placeholder="sk-ant-..."
-              onChange={(e) => setKey(e.target.value)}
-              onKeyDown={(e) => e.key === 'Enter' && key.trim() && saveKey()}
-            />
-            <p className="hint">
-              Heb je er nog geen? Maak een account op{' '}
-              <a href="https://console.anthropic.com/" target="_blank" rel="noreferrer">console.anthropic.com</a>,
-              zet er wat tegoed op en klik daarna op API keys.
-            </p>
-            {now.hasKey && !error && <p className="good">Er staat al een sleutel klaar die het doet.</p>}
-            <div className="acts">
-              <button className="primary" disabled={busy || !key.trim()} onClick={saveKey}>
-                {busy ? 'Even proberen…' : 'Uitproberen en bewaren'}
-              </button>
-              {now.hasKey && <button onClick={() => go('church')}>Die houden</button>}
-              <button className="quiet" onClick={() => go('church')}>Doe ik later</button>
-            </div>
-          </div>
-        )}
-
-        {step === 'church' && (
-          <div className="column">
-            <h1>Hoe heet jullie kerk?</h1>
-            <p className="lead">
-              Die naam komt onder elke video te staan, met de diensttijden en jullie Instagram
-              erbij. Aanpassen kan later ook nog.
-            </p>
-            <label htmlFor="cname">Naam</label>
-            <input id="cname" value={name} placeholder="Nieuwe Kerk Utrecht"
-                   onChange={(e) => setName(e.target.value)} />
-            <div className="two">
-              <div>
-                <label htmlFor="ctimes">Diensttijden</label>
-                <input id="ctimes" value={times} placeholder="10:00 Wittevrouwen, 11:30 Wilhelminapark"
-                       onChange={(e) => setTimes(e.target.value)} />
-              </div>
-              <div>
-                <label htmlFor="cinsta">Instagram</label>
-                <input id="cinsta" value={insta} placeholder="@nieuwekerk_utrecht"
-                       onChange={(e) => setInsta(e.target.value)} />
-              </div>
-            </div>
-            <p className="hint">Meer tijden? Zet er een komma tussen. Allebei mag je leeg laten.</p>
-            <div className="acts">
-              <button className="primary" disabled={busy || !name.trim()} onClick={saveChurch}>Verder</button>
-              <button className="quiet" onClick={() => go('key')}>Terug</button>
-            </div>
-          </div>
-        )}
-
-        {step === 'station' && (
-          <div className="column">
-            <h1>Staan jullie diensten op Kerkdienstgemist?</h1>
-            <p className="lead">
-              Dan hoef je nooit iets te uploaden, want de app haalt de dienst zelf op. Ga naar
-              jullie eigen pagina daar en kijk in de adresbalk. Achter <code>/stations/</code>
-              {' '}staat een nummer.
-            </p>
-            <p className="address">
-              kerkdienstgemist.nl/stations/<mark>1341</mark>/events
-            </p>
-            <label htmlFor="station">Dat nummer</label>
-            <div className="beside">
-              <input
-                id="station"
-                value={station}
-                inputMode="numeric"
-                placeholder="1341"
-                onChange={(e) => {
-                  setStation(e.target.value)
-                  setFound(null)
-                }}
-                onKeyDown={(e) => e.key === 'Enter' && lookUp()}
-              />
-              <button disabled={busy || !station.trim()} onClick={lookUp}>
-                {busy ? 'Even kijken…' : 'Opzoeken'}
-              </button>
-            </div>
-            {found && (
-              <p className="good">
-                {found.name}
-                {found.services.length > 0
-                  ? ` · ${found.services.length} diensten staan er klaar. De laatste is ${found.services[0].title}.`
-                  : ' · gevonden, alleen staan er nu geen diensten op.'}
+          {step === 'key' && (
+            <>
+              <h1>Eerst een sleutel van Claude</h1>
+              <p className="lead">
+                Claude leest de preek door en zoekt de stukken die op zichzelf staan. Daar heb je
+                een eigen sleutel voor nodig. Reken op drie cent per dienst. Uitschrijven en knippen
+                gebeurt hier op de computer en kost niets.
               </p>
-            )}
-            <div className="acts">
-              <button className="primary" disabled={busy || !found} onClick={saveStation}>
-                Ja, dat is ons
-              </button>
-              <button className="quiet" disabled={busy} onClick={() => finish(true)}>
-                Wij staan daar niet op
-              </button>
-            </div>
-          </div>
-        )}
+              <label htmlFor="key">Plak je sleutel hier</label>
+              <input
+                id="key"
+                type="password"
+                value={key}
+                autoComplete="off"
+                spellCheck={false}
+                placeholder="sk-ant-..."
+                onChange={(e) => setKey(e.target.value)}
+                onKeyDown={(e) => e.key === 'Enter' && key.trim() && saveKey()}
+              />
+              <p className="hint">
+                Heb je er nog geen? Maak een account op{' '}
+                <a href="https://console.anthropic.com/" target="_blank" rel="noreferrer">console.anthropic.com</a>,
+                zet er wat tegoed op en klik daarna op API keys.
+              </p>
+              {now.hasKey && !error && <p className="good">Er staat al een sleutel klaar die het doet.</p>}
+              <div className="acts">
+                <button className="primary" disabled={busy || !key.trim()} onClick={saveKey}>
+                  {busy ? 'Even proberen…' : 'Uitproberen en bewaren'}
+                </button>
+                {now.hasKey && <button onClick={() => go('church')}>Die houden</button>}
+                <button className="quiet" onClick={() => go('church')}>Doe ik later</button>
+              </div>
+            </>
+          )}
 
-        {step === 'ready' && (
-          <div className="spread">
-            <div>
+          {step === 'church' && (
+            <>
+              <h1>Hoe heet jullie kerk?</h1>
+              <p className="lead">
+                Die naam komt onder elke video te staan, met de diensttijden en jullie Instagram
+                erbij. Aanpassen kan later ook nog.
+              </p>
+              <label htmlFor="cname">Naam</label>
+              <input id="cname" value={name} placeholder="Nieuwe Kerk Utrecht"
+                     onChange={(e) => setName(e.target.value)} />
+              <div className="two">
+                <div>
+                  <label htmlFor="ctimes">Diensttijden</label>
+                  <input id="ctimes" value={times} placeholder="10:00 Wittevrouwen, 11:30 Wilhelminapark"
+                         onChange={(e) => setTimes(e.target.value)} />
+                </div>
+                <div>
+                  <label htmlFor="cinsta">Instagram</label>
+                  <input id="cinsta" value={insta} placeholder="@nieuwekerk_utrecht"
+                         onChange={(e) => setInsta(e.target.value)} />
+                </div>
+              </div>
+              <p className="hint">Meer tijden? Zet er een komma tussen. Allebei mag je leeg laten.</p>
+              <div className="acts">
+                <button className="primary" disabled={busy || !name.trim()} onClick={saveChurch}>Verder</button>
+                <button className="quiet" onClick={() => go('key')}>Terug</button>
+              </div>
+            </>
+          )}
+
+          {step === 'station' && (
+            <>
+              <h1>Staan jullie diensten op Kerkdienstgemist?</h1>
+              <p className="lead">
+                Dan hoef je nooit iets te uploaden, want de app haalt de dienst zelf op. Ga naar
+                jullie eigen pagina daar en kijk in de adresbalk. Achter <code>/stations/</code>
+                {' '}staat een nummer.
+              </p>
+              <p className="address">
+                kerkdienstgemist.nl/stations/<mark>1341</mark>/events
+              </p>
+              <label htmlFor="station">Dat nummer</label>
+              <div className="beside">
+                <input
+                  id="station"
+                  value={station}
+                  inputMode="numeric"
+                  placeholder="1341"
+                  onChange={(e) => {
+                    setStation(e.target.value)
+                    setFound(null)
+                  }}
+                  onKeyDown={(e) => e.key === 'Enter' && lookUp()}
+                />
+                <button disabled={busy || !station.trim()} onClick={lookUp}>
+                  {busy ? 'Even kijken…' : 'Opzoeken'}
+                </button>
+              </div>
+              <div className="acts">
+                <button className="primary" disabled={busy || !found} onClick={saveStation}>
+                  Ja, dat is ons
+                </button>
+                <button className="quiet" disabled={busy} onClick={() => finish(true)}>
+                  Wij staan daar niet op
+                </button>
+              </div>
+            </>
+          )}
+
+          {step === 'ready' && (
+            <>
               <h1>{church ? `Klaar, ${church}` : 'Klaar'}</h1>
               <p className="lead">
                 Zet er maar een dienst in. Terwijl hij wordt uitgeschreven kun je de tekst al
@@ -304,25 +343,26 @@ export default function Welcome({ state, onDone }: Props) {
                   Naar de app
                 </button>
               </div>
-            </div>
-            <Reel />
-          </div>
-        )}
+            </>
+          )}
 
-        {error && <div className="error welcome-error">{error}</div>}
+          {error && <div className="error welcome-error">{error}</div>}
+        </div>
+
+        <p className="foot">
+          Preekstof {now.version}
+          {step !== 'ready' && (
+            <>
+              {' · '}
+              <button className="quiet" onClick={() => finish(now.skippedStation)}>
+                Sla over, ik zoek het zelf wel uit
+              </button>
+            </>
+          )}
+        </p>
       </div>
 
-      <p className="welcome-foot">
-        Preekstof {now.version}
-        {step !== 'ready' && (
-          <>
-            {' · '}
-            <button className="quiet" onClick={() => finish(now.skippedStation)}>
-              Sla over, ik zoek het zelf wel uit
-            </button>
-          </>
-        )}
-      </p>
+      <div className="showing">{beside}</div>
     </div>
   )
 }

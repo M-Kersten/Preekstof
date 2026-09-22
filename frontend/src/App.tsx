@@ -106,7 +106,8 @@ export default function App() {
             </div>
           </div>
         </header>
-        <main className="page">
+        {/* Not .page: the welcome uses the whole window, not a column in the middle. */}
+        <main>
           <Welcome state={setup} onDone={setSetup} />
         </main>
       </>

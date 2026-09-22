@@ -505,55 +505,38 @@ input[type='checkbox'] { accent-color: var(--purple); width: 1rem; height: 1rem;
 }
 
 /* the first five minutes
-   Two ends on the dark panel, three questions on white in between, so the pitch looks like
-   a pitch and the work looks like work. No rules under headings, no boxed feature grid, no
-   uppercase labels: the size of the question and the room around it carry it. */
+   The whole window, split: the question on the left, and on the right a dark panel that
+   shows what the answer gets you. The panel is live where it can be, so the name somebody
+   types is already standing on the end screen before they press anything. */
 .appbar.bare-bar { justify-content: flex-start; }
-.welcome { max-width: 52rem; margin: 2.4rem auto 0; }
+.welcome { display: grid; grid-template-columns: minmax(0, 1.05fr) minmax(0, 1fr); min-height: calc(100vh - 4rem); }
+.welcome .asking {
+  display: flex; flex-direction: column; padding: 2.4rem clamp(1.5rem, 4vw, 4rem) 2rem;
+  background: var(--paper);
+}
+.welcome .asked { flex: 1; display: flex; flex-direction: column; justify-content: center; max-width: 34rem; }
 
-/* Where you are, in one line: the name, a hairline that fills, the count. */
-.welcome-where {
-  display: flex; align-items: center; gap: 1rem; margin-bottom: 0.9rem;
-  font-size: 0.82rem; font-weight: 600; color: var(--purple);
+/* where you are: the name, a hairline that fills, the count */
+.welcome .where {
+  display: flex; align-items: center; gap: 1rem; margin-bottom: 2rem;
+  font-size: 0.82rem; font-weight: 600; color: var(--purple); max-width: 34rem;
 }
-.welcome-rail { flex: 1; height: 2px; background: var(--line); border-radius: 2px; overflow: hidden; }
-.welcome-rail span { display: block; height: 100%; background: var(--purple); transition: width 0.35s ease; }
-.welcome-where .tc { color: var(--muted); font-weight: 500; }
-
-.welcome .panel {
-  background: var(--white); border: 1px solid var(--line); border-radius: 20px;
-  padding: 2.5rem 2.6rem;
-}
-.welcome .panel.dim {
-  background: var(--deep); border-color: transparent; color: var(--deep-ink);
-  box-shadow: 0 18px 46px rgba(42, 17, 64, 0.24);
-}
-.welcome .spread { display: grid; grid-template-columns: 1fr 14.5rem; gap: 2.6rem; align-items: center; }
-.welcome .column { max-width: 33rem; }
+.welcome .rail { flex: 1; height: 2px; background: var(--line); border-radius: 2px; overflow: hidden; }
+.welcome .rail > span { display: block; height: 100%; background: var(--purple); transition: width 0.35s ease; }
+.welcome .where .tc { color: var(--muted); font-weight: 500; }
 
 .welcome h1 {
-  font-size: clamp(1.75rem, 3.5vw, 2.35rem); line-height: 1.06; letter-spacing: -0.035em;
-  margin-bottom: 0.8rem; max-width: 17ch;
+  font-size: clamp(1.8rem, 3.2vw, 2.5rem); line-height: 1.05; letter-spacing: -0.035em;
+  margin-bottom: 0.8rem; max-width: 18ch;
 }
-.welcome .column h1 { max-width: 20ch; }
 .welcome .lead { font-size: 1.02rem; line-height: 1.55; max-width: 44ch; }
 .welcome .aside { font-size: 0.88rem; line-height: 1.55; color: var(--muted); max-width: 44ch; margin-top: 1rem; }
 .welcome .hint { max-width: 44ch; }
 .welcome .soft { font-size: 0.85rem; color: var(--muted); }
+.welcome .good { color: var(--green); font-size: 0.9rem; font-weight: 600; margin-top: 1rem; max-width: 44ch; }
+.welcome-error { margin: 1.5rem 0 0; max-width: 44ch; }
 
-/* the dark end panels */
-.panel.dim h1 { color: var(--white); }
-.panel.dim .lead { color: rgba(237, 230, 244, 0.92); }
-.panel.dim .aside { color: rgba(237, 230, 244, 0.6); }
-.panel.dim .soft { color: rgba(237, 230, 244, 0.55); }
-/* One gold call to action on the dark, the same as the render button on the stage. */
-.panel.dim .primary { background: var(--gold); border-color: var(--gold); color: var(--deep); box-shadow: none; }
-.panel.dim .primary:hover:not(:disabled) { background: #DCA829; border-color: #DCA829; }
-
-.welcome label {
-  display: block; font-size: 0.8rem; font-weight: 600; color: var(--purple);
-  margin: 1.6rem 0 0.4rem;
-}
+.welcome label { display: block; font-size: 0.8rem; font-weight: 600; color: var(--purple); margin: 1.6rem 0 0.4rem; }
 .welcome input { width: 100%; box-sizing: border-box; font-size: 1rem; padding: 0.62rem 0.8rem; }
 .welcome .two { display: grid; grid-template-columns: 1fr 1fr; gap: 0 1rem; }
 .welcome .two label { margin-top: 1.2rem; }
@@ -565,6 +548,7 @@ input[type='checkbox'] { accent-color: var(--purple); width: 1rem; height: 1rem;
 .welcome .address {
   font-family: var(--mono); font-size: 0.92rem; color: var(--muted);
   background: var(--lavender); border-radius: 10px; padding: 0.7rem 0.9rem; margin-top: 1.3rem;
+  max-width: 34rem; overflow-x: auto;
 }
 .welcome .address mark { background: none; color: var(--purple); font-weight: 700; }
 .welcome code { font-family: var(--mono); font-size: 0.88rem; }
@@ -575,22 +559,111 @@ input[type='checkbox'] { accent-color: var(--purple); width: 1rem; height: 1rem;
   border: none; background: none; padding: 0; color: var(--muted); font-size: 0.88rem; font-weight: 500;
 }
 .welcome button.quiet:hover:not(:disabled) { color: var(--purple); background: none; }
-.welcome .good { color: var(--green); font-size: 0.9rem; font-weight: 600; margin-top: 1rem; max-width: 44ch; }
-.welcome-error { margin: 1.5rem 0 0; }
+.welcome .foot { margin-top: 2rem; font-size: 0.8rem; color: var(--muted); }
+.welcome .foot button.quiet { font-size: 0.8rem; text-decoration: underline; text-underline-offset: 2px; }
 
-.reel { width: 100%; height: auto; display: block; }
-@media (max-width: 860px) {
-  .welcome .panel { padding: 1.9rem 1.5rem; }
-  .welcome .spread { grid-template-columns: 1fr; gap: 1.8rem; }
-  .reel { max-width: 13rem; }
+/* --- the panel that shows what you get ------------------------------------------- */
+
+.welcome .showing {
+  display: grid; place-items: center; padding: 2.5rem; background: var(--deep); color: var(--deep-ink);
+  overflow: hidden;
+}
+.mock { margin: 0; width: min(23rem, 100%); animation: mock-in 0.45s ease both; }
+.mock figcaption {
+  margin-top: 1.1rem; text-align: center; font-size: 0.82rem; color: rgba(237, 230, 244, 0.55);
+}
+@keyframes mock-in { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: none; } }
+
+/* a clip playing, with the word being said lit up */
+.mock.reel { display: flex; flex-direction: column; align-items: center; }
+.mock.reel .phone {
+  position: relative; width: 12.5rem; aspect-ratio: 9 / 16; border-radius: 20px;
+  background: var(--deep-ink); padding: 7px; box-shadow: 0 20px 44px rgba(0, 0, 0, 0.35);
+}
+.mock.reel .screen {
+  position: relative; height: 100%; border-radius: 14px; background: #150826; overflow: hidden;
+  display: flex; flex-direction: column; justify-content: flex-end; padding: 0 0.9rem 1.5rem;
+}
+.mock.reel .spot {
+  position: absolute; top: 12%; left: 50%; transform: translateX(-50%);
+  width: 108%; aspect-ratio: 1; border-radius: 50%; background: rgba(255, 255, 255, 0.075);
+  filter: blur(26px);
+}
+.mock.reel .caption {
+  position: relative; text-align: center; font-weight: 800; font-size: 1.02rem; line-height: 1.25;
+  letter-spacing: -0.01em; color: #FFFFFF; text-shadow: 0 2px 8px rgba(0, 0, 0, 0.55);
+}
+.mock.reel .caption span { animation: lit 4s linear infinite; }
+.mock.reel .caption span:nth-child(2) { animation-delay: 1s; }
+.mock.reel .caption span:nth-child(3) { animation-delay: 2s; }
+.mock.reel .caption span:nth-child(4) { animation-delay: 3s; }
+@keyframes lit { 0%, 22%, 100% { color: #FFFFFF; } 4%, 18% { color: var(--gold); } }
+.mock.reel .scrub {
+  position: absolute; left: 0.9rem; right: 0.9rem; bottom: 0.7rem; height: 3px; border-radius: 2px;
+  background: rgba(255, 255, 255, 0.18);
+}
+.mock.reel .scrub span {
+  display: block; height: 100%; border-radius: 2px; background: var(--gold);
+  animation: scrub 4s linear infinite;
+}
+@keyframes scrub { from { width: 6%; } to { width: 92%; } }
+@media (prefers-reduced-motion: reduce) {
+  .mock, .mock.reel .caption span, .mock.reel .scrub span { animation: none; }
+  .mock.reel .caption span:nth-child(3) { color: var(--gold); }
+  .mock.reel .scrub span { width: 46%; }
+}
+
+/* the moments a search comes back with */
+.mock.moments { display: flex; flex-direction: column; gap: 0.6rem; }
+.mock.moments .moment {
+  display: grid; grid-template-columns: 1fr auto; gap: 0.15rem 0.8rem;
+  background: rgba(255, 255, 255, 0.05); border-radius: 12px; padding: 0.8rem 0.95rem;
+}
+.mock.moments .moment.top { background: rgba(255, 255, 255, 0.1); box-shadow: inset 3px 0 0 var(--gold); }
+.mock.moments strong { font-size: 0.95rem; color: #FFFFFF; font-weight: 700; }
+.mock.moments .tc { color: rgba(237, 230, 244, 0.6); }
+.mock.moments .why { grid-column: 1 / -1; font-size: 0.82rem; color: rgba(237, 230, 244, 0.55); }
+
+/* the end screen, filling in while they type */
+.mock.outro .outro-card {
+  aspect-ratio: 9 / 16; max-height: 24rem; margin: 0 auto; width: 12.5rem;
+  border-radius: 18px; background: linear-gradient(170deg, #45206E, #170826);
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 0.35rem;
+  padding: 1.2rem; text-align: center; box-shadow: 0 20px 44px rgba(0, 0, 0, 0.35);
+}
+.mock.outro .mark {
+  width: 34px; height: 34px; margin-bottom: 0.5rem; background: var(--gold);
+  -webkit-mask: url(/icon.svg) center / contain no-repeat;
+  mask: url(/icon.svg) center / contain no-repeat;
+}
+.mock.outro strong {
+  font-size: 1.05rem; font-weight: 800; color: #FFFFFF; letter-spacing: -0.02em; line-height: 1.15;
+  overflow-wrap: anywhere;
+}
+.mock.outro .times { font-size: 0.78rem; color: rgba(237, 230, 244, 0.72); overflow-wrap: anywhere; }
+.mock.outro .insta { font-size: 0.78rem; color: var(--gold); font-weight: 600; margin-top: 0.3rem; }
+
+/* the church's own services, once the number checks out */
+.mock.station { display: flex; flex-direction: column; gap: 0.4rem; }
+.mock.station .head { font-size: 1rem; color: #FFFFFF; margin-bottom: 0.3rem; }
+.mock.station .row {
+  display: flex; align-items: baseline; gap: 0.8rem; padding: 0.65rem 0.9rem; border-radius: 10px;
+  background: rgba(255, 255, 255, 0.05); opacity: 0.45; transition: opacity 0.3s;
+}
+.mock.station.live .row { opacity: 1; }
+.mock.station .when { font-size: 0.78rem; color: rgba(237, 230, 244, 0.6); white-space: nowrap; }
+.mock.station .title { font-size: 0.9rem; color: #FFFFFF; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+@media (max-width: 1000px) {
+  .welcome { grid-template-columns: 1fr; min-height: 0; }
+  .welcome .showing { order: -1; padding: 2rem 1.5rem; }
+  .mock { width: min(19rem, 100%); }
+  .welcome .asking { padding: 2rem 1.5rem 2.5rem; }
+  .welcome .asked { justify-content: flex-start; }
   .welcome .two { grid-template-columns: 1fr; }
 }
-/* On a phone it would sit between the button and the foot, pushing the one thing to press
-   away from the thumb. It says nothing the words do not. */
-@media (max-width: 620px) { .reel { display: none; } }
-
-.welcome-foot { margin-top: 1.6rem; font-size: 0.8rem; color: var(--muted); }
-.welcome-foot button.quiet { font-size: 0.8rem; text-decoration: underline; text-underline-offset: 2px; }
+@media (max-width: 620px) { .welcome .showing { display: none; } }
 
 /* a moment somebody cut out of the transcript themselves */
 .timeline .mark.own { background: var(--gold); }

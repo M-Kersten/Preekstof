@@ -25,7 +25,10 @@ There are two entry points on the page:
    wherever you like. That zip holds everything the app needs to run, so no git and no Node.
    (The green **Code** button works too, and so does a clone.)
 2. Start it:
-   - **Windows**: double-click `start.bat`.
+   - **Windows**: double-click `start.bat`. Without Python on the machine it installs one
+     and carries on in the same window. The `-windows` zip carries its own Python and needs
+     nothing at all (not yet tested on a real machine without Python; the plain zip is the
+     safe one until it has been).
    - **macOS**: double-click `start.command`. If macOS says the file cannot be opened, right-click it, choose **Open**, and confirm once.
 3. The first start takes a few minutes: it installs Python packages and downloads FFmpeg into `tools/`. After an update, the next start installs any new packages by itself. Python itself is installed automatically on Windows (through winget) and through Homebrew on macOS when available; otherwise the window tells you where to get it.
 4. The browser opens at http://localhost:8000. Close the black window to stop the app.

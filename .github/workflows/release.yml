@@ -52,6 +52,29 @@ jobs:
 
       - run: python -m tools.release --out dist --version "${GITHUB_REF_NAME#v}"
 
+      # A second zip for Windows, carrying its own Python. Without it a machine with no
+      # Python asks winget for one and the volunteer has to click twice; with it, the first
+      # double-click is the only one. Everything else in the zip is identical.
+      #
+      # NOT YET TESTED ON A REAL WINDOWS MACHINE. Until somebody has run this zip on a
+      # Windows box with no Python on it, the plain zip above is the one to hand to a church.
+      - name: A Python that travels with it
+        run: |
+          set -eu
+          version=3.12.7
+          curl -fsSL -o embed.zip \
+            "https://www.python.org/ftp/python/${version}/python-${version}-embed-amd64.zip"
+          mkdir -p winpython && unzip -q embed.zip -d winpython
+
+          # The embeddable build ships with site-packages switched off, so pip has nowhere
+          # to install to and nothing it installs can be imported. One commented-out line.
+          sed -i 's/^#import site/import site/' winpython/python3*._pth
+
+          curl -fsSL -o winpython/get-pip.py https://bootstrap.pypa.io/get-pip.py
+          echo "python/ is prepared; the launcher installs the packages into it on first run"
+
+      - run: python -m tools.release --out dist --version "${GITHUB_REF_NAME#v}" --python winpython
+
       - name: What a church downloads
         uses: softprops/action-gh-release@v2
         with:

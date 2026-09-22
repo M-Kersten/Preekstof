@@ -556,8 +556,20 @@ falls on the very first run, which is the run that decides whether there is a se
 and the words "dit gebeurt één keer". Nobody has to look at the black window to know the
 app is alive.
 
-### Step 23 · Refuse the job you cannot finish
+### Step 23 · Refuse the job you cannot finish — gedaan (0.9.0)
 Serves (2)
+
+**Wat er staat.** `backend/room.py` rekent voor wat een klus nodig heeft en weigert hem
+anders met een 507 en de getallen erbij: wat het kost, wat er vrij is, hoeveel te weinig, en
+hoeveel er onder **Ruimte vrijmaken** klaarstaat. Uitschrijven rekent met de wav (gemeten:
+32 kB per seconde, afgerond naar 40), clips maken met de render (gemeten: 101 kB per
+seconde, afgerond naar 250), en een dienst ophalen met anderhalve gigabyte omdat de grootte
+pas tijdens het binnenhalen bekend is. Er blijft altijd een gigabyte over: Windows gaat ruim
+voor nul raar doen, en een volle schijf kan het logboek dat dat zegt niet meer schrijven.
+
+**En tijdens het binnenhalen.** Wat vooraf niet te weten was, wordt tijdens het downloaden
+bewaakt: zakt de vrije ruimte onder die gigabyte, dan stopt het ophalen terwijl er nog ruimte
+is om weg te gooien wat het al geschreven had.
 
 **Build.** Estimate what a job needs before starting it, from the size of the recording, and
 refuse with a number when the disk cannot hold it. Point at **Ruimte vrijmaken** and say how
@@ -571,8 +583,26 @@ particular service will not fit.
 **Done.** A disk with too little room says so before the first byte is written, with the
 number it needs and the number it has. Staged on purpose in a test.
 
-### Step 24 · Let the first start be one start
+### Step 24 · Let the first start be one start — gedaan, nog niet getest op Windows
 Serves (onboarding)
+
+**Wat er staat.** Twee dingen, en allebei halen ze dezelfde klik weg. `start.bat` zoekt na
+`winget install` zelf op waar Python net geland is, in plaats van te vragen het venster te
+sluiten en opnieuw te beginnen; dat opnieuw beginnen is nu de uitwijk als dat zoeken niets
+oplevert. En staat er een map `python/` naast, dan wordt die meteen gebruikt en start de app
+daarmee, zonder venv, want een embeddable build heeft die module niet en heeft hem ook niet
+nodig: de launcher installeert de pakketten er net zo goed in.
+
+Die map komt uit de release. `tools/release.py --python <map>` zet hem erin en levert
+`preekstof-<versie>-windows.zip`; de workflow haalt de embeddable build van python.org,
+zet `import site` aan in `python3xx._pth` en legt get-pip.py ernaast.
+
+Onderweg is `start.bat` ook Nederlands geworden. Het sprak Engels tegen een vrijwilliger die
+daar niet om gevraagd had.
+
+**Wat er niet staat.** Een test op een echte Windows-machine zonder Python. Alles hierboven
+is met het oog geschreven en met een nagemaakte python-map getest; of het klopt blijkt pas op
+een echte pc. Tot dat gebeurd is, is de gewone zip degene om aan een kerk te geven.
 
 **Build.** On a machine without Python, `start.bat` installs it and then asks the volunteer
 to close the window and run the file again. Ship an embeddable Python in the release zip
@@ -585,8 +615,21 @@ never hear about, because it happens before there is anything to report.
 **Done.** A Windows machine with no Python runs the app from one double-click, and the
 winget branch is gone from `start.bat`.
 
-### Step 25 · Say "op" when it is op
+### Step 25 · Say "op" when it is op — gedaan (0.9.0)
 Serves (support)
+
+**Wat er staat.** Een 429 komt voor twee verschillende dingen: een limiet die vanzelf
+overgaat, en een account zonder tegoed. Het eerste werd afgewacht met oplopende pauzes en
+het tweede ook, om daarna te melden dat het "even vol" was terwijl het antwoord twintig euro
+was. Nu wordt op de tekst van de weigering gekeken, en een account dat op is geeft `NoMoney`:
+geen enkele herhaling, en één zin die console.anthropic.com en Billing noemt. Bij een dienst
+met meerdere passages stopt dat de hele run in plaats van per stuk te falen, want ze gaan
+allemaal op dezelfde manier stuk. Hetzelfde onderscheid zit in het uitproberen van de sleutel
+bij het instellen.
+
+**Ook.** Eén zware klus tegelijk per computer. `JobManager.busy_with` weet welke dat zijn, en
+een tweede dienst of de proef krijgt een 409 met de reden, in plaats van dat allebei gaan
+kruipen zonder te zeggen waarom.
 
 **Build.** A rate limit and an empty account both arrive as a 429. The first is worth
 waiting out and the app does, with growing pauses. The second never comes good, and the app

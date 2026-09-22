@@ -105,3 +105,58 @@ def test_the_privacy_page_travels_with_the_app(built):
 def test_the_sentence_the_proof_uses_travels_with_the_app(built):
     """Without it the proof cannot run, and the proof is what a new church presses first."""
     assert "selftest/proef.opus" in inside(built)
+
+
+# --- the Windows zip, which carries its own Python -------------------------------------
+
+
+@pytest.fixture(scope="module")
+def with_python(tmp_path_factory) -> Path:
+    """A stand-in for a prepared embeddable Python, which CI downloads for real."""
+    fake = tmp_path_factory.mktemp("winpython")
+    (fake / "python.exe").write_bytes(b"MZ")
+    (fake / "python312._pth").write_text("python312.zip\n.\nimport site\n", encoding="utf-8")
+    (fake / "Lib").mkdir()
+    (fake / "Lib" / "site-packages").mkdir()
+    (fake / "Lib" / "site-packages" / "marker.txt").write_text("x", encoding="utf-8")
+    return release.build(tmp_path_factory.mktemp("dist-win"), "9.9.9", fake)
+
+
+def test_it_is_named_so_nobody_downloads_the_wrong_one(with_python):
+    assert with_python.name == "preekstof-9.9.9-windows.zip"
+
+
+def test_the_python_travels_inside_the_same_folder(with_python):
+    names = inside(with_python)
+    assert "python/python.exe" in names
+    assert "python/Lib/site-packages/marker.txt" in names, "ook wat dieper zit"
+
+
+def test_it_is_otherwise_the_same_zip(with_python):
+    for name in ("start.bat", "launcher.py", "selftest/proef.opus"):
+        assert name in inside(with_python)
+
+
+def test_the_python_comes_out_runnable(with_python):
+    with zipfile.ZipFile(with_python) as zip_file:
+        mode = zip_file.getinfo("preekstof-9.9.9/python/python.exe").external_attr >> 16
+    assert mode & 0o111
+
+
+def test_without_one_the_ordinary_zip_has_no_python_folder(built):
+    assert not any(name.startswith("python/") for name in inside(built))
+
+
+def test_start_bat_uses_a_python_that_came_with_the_download():
+    """And runs the launcher with it straight away: an embeddable build has no venv."""
+    said = (Path(release.ROOT) / "start.bat").read_text(encoding="utf-8")
+    assert 'if exist "python\\python.exe"' in said
+    assert '"python\\python.exe" launcher.py' in said
+
+
+def test_start_bat_no_longer_asks_for_a_second_double_click_first():
+    """That second action is where a willing church stops, and nobody hears about it."""
+    said = (Path(release.ROOT) / "start.bat").read_text(encoding="utf-8")
+    assert "LOCALAPPDATA" in said, "er wordt gekeken waar winget het net neerzette"
+    assert said.index("goto :restart") > said.index("LOCALAPPDATA"), \
+        "opnieuw beginnen is de uitwijk, niet de eerste stap"

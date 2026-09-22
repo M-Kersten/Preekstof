@@ -22,6 +22,22 @@ voorging als je kerk dat invult op je eigen pagina. Dat beeldje loopt mee naar b
 blijft bij de dienst staan in de app, ook nadat de opname is opgeruimd. Wie voorging gaat
 ook mee naar Claude, als naam en verder niets, dus namen worden beter verstaan.
 
+**Eén keer klikken op Windows.** Had je nog geen Python, dan installeerde start.bat hem en
+vroeg daarna om het venster te sluiten en opnieuw te beginnen. Dat hoeft niet meer: hij zoekt
+zelf op waar Python terechtkwam en gaat door. En start.bat praat nu Nederlands.
+
+**Geen klus die halverwege de schijf volmaakt.** De app rekent vooraf uit wat uitschrijven
+of clips maken aan ruimte kost en weigert als het niet past, met hoeveel het nodig heeft,
+hoeveel er vrij is en hoeveel er onder Ruimte vrijmaken klaarstaat. Raakt de schijf vol
+terwijl een opname binnenkomt, dan stopt dat ophalen op tijd.
+
+**"Op" en "even vol" zijn twee verschillende dingen.** Een Claude-account zonder tegoed gaf
+dezelfde melding als een account dat even aan zijn limiet zat, en de app wachtte er net zo
+lang op. Nu zegt hij meteen dat er tegoed op moet en waar je dat doet.
+
+**Eén dienst tegelijk.** Twee tabbladen konden twee diensten tegelijk laten draaien op een
+computer die er één aankan. Nu wacht de tweede, met de reden erbij.
+
 **Niet meer stilstaan zonder iets te zeggen.** De eerste keer uitschrijven haalt een
 spraakmodel van 460 MB op. Tot nu toe zei de balk "Het spraakmodel wordt geladen" en stond
 hij op vier procent, hoe lang het ook duurde. Nu staat er hoeveel megabyte binnen is, van

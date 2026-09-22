@@ -19,7 +19,7 @@ from fastapi.staticfiles import StaticFiles
 from contextlib import asynccontextmanager
 from datetime import datetime, timezone
 
-from . import brands, clips, diagnose, discovery, fetch, fonts, health, journal, kerkdienstgemist, outro, renderer, selftest, settings, setup, speed, storage, tracking, transcription, version, wordlearn
+from . import brands, clips, diagnose, discovery, fetch, fonts, health, journal, kerkdienstgemist, outro, renderer, room, selftest, settings, setup, speed, storage, tracking, transcription, version, wordlearn
 from .jobs import Cancelled, Estimator, Job, JobManager
 from .models import (ROOT, SERVICES_DIR, TEMPLATES_DIR, ChurchInfo, ClipCandidate, ClipOrigin, CropWindow, MusicSettings, ProcessedClip, Project, Watermark,
                      ProjectDetail, Service, ServiceDetail, Style, Track, Transcript, load_church_info, load_project,
@@ -636,6 +636,11 @@ def start_selftest():
     """
     if jobs.is_running(SELFTEST):
         raise HTTPException(409, "De proef loopt al.")
+    elsewhere = jobs.busy_with(unless=SELFTEST)
+    if elsewhere:
+        raise HTTPException(409, "Er is een dienst bezig op deze computer. De proef gebruikt "
+                                 "dezelfde onderdelen, dus wacht tot die klaar is.")
+    jobs.mark_heavy(SELFTEST)
 
     def work(job: Job) -> None:
         shutil.rmtree(selftest.WORK, ignore_errors=True)
@@ -824,6 +829,14 @@ def run_service_job(service: Service, busy_status: str, done_status: str, work) 
     """Run `work(job, service)` in the shared job manager and keep service.status in sync."""
     if jobs.is_running(service.id):
         raise HTTPException(409, "De dienst wordt nog verwerkt, wacht even")
+    # One machine, one piece of hard work. Two tabs each starting a service on a computer
+    # that manages one makes both crawl, and neither of them says why.
+    elsewhere = jobs.busy_with(unless=service.id)
+    if elsewhere:
+        raise HTTPException(409, "Er is al een dienst bezig op deze computer. Wacht tot die "
+                                 "klaar is, of stop hem eerst; twee tegelijk maakt ze allebei "
+                                 "traag.")
+    jobs.mark_heavy(service.id)
     service.warning = None  # the note about carrying on has served its purpose
     set_status(service, busy_status)
 
@@ -960,6 +973,12 @@ def fetch_service_video(service_id: str, url: str = Body(default="", embed=True)
         address = fetch.tidy(url)
     except fetch.LinkNotUsable as exc:
         raise HTTPException(400, str(exc)) from exc
+    # How big the recording is cannot be known before it starts. What can be known is that
+    # a disk with a couple of gigabytes left is not going to hold a service either way.
+    try:
+        room.check(room.SERVICE_GUESS, "Een dienst ophalen")
+    except room.NotEnoughRoom as exc:
+        raise HTTPException(507, str(exc)) from exc
 
     def work(job: Job, service: Service) -> None:
         job.message = "Opname wordt opgehaald"
@@ -1031,6 +1050,12 @@ def transcribe_service(service_id: str):
     service = get_service(service_id)
     if not service.sourceVideo or not service.sourceInfo:
         raise HTTPException(400, "Upload eerst een video")
+    # Before the first byte, not at eighty percent: a run that fills the disk costs the
+    # work done so far and leaves nothing free to clean up with.
+    try:
+        room.check(room.for_transcribing(service.sourceInfo.duration), "Uitschrijven")
+    except room.NotEnoughRoom as exc:
+        raise HTTPException(507, str(exc)) from exc
 
     def work(job: Job, service: Service) -> None:
         job.message = SPEECH_PHASE[transcription.AUDIO]
@@ -1385,6 +1410,12 @@ def process_selected(service_id: str):
     selected = [c for c in service.candidates if c.selected]
     if not selected:
         raise HTTPException(400, "Er zijn geen fragmenten gekozen")
+    longest = max((c.end - c.start for c in selected), default=0.0)
+    try:
+        room.check(room.for_clips(longest, len(selected)),
+                   f"{len(selected)} fragment{'en' if len(selected) > 1 else ''} klaarzetten")
+    except room.NotEnoughRoom as exc:
+        raise HTTPException(507, str(exc)) from exc
     source = service_dir(service.id) / service.sourceVideo
     transcript = load_service_transcript(service)
 

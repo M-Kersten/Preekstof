@@ -60,6 +60,7 @@ class Job:
 class JobManager:
     def __init__(self) -> None:
         self._jobs: dict[str, Job] = {}
+        self._heavy: set[str] = set()
         self._lock = threading.Lock()
 
     def get(self, key: str) -> Job:
@@ -68,6 +69,24 @@ class JobManager:
 
     def is_running(self, key: str) -> bool:
         return self.get(key).status == "running"
+
+    def busy_with(self, unless: str = "") -> str | None:
+        """Which heavy job is running, if any. One machine, one piece of hard work.
+
+        Two browser tabs can each start a service on a computer that can only really manage
+        one. Both then crawl, neither says why, and the church concludes the app is slow.
+        Light work is not in here: saving a subtitle or fetching a list never has to wait.
+        """
+        with self._lock:
+            for key, job in self._jobs.items():
+                if key != unless and key in self._heavy and job.status == "running":
+                    return key
+        return None
+
+    def mark_heavy(self, key: str) -> None:
+        """Say that this job is one of the ones that may not run two at a time."""
+        with self._lock:
+            self._heavy.add(key)
 
     def cancel(self, key: str) -> bool:
         """Ask a running job to stop. It ends at its next checkpoint."""

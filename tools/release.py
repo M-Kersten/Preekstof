@@ -50,10 +50,17 @@ BUILT = (1980, 1, 2, 0, 0, 0)
 IS_BUILD = "frontend/dist/"
 
 
-def build(out: Path, number: str) -> Path:
-    """Write the zip and hand back where it landed."""
+def build(out: Path, number: str, python: Path | None = None) -> Path:
+    """Write the zip and hand back where it landed.
+
+    `python` is a prepared embeddable Python, which goes in as `python/`. start.bat runs
+    that one straight away when it is there, so a Windows machine with no Python installed
+    gets through the first double-click without a second one. Leaving it out gives the
+    ordinary zip, which works everywhere and asks the machine for its own Python.
+    """
     out.mkdir(parents=True, exist_ok=True)
-    target = out / f"preekstof-{number}.zip"
+    name_for = f"preekstof-{number}-windows.zip" if python else f"preekstof-{number}.zip"
+    target = out / name_for
     inside = f"preekstof-{number}"
     files = wanted(tracked())
     if not files:
@@ -68,6 +75,15 @@ def build(out: Path, number: str) -> Path:
             entry.compress_type = zipfile.ZIP_DEFLATED
             entry.external_attr = (0o755 if name.endswith((".sh", ".command")) else 0o644) << 16
             zip_file.writestr(entry, source.read_bytes())
+        if python:
+            for found in sorted(python.rglob("*")):
+                if not found.is_file():
+                    continue
+                entry = zipfile.ZipInfo(f"{inside}/python/{found.relative_to(python).as_posix()}")
+                entry.date_time = STAMPED
+                entry.compress_type = zipfile.ZIP_DEFLATED
+                entry.external_attr = 0o755 << 16  # .exe and .dll, all of it runnable
+                zip_file.writestr(entry, found.read_bytes())
     return target
 
 
@@ -76,9 +92,13 @@ def main() -> int:
                                      formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument("--out", type=Path, default=ROOT / "dist", help="where to write it")
     parser.add_argument("--version", default=version.VERSION, help="the number in the filename")
+    parser.add_argument("--python", type=Path, default=None,
+                        help="a prepared embeddable Python to put in as python/ (Windows)")
     args = parser.parse_args()
 
-    built = build(args.out, args.version)
+    if args.python and not (args.python / "python.exe").is_file():
+        raise SystemExit(f"{args.python} ziet er niet uit als een embeddable Python.")
+    built = build(args.out, args.version, args.python)
     size = built.stat().st_size / 1e6
     with zipfile.ZipFile(built) as zip_file:
         count = len(zip_file.namelist())

@@ -20,7 +20,7 @@ from pathlib import Path
 from typing import Callable
 from urllib.parse import urlparse
 
-from . import kerkdienstgemist
+from . import kerkdienstgemist, room
 from .jobs import Cancelled
 
 ProgressCallback = Callable[[float, str], None]
@@ -245,6 +245,13 @@ def fetch(url: str, folder: Path, on_progress: ProgressCallback | None = None,
             except Cancelled:
                 stopped = True
                 raise yt_dlp.utils.DownloadCancelled from None
+        # How big the recording is could not be known before this started. Now it can, and a
+        # download that is going to fill the disk is better stopped while there is still room
+        # to delete what it wrote.
+        if state.get("status") == "downloading" and room.free_bytes(folder) < room.FLOOR:
+            raise LinkNotUsable(
+                "De schijf raakt vol terwijl de opname binnenkomt, dus het ophalen is gestopt. "
+                "Maak ruimte vrij onder Ruimte vrijmaken en probeer het opnieuw.")
         if not on_progress:
             return
         if state.get("status") == "downloading":

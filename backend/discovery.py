@@ -251,6 +251,27 @@ class Retryable(RuntimeError):
     """A failure that is worth trying again: rate limit, server error, network hiccup."""
 
 
+# What an empty account says, in the several shapes Anthropic says it. A limit that lifts by
+# itself and an account with no money on it both arrive as a refusal to serve the request,
+# and waiting out the second one costs a church its Sunday and teaches it that the app hangs.
+NO_MONEY = ("credit balance is too low", "credit balance", "insufficient credit",
+            "billing", "payment", "quota exceeded", "spend limit", "usage limit")
+
+OUT_OF_MONEY = ("Het Claude-account heeft geen tegoed meer. Zet er tegoed op via "
+                "console.anthropic.com onder Billing, en probeer het daarna opnieuw. "
+                "Wachten helpt hier niet: dit gaat vanzelf niet over.")
+
+
+class NoMoney(RuntimeError):
+    """The account is empty. Never worth retrying, and the fix costs money rather than time."""
+
+
+def about_money(said: str) -> bool:
+    """Does this refusal say the account is empty rather than busy?"""
+    lowered = (said or "").lower()
+    return any(phrase in lowered for phrase in NO_MONEY)
+
+
 def wanted_from(window: Window, alone: bool) -> int:
     """How many moments to ask for out of one passage.
 
@@ -360,10 +381,17 @@ def _anthropic(user: str, system: str = SYSTEM_PROMPT, schema=LlmAnalysis):
     except anthropic.AuthenticationError as exc:
         raise RuntimeError("De Claude API-sleutel wordt niet geaccepteerd. Controleer ANTHROPIC_API_KEY in config.env.") from exc
     except anthropic.RateLimitError as exc:
+        # A 429 arrives for two different things. One lifts by itself in a minute; the other
+        # is an empty account, and retrying that with growing pauses ends in a message about
+        # a limit when the answer was twenty euros.
+        if about_money(getattr(exc, "message", "") or str(exc)):
+            raise NoMoney(OUT_OF_MONEY) from exc
         raise Retryable("De Claude API is even vol (limiet bereikt).") from exc
     except anthropic.APIStatusError as exc:
         if exc.status_code >= 500:
             raise Retryable(f"De Claude API gaf een serverfout ({exc.status_code}).") from exc
+        if about_money(getattr(exc, "message", "") or str(exc)):
+            raise NoMoney(OUT_OF_MONEY) from exc
         # A 400 is nearly always a setting the API does not recognise, and repeating the
         # request will not change that. Say where to go and look.
         hint = " Kijk de instellingen in config.env na." if exc.status_code == 400 else ""
@@ -412,11 +440,15 @@ def try_key() -> str:
         raise RuntimeError("Deze sleutel wordt niet geaccepteerd. Controleer of je hem helemaal "
                            "gekopieerd hebt.") from exc
     except anthropic.PermissionDeniedError as exc:
+        if about_money(getattr(exc, "message", "") or str(exc)):
+            raise RuntimeError(OUT_OF_MONEY) from exc
         raise RuntimeError("De sleutel klopt, maar dit account mag dit model niet gebruiken. "
                            "Kijk of er tegoed op staat.") from exc
     except anthropic.RateLimitError as exc:
-        raise RuntimeError("De sleutel klopt, maar het account zit aan zijn limiet of heeft geen "
-                           "tegoed meer.") from exc
+        if about_money(getattr(exc, "message", "") or str(exc)):
+            raise RuntimeError(OUT_OF_MONEY) from exc
+        raise RuntimeError("De sleutel klopt, maar het account zit op dit moment aan zijn "
+                           "limiet. Probeer het over een minuut nog eens.") from exc
     except anthropic.APIConnectionError as exc:
         raise RuntimeError("Geen verbinding met Claude. Staat het internet aan?") from exc
     except anthropic.APIStatusError as exc:
@@ -709,6 +741,11 @@ def discover(transcript: Transcript, on_progress: ProgressCallback | None = None
         try:
             return work(window)
         except Cancelled:
+            raise
+        except NoMoney:
+            # Straight through, like a stop. Every other passage is going to fail the same
+            # way, and the reader needs the one sentence about money rather than a count of
+            # how many pieces did not work.
             raise
         except Exception as exc:  # noqa: BLE001
             failures.append(str(exc))

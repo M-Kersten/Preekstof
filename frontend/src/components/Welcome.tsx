@@ -31,7 +31,7 @@ function say(e: unknown): string {
  */
 const Playing = () => (
   <figure className="mock reel">
-    <div className="phone">
+    <div className="upright">
       <div className="screen">
         <span className="spot" aria-hidden="true" />
         <p className="caption">
@@ -44,17 +44,26 @@ const Playing = () => (
   </figure>
 )
 
-/** What the sleutel buys: a handful of moments, best first, with the reason underneath. */
+/**
+ * What the sleutel buys, laid out the way the suggestion list really is: numbered in the
+ * margin, the strongest first, with a mark on the one that would be posted.
+ *
+ * No coloured bar down the side of the cards. That says nothing a number in the margin
+ * does not say better, and it is the first thing a page reaches for when it has no idea
+ * what it wants to point at.
+ */
 const Moments = () => (
   <figure className="mock moments">
     {[
-      { title: 'Rust is geen zwakte', when: '22:20 – 23:20', why: 'Begint bij het onderwerp zelf' },
-      { title: 'Wat als loslaten de plek is', when: '36:00 – 37:10', why: 'Maakt de gedachte af' },
-      { title: 'De vrouw die niet durft te stoppen', when: '29:56 – 31:10', why: 'Een verhaal met een clou' },
+      { title: 'Rust is geen zwakte', when: '22:20 – 23:20', secs: '60 sec', why: 'Begint bij het onderwerp zelf' },
+      { title: 'Wat als loslaten de plek is', when: '36:00 – 37:10', secs: '70 sec', why: 'Maakt de gedachte af' },
+      { title: 'De vrouw die niet durft te stoppen', when: '29:56 – 31:10', secs: '74 sec', why: 'Een verhaal met een clou' },
     ].map((m, i) => (
-      <div key={m.title} className={`moment ${i === 0 ? 'top' : ''}`}>
+      <div key={m.title} className="moment">
+        <span className="no tc">{String(i + 1).padStart(2, '0')}</span>
         <strong>{m.title}</strong>
-        <span className="tc">{m.when}</span>
+        {i === 0 && <span className="chosen">✓ Gekozen</span>}
+        <span className="tc when">{m.when} · {m.secs}</span>
         <span className="why">{m.why}</span>
       </div>
     ))}
@@ -75,26 +84,41 @@ const EndScreen = ({ name, times, insta }: { name: string; times: string; insta:
   </figure>
 )
 
-/** What the number gets you: the church's own services, ready to pick from. */
+/**
+ * Before the number is in, the panel shows where to find it: the address bar of their own
+ * browser, with the part they are after lit up. Showing four made-up services instead
+ * would be pretending to know something about a church nobody has named yet.
+ *
+ * Once it checks out, the same panel swaps to their real services.
+ */
 const Services = ({ found }: { found: { name: string; services: StationService[] } | null }) => {
-  const rows = found?.services.length
-    ? found.services.slice(0, 4).map((s) => ({ when: s.when, title: s.title }))
-    : [
-      { when: 'Zondag 10:00', title: 'Morgendienst' },
-      { when: 'Zondag 18:30', title: 'Avonddienst' },
-      { when: 'Vorige zondag', title: 'Morgendienst' },
-      { when: 'Vorige zondag', title: 'Avonddienst' },
-    ]
+  if (!found) {
+    return (
+      <figure className="mock hunting">
+        <div className="browser">
+          <span className="dots" aria-hidden="true"><i /><i /><i /></span>
+          <span className="url">
+            kerkdienstgemist.nl/stations/<mark>1341</mark>/events
+          </span>
+        </div>
+        <figcaption>Dit nummer staat in de adresbalk van jullie eigen pagina</figcaption>
+      </figure>
+    )
+  }
   return (
-    <figure className={`mock station ${found ? 'live' : ''}`}>
-      <strong className="head">{found?.name ?? 'Jullie kerk'}</strong>
-      {rows.map((s, i) => (
-        <div key={i} className="row">
+    <figure className="mock lineup">
+      <strong className="head">{found.name}</strong>
+      {(found.services.length
+        ? found.services.slice(0, 4)
+        : []
+      ).map((s) => (
+        <div key={s.id} className="row">
           <span className="when">{s.when}</span>
           <span className="title">{s.title}</span>
         </div>
       ))}
-      <figcaption>{found ? 'Klaar om op te halen' : 'Vul het nummer in en kijk of dit klopt'}</figcaption>
+      {found.services.length === 0 && <p className="none">Er staan nu geen diensten op.</p>}
+      <figcaption>{found.services.length ? 'Klaar om op te halen' : 'Gevonden, alleen nog leeg'}</figcaption>
     </figure>
   )
 }

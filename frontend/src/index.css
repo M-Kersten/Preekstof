@@ -551,6 +551,8 @@ input[type='checkbox'] { accent-color: var(--purple); width: 1rem; height: 1rem;
   max-width: 34rem; overflow-x: auto;
 }
 .welcome .address mark { background: none; color: var(--purple); font-weight: 700; }
+/* Said on the panel beside it, so only shown where that panel is not. */
+.welcome .address { display: none; }
 .welcome code { font-family: var(--mono); font-size: 0.88rem; }
 
 .welcome .acts { display: flex; align-items: center; gap: 1rem; flex-wrap: wrap; margin-top: 1.9rem; }
@@ -576,7 +578,7 @@ input[type='checkbox'] { accent-color: var(--purple); width: 1rem; height: 1rem;
 
 /* a clip playing, with the word being said lit up */
 .mock.reel { display: flex; flex-direction: column; align-items: center; }
-.mock.reel .phone {
+.mock.reel .upright {
   position: relative; width: 12.5rem; aspect-ratio: 9 / 16; border-radius: 20px;
   background: var(--deep-ink); padding: 7px; box-shadow: 0 20px 44px rgba(0, 0, 0, 0.35);
 }
@@ -613,16 +615,21 @@ input[type='checkbox'] { accent-color: var(--purple); width: 1rem; height: 1rem;
   .mock.reel .scrub span { width: 46%; }
 }
 
-/* the moments a search comes back with */
-.mock.moments { display: flex; flex-direction: column; gap: 0.6rem; }
+/* the moments a search comes back with, laid out like the real list: numbered in the
+   margin, a mark on the one that would go out. No bar down the side of anything. */
+.mock.moments { display: flex; flex-direction: column; gap: 0.5rem; }
 .mock.moments .moment {
-  display: grid; grid-template-columns: 1fr auto; gap: 0.15rem 0.8rem;
+  display: grid; grid-template-columns: 1.7rem 1fr auto; gap: 0.2rem 0.6rem;
   background: rgba(255, 255, 255, 0.05); border-radius: 12px; padding: 0.8rem 0.95rem;
 }
-.mock.moments .moment.top { background: rgba(255, 255, 255, 0.1); box-shadow: inset 3px 0 0 var(--gold); }
-.mock.moments strong { font-size: 0.95rem; color: #FFFFFF; font-weight: 700; }
-.mock.moments .tc { color: rgba(237, 230, 244, 0.6); }
-.mock.moments .why { grid-column: 1 / -1; font-size: 0.82rem; color: rgba(237, 230, 244, 0.55); }
+.mock.moments .no { grid-row: 1 / span 3; color: rgba(237, 230, 244, 0.4); padding-top: 0.1rem; }
+.mock.moments strong { font-size: 0.95rem; color: #FFFFFF; font-weight: 700; line-height: 1.25; }
+.mock.moments .chosen {
+  align-self: start; white-space: nowrap; font-size: 0.72rem; font-weight: 700; color: var(--deep);
+  background: var(--gold); border-radius: 999px; padding: 0.12rem 0.5rem;
+}
+.mock.moments .when { grid-column: 2 / -1; color: rgba(237, 230, 244, 0.55); }
+.mock.moments .why { grid-column: 2 / -1; font-size: 0.82rem; color: rgba(237, 230, 244, 0.5); }
 
 /* the end screen, filling in while they type */
 .mock.outro .outro-card {
@@ -644,16 +651,37 @@ input[type='checkbox'] { accent-color: var(--purple); width: 1rem; height: 1rem;
 .mock.outro .times { font-size: 0.78rem; color: rgba(237, 230, 244, 0.72); overflow-wrap: anywhere; }
 .mock.outro .insta { font-size: 0.78rem; color: var(--gold); font-weight: 600; margin-top: 0.3rem; }
 
-/* the church's own services, once the number checks out */
-.mock.station { display: flex; flex-direction: column; gap: 0.4rem; }
-.mock.station .head { font-size: 1rem; color: #FFFFFF; margin-bottom: 0.3rem; }
-.mock.station .row {
-  display: flex; align-items: baseline; gap: 0.8rem; padding: 0.65rem 0.9rem; border-radius: 10px;
-  background: rgba(255, 255, 255, 0.05); opacity: 0.45; transition: opacity 0.3s;
+/* where the number is, before anybody has typed one: their own address bar */
+.mock.hunting .browser {
+  background: rgba(255, 255, 255, 0.07); border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 14px; padding: 0.8rem 0.9rem 1rem;
 }
-.mock.station.live .row { opacity: 1; }
-.mock.station .when { font-size: 0.78rem; color: rgba(237, 230, 244, 0.6); white-space: nowrap; }
-.mock.station .title { font-size: 0.9rem; color: #FFFFFF; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.mock.hunting .dots { display: flex; gap: 0.32rem; margin-bottom: 0.7rem; }
+.mock.hunting .dots i { width: 8px; height: 8px; border-radius: 50%; background: rgba(255, 255, 255, 0.22); }
+.mock.hunting .url {
+  display: block; background: rgba(0, 0, 0, 0.3); border-radius: 999px; padding: 0.6rem 0.85rem;
+  font-family: var(--mono); font-size: 0.74rem; color: rgba(237, 230, 244, 0.6);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis; line-height: 1.6;
+}
+/* Underlined rather than boxed: a marker stroke points at it without turning it into a
+   second button on a panel that has none. */
+.mock.hunting .url mark {
+  background: none; color: var(--gold); font-weight: 700;
+  border-bottom: 2px solid var(--gold); padding-bottom: 1px;
+}
+
+/* The church's own services, once the number checks out. Named lineup, not station:
+   .station is the card the real service list already uses, and a mock wearing that
+   name inherits its white background. */
+.mock.lineup { display: flex; flex-direction: column; gap: 0.4rem; }
+.mock.lineup .head { font-size: 1rem; color: #FFFFFF; margin-bottom: 0.3rem; }
+.mock.lineup .row {
+  display: flex; align-items: baseline; gap: 0.8rem; padding: 0.65rem 0.9rem; border-radius: 10px;
+  background: rgba(255, 255, 255, 0.05);
+}
+.mock.lineup .when { font-size: 0.78rem; color: rgba(237, 230, 244, 0.6); white-space: nowrap; }
+.mock.lineup .title { font-size: 0.9rem; color: #FFFFFF; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.mock.lineup .none { font-size: 0.88rem; color: rgba(237, 230, 244, 0.55); }
 
 @media (max-width: 1000px) {
   .welcome { grid-template-columns: 1fr; min-height: 0; }
@@ -663,7 +691,10 @@ input[type='checkbox'] { accent-color: var(--purple); width: 1rem; height: 1rem;
   .welcome .asked { justify-content: flex-start; }
   .welcome .two { grid-template-columns: 1fr; }
 }
-@media (max-width: 620px) { .welcome .showing { display: none; } }
+@media (max-width: 620px) {
+  .welcome .showing { display: none; }
+  .welcome .address { display: block; }
+}
 
 /* a moment somebody cut out of the transcript themselves */
 .timeline .mark.own { background: var(--gold); }

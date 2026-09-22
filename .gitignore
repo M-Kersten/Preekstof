@@ -26,6 +26,10 @@ vision/*.part
 tools/
 config.env
 
+# your church's own details, made on first start from templates/church.example.json.
+# It used to ship filled in, which gave every new install another church's name.
+templates/church.json
+
 # end screen: your own settings and the generated video (see templates/outro.example.json)
 templates/outro.json
 templates/outro.mp4

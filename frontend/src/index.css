@@ -499,6 +499,60 @@ input[type='checkbox'] { accent-color: var(--purple); width: 1rem; height: 1rem;
 .lines .tc { color: var(--muted); display: inline-block; width: 4.2rem; }
 .player video { width: 100%; max-height: 300px; background: #000; border-radius: 10px; display: block; }
 
+.syscheck-version {
+  display: block; padding-top: 0.55rem; margin-top: 0.2rem; border-top: 1px solid var(--line);
+  color: var(--muted); font-size: 0.78rem; font-family: var(--mono);
+}
+
+/* the first five minutes */
+.appbar.bare-bar { justify-content: flex-start; }
+.welcome { max-width: 46rem; margin: 0 auto; }
+.welcome-steps {
+  list-style: none; display: flex; flex-wrap: wrap; gap: 0.2rem 1.2rem; margin: 0 0 1.2rem; padding: 0;
+  font-size: 0.82rem; color: var(--muted);
+}
+.welcome-steps li { display: flex; align-items: center; gap: 0.4rem; }
+.welcome-steps .dot {
+  display: grid; place-items: center; width: 1.3rem; height: 1.3rem; border-radius: 50%;
+  border: 1px solid var(--line); font-size: 0.7rem; font-weight: 700; background: var(--white);
+}
+.welcome-steps .past { color: var(--purple); }
+.welcome-steps .past .dot { background: var(--purple); border-color: var(--purple); color: var(--white); }
+.welcome-steps .now { color: var(--purple); font-weight: 600; }
+.welcome-steps .now .dot { border-color: var(--purple); color: var(--purple); box-shadow: 0 0 0 3px rgba(75, 30, 120, 0.12); }
+
+.welcome-card { padding: 1.8rem 2rem 1.7rem; }
+.welcome-card h1 { font-size: 1.7rem; margin-bottom: 0.6rem; }
+.welcome-card .lead { max-width: 58ch; font-size: 1rem; color: var(--ink); margin: 0 0 1.1rem; }
+.welcome-card label { display: block; font-weight: 600; font-size: 0.85rem; margin: 0.9rem 0 0.35rem; }
+.welcome-card > input { width: 100%; box-sizing: border-box; font-size: 0.95rem; }
+.welcome-card .acts { display: flex; align-items: center; gap: 0.6rem; flex-wrap: wrap; margin-top: 1.3rem; }
+.welcome-card .row { display: flex; gap: 0.5rem; margin-top: 0.4rem; }
+.welcome-card .row input { flex: 1; font-size: 0.95rem; }
+.welcome-card code {
+  font-family: var(--mono); font-size: 0.85rem; background: var(--lavender);
+  border-radius: 4px; padding: 0 0.3rem;
+}
+
+/* three reasons, side by side, none of them shouting */
+.why { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1rem; margin: 1.3rem 0 0.4rem; }
+.why > div { display: flex; flex-direction: column; gap: 0.25rem; padding-top: 0.7rem; border-top: 2px solid var(--purple); }
+.why strong { color: var(--purple); font-size: 0.95rem; }
+.why span { font-size: 0.86rem; color: var(--muted); line-height: 1.45; }
+@media (max-width: 720px) { .why { grid-template-columns: 1fr; } }
+
+.doing { margin: 0 0 0.4rem; padding-left: 1.2rem; font-size: 0.92rem; }
+.doing li { margin-bottom: 0.35rem; }
+.next { margin: 0.4rem 0 0; padding-left: 1.2rem; font-size: 0.9rem; color: var(--muted); }
+.next li { margin-bottom: 0.35rem; }
+.sample { display: block; background: var(--lavender); border-radius: 8px; padding: 0.55rem 0.8rem; margin: 0 0 0.8rem; }
+.sample strong { color: var(--purple); }
+.good { color: var(--green); font-size: 0.9rem; font-weight: 600; margin: 0.7rem 0 0; }
+.found-station { display: flex; flex-direction: column; gap: 0.15rem; padding: 0.7rem 0.9rem; background: #F0F7F3; border-radius: 8px; }
+.found-station span { color: var(--ink); font-weight: 400; }
+.welcome-foot { margin-top: 1rem; text-align: center; font-size: 0.8rem; color: var(--muted); }
+.welcome-foot button { color: var(--muted); text-decoration: underline; text-underline-offset: 2px; padding: 0; }
+
 /* a moment somebody cut out of the transcript themselves */
 .timeline .mark.own { background: var(--gold); }
 .timeline .mark.own.on { background: #A87B10; }

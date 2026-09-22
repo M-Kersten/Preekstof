@@ -47,6 +47,19 @@ def say(message: str) -> None:
     print(f"[Preekstof] {message}", flush=True)
 
 
+def announce() -> None:
+    """Say which version this is, in the window and on its title bar.
+
+    start.bat sets the title before Python exists, so it cannot carry the number; this can.
+    A support mail that begins with a screenshot of the black window then already answers
+    the first question.
+    """
+    from backend.version import full
+
+    print(f"\33]0;Preekstof {full()}\a", end="", flush=True)
+    say(f"versie {full()}")
+
+
 # --- python packages ----------------------------------------------------------
 
 REQUIREMENTS = ROOT / "backend" / "requirements.txt"
@@ -374,6 +387,7 @@ def open_browser_when_ready(url: str) -> None:
 def main() -> None:
     os.chdir(ROOT)
     ensure_requirements()
+    announce()  # after the install, so the import of backend.version can succeed
     load_config()
     # The speech model cache falls back to copies on Windows without developer mode; that is fine.
     os.environ.setdefault("HF_HUB_DISABLE_SYMLINKS_WARNING", "1")

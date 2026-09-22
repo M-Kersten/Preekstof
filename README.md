@@ -2,6 +2,11 @@
 
 Turns a short Dutch church-service clip into a finished vertical video (1080×1920, H.264 + AAC, 30 fps) for Instagram Reels and YouTube Shorts. Everything runs locally.
 
+Not open source. See [LICENSE](LICENSE) for what a pilot church and Donkey Mobile may do with
+it, and [NOTICE](NOTICE) for whose work it is built on. What changes per version is in
+[CHANGELOG.md](CHANGELOG.md); the version you are running sits at the bottom of the readiness
+panel in the app bar.
+
 ```text
 Upload video → Transcribe Dutch speech → Edit subtitles → Choose subtitle style
 → Preview 9:16 crop → Add church outro → Render final MP4
@@ -23,7 +28,16 @@ There are two entry points on the page:
 3. The first start takes a few minutes: it installs Python packages and downloads FFmpeg into `tools/`. After an update, the next start installs any new packages by itself. Python itself is installed automatically on Windows (through winget) and through Homebrew on macOS when available; otherwise the window tells you where to get it.
 4. The browser opens at http://localhost:8000. Close the black window to stop the app.
 
-Settings live in `config.env` next to `start.bat` (created on first start). Put your Claude API key there for the "Full service" clip suggestions, or set `LLM_PROVIDER=ollama` to keep everything local. The speech model (about 460 MB) is downloaded on the first transcription.
+The first time the app opens it walks through what it needs: a Claude API key, the name of
+the church, and the church's number on kerkdienstgemist.nl. The key is tried against the API
+before it is written down, so a mis-pasted one says so on the spot rather than twenty minutes
+into the first run, and it takes effect without a restart. Everything asked there stays
+editable under **Merk instellen**, and **Instellen opnieuw** walks through it again.
+
+Settings live in `config.env` next to `start.bat` (created on first start). The welcome writes
+the key there; `LLM_PROVIDER=ollama` keeps everything on the machine for a church that will not
+send transcript text anywhere. The speech model (about 460 MB) is downloaded on the first
+transcription.
 
 The built web interface is committed in `frontend/dist`, so Node.js is not needed to run the app. Developers who change the frontend run `npm run build` in `frontend/` and commit the result.
 
@@ -706,6 +720,8 @@ backend/
   jobs.py           in-process background jobs
   discovery.py      transcript passages -> LLM analysis -> deduplicated, ranked ClipCandidates
   settings.py       one value out of config.env, typo and all
+  setup.py          the first five minutes: what a church still has to fill in
+  version.py        one version number, read by the app, the console and every diagnostic
   outro.py          end-screen config -> ASS + FFmpeg, rebuilt when the config changes
   fonts.py          which font families and weights templates/fonts holds
   brands.py         brand presets: church, end screen, subtitle style, music
@@ -718,7 +734,8 @@ frontend/public/
   icon.svg                     the mark: tab icon and app bar, one purple vector
   icons.svg                    the social glyphs the end-screen editor draws from
 frontend/src/
-  App.tsx                      tab switch between Full service and Clip
+  App.tsx                      tab switch between Full service and Clip; holds the welcome gate
+  components/Welcome.tsx       the first five minutes: what it is, the key, the church, the station
   api.ts                       typed API client (projects + services)
   remember.ts                  the handful of things kept between visits, under one prefix
   subtitleLayout.ts            layout constants shared with subtitles.py

@@ -56,7 +56,10 @@ def migrate() -> None:
     church = ChurchInfo()
     old_church = TEMPLATES_DIR / "church.json"
     if old_church.is_file():
-        church = ChurchInfo.model_validate_json(old_church.read_text(encoding="utf-8"))
+        try:
+            church = ChurchInfo.model_validate_json(old_church.read_text(encoding="utf-8"))
+        except Exception:  # noqa: BLE001  an unreadable file is the same as not having one
+            pass
     outro = OutroConfig()
     old_outro = TEMPLATES_DIR / "outro.json"
     if old_outro.is_file():

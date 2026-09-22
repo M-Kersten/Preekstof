@@ -8,7 +8,7 @@ from pathlib import Path
 
 from pydantic import BaseModel
 
-from . import discovery, mac, storage, transcription, vision
+from . import discovery, mac, storage, transcription, version, vision
 from .models import PROJECTS_DIR, ROOT, SERVICES_DIR, TEMPLATES_DIR
 from .transcription import MODEL_SIZE
 
@@ -113,4 +113,7 @@ def _folders() -> Check:
 
 def report() -> dict:
     checks = [_ffmpeg(), _whisper(), _tracking(), _llm(), _disk(), _folders()]
-    return {"ok": all(c.ok for c in checks), "checks": [c.model_dump() for c in checks]}
+    # The version rides along with the checks because this is the panel somebody already
+    # opens when something is wrong, and it is the first thing a support call asks for.
+    return {"ok": all(c.ok for c in checks), "version": version.full(),
+            "checks": [c.model_dump() for c in checks]}

@@ -54,6 +54,9 @@ export default function SystemCheck() {
               <span>{c.detail}</span>
             </li>
           ))}
+          {/* The first question on every support call, in the panel somebody already opens
+              when something is wrong. */}
+          <li className="syscheck-version">Preekstof {report.version}</li>
         </ul>
       )}
     </div>

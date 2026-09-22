@@ -79,8 +79,10 @@ function CostNote({ analysis }: { analysis: NonNullable<Service['analysis']> }) 
 export default function ServiceView({ onOpenClip }: Props) {
   const [service, setService] = useState<Service | null>(null)
   const [uploading, setUploading] = useState<number | null>(null)
-  // Most churches already publish the service somewhere, so the link is the shorter way in.
+  // Most churches already publish the service somewhere, so the link is the shorter way
+  // in. A church that told the welcome it does not opens on the file tab instead.
   const [how, setHow] = useState<'link' | 'file'>('link')
+  const picked = useRef(false)
   const [link, setLink] = useState('')
   const [earlier, setEarlier] = useState<ServiceSummary[]>([])
   const church = useChurch()
@@ -211,6 +213,11 @@ export default function ServiceView({ onOpenClip }: Props) {
       fail(e)
     }
   }
+
+  useEffect(() => {
+    if (picked.current || church === null) return
+    if (!church.kerkdienstgemistStation.trim()) setHow('file')
+  }, [church])
 
   const upload = async (file: File) => {
     setError(null)
@@ -348,8 +355,8 @@ export default function ServiceView({ onOpenClip }: Props) {
 
       {showSource && !hasVideo && uploading === null && (
         <div className="seg source-pick">
-          <button className={how === 'link' ? 'on' : ''} onClick={() => setHow('link')}>Link naar de dienst</button>
-          <button className={how === 'file' ? 'on' : ''} onClick={() => setHow('file')}>Bestand van deze computer</button>
+          <button className={how === 'link' ? 'on' : ''} onClick={() => { picked.current = true; setHow('link') }}>Link naar de dienst</button>
+          <button className={how === 'file' ? 'on' : ''} onClick={() => { picked.current = true; setHow('file') }}>Bestand van deze computer</button>
         </div>
       )}
 

@@ -1,0 +1,87 @@
+Preekstof — third-party components
+==================================
+
+What this app is built on, and under what terms. Two lists, because the difference matters:
+what ships inside the repository travels with every copy, and what is fetched on first use
+lands on the church's own computer and is never passed on by us.
+
+The one to read carefully is YOLOv10n. It is AGPL-3.0, a licence that reaches into whatever
+it is distributed with, and it is deliberately kept out of the repository for that reason.
+
+
+SHIPPED IN THIS REPOSITORY
+--------------------------
+
+vision/face.onnx — YuNet face detection
+    MIT. From huggingface.co/opencv/face_detection_yunet. Full text in vision/face.LICENSE.
+
+templates/fonts/*.ttf — Anton, Barlow Condensed, Bebas Neue, Inter, Lora, Montserrat,
+Nunito, Open Sans, Oswald, Poppins, Roboto
+    SIL Open Font License 1.1. Each family's licence text sits next to the files as
+    templates/fonts/OFL-<family>.txt.
+
+frontend/public/icon.svg, the Preekstof name and mark
+    Not third-party. Copyright Merijn Kersten, covered by LICENSE, and not granted for use
+    apart from this software.
+
+
+INSTALLED BY PIP ON FIRST START
+-------------------------------
+
+  fastapi                 MIT
+  uvicorn                 BSD 3-Clause
+  starlette               BSD 3-Clause
+  pydantic                MIT
+  python-multipart        Apache 2.0
+  faster-whisper          MIT
+  ctranslate2             MIT
+  onnxruntime             MIT
+  numpy                   BSD 3-Clause
+  huggingface-hub         Apache 2.0
+  anthropic               MIT
+  yt-dlp                  Unlicense (public domain)
+  mlx-whisper             MIT — Apple Silicon only, optional, requirements-mac.txt
+
+The exact versions resolved on a given machine are in that machine's environment; this list
+names the projects, not a lockfile.
+
+
+FETCHED ON FIRST USE, ONTO THE CHURCH'S OWN COMPUTER
+----------------------------------------------------
+
+vision/person.onnx — YOLOv10n person detection
+    AGPL-3.0. From huggingface.co/onnx-community/yolov10n.
+
+    Kept out of this repository on purpose: the AGPL reaches into what it is distributed
+    with, and shipping it would pull this whole app under that licence. The app downloads it
+    on the machine that uses it, the way it already downloads FFmpeg, and passes it on to
+    nobody. Following the speaker also works with face.onnx alone, at lower coverage, for
+    anyone who would rather not have that licence anywhere near them. See vision/README.md.
+
+Whisper speech models (openai/whisper-* via Systran/faster-whisper-*, or
+mlx-community/whisper-*-mlx on an Apple Silicon Mac)
+    MIT, from Hugging Face. Downloaded once and cached under the user's Hugging Face folder.
+
+FFmpeg and ffprobe
+    Downloaded by the launcher when the machine has none. The Windows build comes from
+    gyan.dev and the macOS build from evermeet.cx. FFmpeg is LGPL-2.1-or-later, and those
+    particular builds include GPL components; they are executed as separate programs and
+    never linked into this software. Source: ffmpeg.org.
+
+
+SERVICES THIS APP TALKS TO
+--------------------------
+
+Anthropic (api.anthropic.com)
+    The written-out text of the preaching, to find the moments. Under the church's own API
+    key and Anthropic's commercial terms. No audio or video is ever sent. See PRIVACY.md.
+
+Kerkdienstgemist (kerkdienstgemist.nl)
+    Only when a church fills in its station number: the list of its own public services and
+    the recording behind the site's own download button, requested the same way a visitor's
+    browser requests it.
+
+Hugging Face (huggingface.co)
+    Model downloads only, listed above.
+
+Nothing is sent to the author of this software. There is no telemetry.

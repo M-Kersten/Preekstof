@@ -389,6 +389,41 @@ def _anthropic_request(client, user: str, system: str, schema):
     )
 
 
+def try_key() -> str:
+    """Ask one throwaway question, to find out whether the key works at all.
+
+    A key with a character missing otherwise announces itself twenty minutes later, on the
+    first real run, as a failure a volunteer reads as the app being broken. One token costs
+    a fraction of a cent and turns that into a red line under the box they just typed in.
+
+    Returns the model that answered. Raises with a readable Dutch reason when it does not.
+    """
+    if LLM_PROVIDER == "ollama":
+        _ollama("Zeg alleen: ja", "Antwoord kort.", LlmAnalysis)
+        return LLM_MODEL or "llama3.1"
+    import anthropic
+
+    model = LLM_MODEL or "claude-opus-5"
+    client = anthropic.Anthropic(timeout=30, max_retries=0)
+    try:
+        client.messages.create(model=model, max_tokens=1,
+                               messages=[{"role": "user", "content": "hoi"}])
+    except anthropic.AuthenticationError as exc:
+        raise RuntimeError("Deze sleutel wordt niet geaccepteerd. Controleer of je hem helemaal "
+                           "gekopieerd hebt.") from exc
+    except anthropic.PermissionDeniedError as exc:
+        raise RuntimeError("De sleutel klopt, maar dit account mag dit model niet gebruiken. "
+                           "Kijk of er tegoed op staat.") from exc
+    except anthropic.RateLimitError as exc:
+        raise RuntimeError("De sleutel klopt, maar het account zit aan zijn limiet of heeft geen "
+                           "tegoed meer.") from exc
+    except anthropic.APIConnectionError as exc:
+        raise RuntimeError("Geen verbinding met Claude. Staat het internet aan?") from exc
+    except anthropic.APIStatusError as exc:
+        raise RuntimeError(f"Claude gaf een fout ({exc.status_code}): {exc.message}") from exc
+    return model
+
+
 def _ollama(user: str, system: str = SYSTEM_PROMPT, schema=LlmAnalysis):
     body = json.dumps({
         "model": LLM_MODEL or "llama3.1",

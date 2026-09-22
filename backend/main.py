@@ -3,6 +3,7 @@
     uvicorn backend.main:app --reload --port 8000
 """
 
+import os
 import shutil
 import statistics
 from pathlib import Path
@@ -17,7 +18,7 @@ from fastapi.staticfiles import StaticFiles
 from contextlib import asynccontextmanager
 from datetime import datetime, timezone
 
-from . import brands, clips, discovery, fetch, fonts, health, kerkdienstgemist, outro, renderer, storage, tracking, transcription, wordlearn
+from . import brands, clips, discovery, fetch, fonts, health, kerkdienstgemist, outro, renderer, settings, setup, storage, tracking, transcription, version, wordlearn
 from .jobs import Cancelled, Estimator, Job, JobManager
 from .models import (ROOT, SERVICES_DIR, TEMPLATES_DIR, ChurchInfo, ClipCandidate, ClipOrigin, CropWindow, MusicSettings, ProcessedClip, Project, Watermark,
                      ProjectDetail, Service, ServiceDetail, Style, Track, Transcript, load_church_info, load_project,
@@ -46,8 +47,31 @@ async def lifespan(app: FastAPI):
     yield
 
 
-app = FastAPI(title="Preekstof", lifespan=lifespan)
-app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_methods=["*"], allow_headers=["*"])
+app = FastAPI(title="Preekstof", version=version.VERSION, lifespan=lifespan)
+
+
+def allowed_origins() -> list[str]:
+    """Which pages may talk to this app.
+
+    The interface is served by this same process, so it is same-origin and needs no
+    permission at all. The only reason anything is allowed is the Vite dev server on 5173
+    while somebody is working on the frontend.
+
+    It used to be "*", which let any website open in the same browser read a service, fetch
+    a transcript of the preaching and delete it again, on a machine where nothing asks who
+    is calling. ALLOWED_ORIGINS in config.env is the way out for an unusual setup; it is not
+    a thing a church ever needs to touch.
+    """
+    told = settings.text("ALLOWED_ORIGINS")
+    if told:
+        return [o.strip() for o in told.split(",") if o.strip()]
+    port = settings.whole("PORT", 8000, least=1)
+    here = ("localhost", "127.0.0.1")
+    return [f"http://{host}:{p}" for p in (port, 5173) for host in here]
+
+
+app.add_middleware(CORSMiddleware, allow_origins=allowed_origins(),
+                   allow_methods=["*"], allow_headers=["*"])
 jobs = JobManager()
 
 
@@ -339,6 +363,68 @@ def read_output(project_id: str):
 def read_church():
     """The church of the brand that is active."""
     return brands.active().church
+
+
+# --- the first five minutes ---------------------------------------------------------
+#
+# Writing an API key over an unauthenticated local API is only reasonable because nothing
+# else can reach it: the app listens on this machine and allowed_origins keeps other pages
+# out. The key is written, never read back.
+
+
+@app.get("/setup")
+def read_setup():
+    """What the welcome still has to ask, and what it can already fill in."""
+    return {**setup.state().model_dump(), "missing": setup.what_is_missing()}
+
+
+@app.put("/setup/key")
+def save_key(key: str = Body(embed=True)):
+    """Try the key once, and keep it only when it answers."""
+    key = key.strip()
+    if not setup.looks_like_a_key(key):
+        raise HTTPException(400, "Een sleutel van Claude begint met sk-ant- en is een stuk langer. "
+                                 "Kopieer hem opnieuw, helemaal.")
+    was = os.environ.get("ANTHROPIC_API_KEY")
+    os.environ["ANTHROPIC_API_KEY"] = key  # so the trial call uses the new one
+    try:
+        model = discovery.try_key()
+    except Exception as exc:  # noqa: BLE001  the reason is already in Dutch and is the answer
+        if was is None:
+            os.environ.pop("ANTHROPIC_API_KEY", None)
+        else:
+            os.environ["ANTHROPIC_API_KEY"] = was
+        raise HTTPException(400, str(exc)) from exc
+    setup.remember_key(key)
+    return {"ok": True, "model": model, **setup.state().model_dump()}
+
+
+@app.delete("/setup/key")
+def drop_key():
+    setup.forget_key()
+    return setup.state()
+
+
+@app.put("/setup/church")
+def save_church(churchName: str = Body(default=None, embed=True),
+                station: str = Body(default=None, embed=True),
+                serviceTimes: list[str] = Body(default=None, embed=True),
+                instagram: str = Body(default=None, embed=True)):
+    setup.remember_church(churchName, station, serviceTimes, instagram)
+    return setup.state()
+
+
+@app.post("/setup/done")
+def finish_setup(skippedStation: bool = Body(default=False, embed=True)):
+    setup.finish(skippedStation)
+    return setup.state()
+
+
+@app.post("/setup/reopen")
+def reopen_setup():
+    """Walk through the welcome again, without losing what is already filled in."""
+    setup.reopen()
+    return setup.state()
 
 
 @app.get("/words")

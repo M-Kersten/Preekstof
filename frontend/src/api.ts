@@ -169,7 +169,21 @@ export interface HealthCheck {
 
 export interface Health {
   ok: boolean
+  /** Which version is running, so a support call can start with an answer. */
+  version: string
   checks: HealthCheck[]
+}
+
+/** What the welcome still has to ask a church, and what it can already fill in. */
+export interface SetupState {
+  done: boolean
+  version: string
+  provider: string
+  hasKey: boolean
+  churchName: string
+  station: string
+  skippedStation: boolean
+  missing: ('key' | 'church' | 'station')[]
 }
 
 /** What one analysis run would send to the model, and what it costs. */
@@ -499,6 +513,21 @@ export interface Service {
   transcriptData: Transcript | null
   analysis: AnalysisEstimate | null
   job: RenderStatus | null
+}
+
+export const setupApi = {
+  read: () => request<SetupState>('/setup'),
+  /** Tried against the API before it is written down, so a typo says so here. */
+  saveKey: (key: string) => request<SetupState & { model: string }>('/setup/key', json('PUT', { key })),
+  dropKey: () => request<SetupState>('/setup/key', { method: 'DELETE' }),
+  saveChurch: (patch: {
+    churchName?: string
+    station?: string
+    serviceTimes?: string[]
+    instagram?: string
+  }) => request<SetupState>('/setup/church', json('PUT', patch)),
+  done: (skippedStation: boolean) => request<SetupState>('/setup/done', json('POST', { skippedStation })),
+  reopen: () => request<SetupState>('/setup/reopen', { method: 'POST' }),
 }
 
 export const serviceApi = {

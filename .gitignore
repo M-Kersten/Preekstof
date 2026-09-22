@@ -43,6 +43,9 @@ templates/speed.json
 templates/outro.json
 templates/outro.mp4
 templates/outro.ass
+# what building the end screen leaves behind, including a half-written render
+templates/outro.bg.*
+templates/outro.part.*
 
 # logos, brands, music and the word list: your own content (see the .example.json files)
 templates/logos/*

@@ -1,15 +1,25 @@
-# Tag a commit and a church gets something to download.
+# What a church downloads, built from a tag or from the Actions tab.
 #
-#   git tag v0.9.1 && git push origin v0.9.1
+#   git tag v0.10.1 && git push origin v0.10.1
 #
-# The tag has to match backend/version.py, because the number the app says out loud during a
-# support call and the number on the download page being different is worse than either
-# being wrong. The build below refuses the tag rather than shipping the mismatch.
+# or Actions → release → Run workflow, with the version in the box. Both routes end in the
+# same draft release; the second one exists because a tag cannot always be pushed from
+# where the work happens, and because cutting a release should not need a terminal.
+#
+# The number has to match backend/version.py either way. The number the app says out loud
+# during a support call and the number on the download page being different is worse than
+# either of them being wrong, so a mismatch fails the build rather than shipping.
 name: release
 
 on:
   push:
     tags: ["v*"]
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "Version to release, without the v (e.g. 0.10.0)"
+        required: true
+        type: string
 
 permissions:
   contents: write
@@ -26,15 +36,21 @@ jobs:
         with:
           python-version: "3.11"
 
-      - name: The tag and the app must say the same number
+      - name: Which version this is, from the tag or from the box
         run: |
-          tagged="${GITHUB_REF_NAME#v}"
+          set -eu
+          if [ -n "${{ inputs.version }}" ]; then
+            asked="${{ inputs.version }}"
+          else
+            asked="${GITHUB_REF_NAME#v}"
+          fi
           said=$(python -c "import sys; sys.path.insert(0, '.'); from backend import version; print(version.VERSION)")
-          echo "tag: $tagged   backend/version.py: $said"
-          if [ "$tagged" != "$said" ]; then
-            echo "::error::De tag zegt $tagged en backend/version.py zegt $said."
+          echo "gevraagd: $asked   backend/version.py: $said"
+          if [ "$asked" != "$said" ]; then
+            echo "::error::De release zegt $asked en backend/version.py zegt $said."
             exit 1
           fi
+          echo "VERSION=$asked" >> "$GITHUB_ENV"
 
       # The interface is committed so a church needs no Node, but a release must never ship
       # a build that is older than the code in the same zip.
@@ -50,11 +66,10 @@ jobs:
       - name: The committed interface must be the one this code builds
         run: git diff --exit-code frontend/dist
 
-      - run: python -m tools.release --out dist --version "${GITHUB_REF_NAME#v}"
+      - run: python -m tools.release --out dist --version "$VERSION"
 
       # A second zip for Windows, carrying its own Python. Without it a machine with no
-      # Python asks winget for one and the volunteer has to click twice; with it, the first
-      # double-click is the only one. Everything else in the zip is identical.
+      # Python asks winget for one; with it, the first double-click is the only one.
       #
       # NOT YET TESTED ON A REAL WINDOWS MACHINE. Until somebody has run this zip on a
       # Windows box with no Python on it, the plain zip above is the one to hand to a church.
@@ -84,11 +99,12 @@ jobs:
           # this runner cannot execute a Windows binary to do it here.
           curl -fsSL -o winpython/get-pip.py https://bootstrap.pypa.io/get-pip.py
 
-      - run: python -m tools.release --out dist --version "${GITHUB_REF_NAME#v}" --python winpython
+      - run: python -m tools.release --out dist --version "$VERSION" --python winpython
 
       - name: What a church downloads
         uses: softprops/action-gh-release@v2
         with:
+          tag_name: v${{ env.VERSION }}
           files: dist/*.zip
           body_path: CHANGELOG.md
           draft: true

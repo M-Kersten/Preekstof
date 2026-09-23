@@ -3,7 +3,7 @@
 Eén pagina, bedoeld om aan een kerkenraad te geven. Wie liever de korte versie leest: die
 staat in de app zelf, bij het scherm waar de kosten van het zoeken staan.
 
-Versie 0.9.0 (pilot). Als de app op iets anders draait dan wat hier staat, klopt deze pagina
+Versie 0.10.0 (pilot). Als de app op iets anders draait dan wat hier staat, klopt deze pagina
 niet meer; het versienummer staat onderin het gereedheidspaneel.
 
 ## In het kort
@@ -26,7 +26,7 @@ Dat is dus ook tekst uit de preek, van de stukken die jullie zelf gekozen hebben
 Onder de zakelijke voorwaarden van de API wordt wat je stuurt niet gebruikt om modellen te
 trainen. Anthropic bewaart aanvragen tijdelijk voor misbruikcontrole; wat daarvoor geldt staat
 in hun eigen voorwaarden, die tussen jullie kerk en Anthropic gelden en niet via deze app
-lopen. Als je erbij zet waar de preek over gaat, gaat dat mee. Sinds versie 0.9.0 gaat de naam
+lopen. Als je erbij zet waar de preek over gaat, gaat dat mee. Sinds versie 0.10.0 gaat de naam
 van de voorganger ook mee, als naam en verder niets, omdat het model die naam dan beter
 verstaat in de tekst.
 

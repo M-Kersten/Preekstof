@@ -583,7 +583,7 @@ particular service will not fit.
 **Done.** A disk with too little room says so before the first byte is written, with the
 number it needs and the number it has. Staged on purpose in a test.
 
-### Step 24 · Let the first start be one start — gedaan, nog niet getest op Windows
+### Step 24 · Let the first start be one start — gedaan (0.10.0), nog niet getest op Windows
 Serves (onboarding)
 
 **Wat er staat.** Twee dingen, en allebei halen ze dezelfde klik weg. `start.bat` zoekt na
@@ -600,9 +600,17 @@ zet `import site` aan in `python3xx._pth` en legt get-pip.py ernaast.
 Onderweg is `start.bat` ook Nederlands geworden. Het sprak Engels tegen een vrijwilliger die
 daar niet om gevraagd had.
 
-**Wat er niet staat.** Een test op een echte Windows-machine zonder Python. Alles hierboven
-is met het oog geschreven en met een nagemaakte python-map getest; of het klopt blijkt pas op
-een echte pc. Tot dat gebeurd is, is de gewone zip degene om aan een kerk te geven.
+**Twee gaten die er bij het nalopen nog in zaten.** De meegeleverde Python is een embeddable
+build, en die kan twee dingen niet uit zichzelf. Hij heeft geen pip, terwijl alles daarna met
+pip geïnstalleerd wordt: `launcher.ensure_pip` zet die er nu eenmalig zelf op, uit de
+`get-pip.py` die in de zip meereist. En zijn `._pth` vervangt `sys.path` in zijn geheel en zet
+Python in isolated mode, dus stond noch site-packages noch de map van de app erop; `import
+backend` zou zijn gestrand op de eerste regel. Dat bestand wordt nu uitgeschreven in plaats
+van bijgewerkt, met `..` en `import site` erin.
+
+**Wat er niet staat.** Een test op een echte Windows-machine zonder Python. Alles hierboven is
+met het oog geschreven en met een nagemaakte python-map getest; of het klopt blijkt pas op een
+echte pc. Tot dat gebeurd is, is de gewone zip degene om aan een kerk te geven.
 
 **Build.** On a machine without Python, `start.bat` installs it and then asks the volunteer
 to close the window and run the file again. Ship an embeddable Python in the release zip
@@ -642,6 +650,35 @@ has to put twenty euro on an account. Weeks of a pilot can go that way.
 
 **Done.** An account with no credit says so in one sentence naming the console page, without
 retrying first. Starting a second heavy job says what is already running.
+
+### Step 26 · Woorden die het spraakmodel niet kan weten — gedaan (0.10.0)
+Serves (1, share)
+
+Kwam niet uit dit plan maar uit een vraag: kan er nog meer bijbelse taal mee naar Whisper. Het
+antwoord was nee, en het waarom was het interessante deel.
+
+**Wat er mis was.** Whisper leest alleen de laatste 223 tokens van een `initial_prompt` en
+gooit de kop weg zonder iets te zeggen. De lijst stond op 511 van de 512 tekens, dus 31 van de
+70 woorden bereikten het model nooit, alle bijbelboeken incluis. Elk woord dat erbij kwam
+duwde er eentje af. Meer meegeven maakte het dus slechter.
+
+**Wat erop zat.** `hotwords` krijgt van faster-whisper zijn eigen 223 tokens naast de prompt in
+plaats van een deel ervan, en werd niet gebruikt. Alles wat niet paste gaat daarheen, met de
+namen van de kerk voorop. Die lijst wordt aan de andere kant afgekapt, dus hij loopt in
+omgekeerde volgorde. Gemeten op twee voorgelezen zinnen, op de beam die de scan echt gebruikt:
+7 van de 12 kerkwoorden terug werd 11 van de 12, en 0 van de 8 werd 4 van de 8.
+
+**En daarna wat geen enkele prompt kan.** Een spraakmodel hoort klanken en weet niet dat er
+maar één woord kan volgen op "de brief aan de". Een taalmodel dat de afgemaakte regel leest
+weet dat meteen, en heeft geen ruimtegrens. Dus leest `backend/polish.py` de ondertitels van
+een fragment één keer na, met de hele woordenlijst erbij. Het mag alleen vervangen door een
+woord dat al op een lijst staat, evenveel woorden terug als eruit gaan, en verder niets: geen
+grammatica, geen zinnen mooier maken. Wat het twee keer op dezelfde manier verbetert wordt een
+gewone correctie, en daarna wordt er niets meer gevraagd.
+
+**Wat er niet staat.** Een draai tegen het echte model. Er staat geen sleutel in de omgeving
+waar dit gebouwd is, dus de bewaking is met een nagemaakt model getest en de vraag die eruit
+gaat is gelezen. Hoeveel hij er in de praktijk uit haalt, blijkt bij de eerste echte dienst.
 
 ### What this phase is measured on
 

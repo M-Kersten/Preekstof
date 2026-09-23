@@ -13,6 +13,7 @@ It can also be run by hand:  python launcher.py
 """
 
 import asyncio
+import importlib.util
 import json
 import os
 import platform
@@ -80,11 +81,34 @@ REQUIREMENTS = ROOT / "backend" / "requirements.txt"
 INSTALLED_STAMP = Path(sys.prefix) / "requirements.installed"
 
 
+def ensure_pip() -> None:
+    """Make sure this interpreter can install things, which an embeddable Python cannot.
+
+    The Windows release brings its own Python so a church needs none of its own. That build
+    ships without pip on purpose, and everything after this point installs with pip, so the
+    first thing it has to do is give itself one. `get-pip.py` travels next to it in the zip.
+
+    An ordinary Python has pip already and never comes in here.
+    """
+    if importlib.util.find_spec("pip") is not None:
+        return
+    bootstrap = Path(sys.executable).parent / "get-pip.py"
+    if not bootstrap.is_file():
+        raise SystemExit(
+            "Deze Python kan geen onderdelen installeren en get-pip.py staat er niet bij. "
+            "Haal de app opnieuw op, of installeer Python van python.org en start opnieuw.")
+    say("Deze Python krijgt eenmalig zijn installatieprogramma …")
+    if subprocess.run([sys.executable, str(bootstrap), "--no-warn-script-location"]).returncode != 0:
+        raise SystemExit("Het installatieprogramma kon niet opgezet worden. Controleer de "
+                         "internetverbinding en start opnieuw.")
+
+
 def ensure_requirements() -> None:
     """Install the packages from requirements.txt whenever that file changed since the last install."""
     wanted = REQUIREMENTS.read_text(encoding="utf-8")
     if INSTALLED_STAMP.exists() and INSTALLED_STAMP.read_text(encoding="utf-8") == wanted:
         return
+    ensure_pip()
     say("Onderdelen worden geïnstalleerd of bijgewerkt, dit kan een paar minuten duren …")
     result = subprocess.run([sys.executable, "-m", "pip", "install", "-r", str(REQUIREMENTS)])
     if result.returncode != 0:

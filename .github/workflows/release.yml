@@ -66,12 +66,23 @@ jobs:
             "https://www.python.org/ftp/python/${version}/python-${version}-embed-amd64.zip"
           mkdir -p winpython && unzip -q embed.zip -d winpython
 
-          # The embeddable build ships with site-packages switched off, so pip has nowhere
-          # to install to and nothing it installs can be imported. One commented-out line.
-          sed -i 's/^#import site/import site/' winpython/python3*._pth
+          # A ._pth file replaces sys.path outright and puts Python in isolated mode, so
+          # neither site-packages nor the folder the script lives in are on it. Written out
+          # rather than patched, because both of those have to be added and what the file
+          # said before does not matter.
+          #
+          #   pythonNNN.zip   the standard library, as it ships
+          #   .               this folder, python/ inside the unpacked app
+          #   ..              the app itself, which is what `import backend` needs
+          #   import site     without this, pip has nowhere to install to
+          short=$(echo "${version}" | cut -d. -f1,2 | tr -d .)
+          printf 'python%s.zip\n.\n..\nimport site\n' "${short}" > "winpython/python${short}._pth"
+          cat "winpython/python${short}._pth"
 
+          # The embeddable build has no pip, and everything after this installs with pip.
+          # It is bootstrapped on the church's own machine, by launcher.ensure_pip, because
+          # this runner cannot execute a Windows binary to do it here.
           curl -fsSL -o winpython/get-pip.py https://bootstrap.pypa.io/get-pip.py
-          echo "python/ is prepared; the launcher installs the packages into it on first run"
 
       - run: python -m tools.release --out dist --version "${GITHUB_REF_NAME#v}" --python winpython
 

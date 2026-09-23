@@ -3,18 +3,11 @@
 Per versie, in gewone taal. Welke versie jij draait staat onderin het paneel dat opengaat
 als je in de balk op **Alles gereed** klikt.
 
-## 0.9.0 — pilot
+## 0.10.0 — pilot
 
-De eerste versie die bedoeld is om bij een andere kerk te draaien dan die van de maker.
-
-**Welkomstscherm.** Open je de app voor het eerst, dan legt hij eerst uit wat hij doet en
-vraagt daarna de drie dingen die hij nodig heeft: een sleutel voor Claude, de naam van de
-kerk, en het nummer van jullie pagina op Kerkdienstgemist. De sleutel wordt meteen
-uitgeprobeerd, dus een verkeerd geplakte sleutel zegt dat op het scherm en niet pas twintig
-minuten later. Kerkdienstgemist kun je overslaan als jullie er niet op staan; dan opent de
-app vanzelf op het tabblad om een bestand te kiezen. Alles wat je hier invult blijft
-aanpasbaar onder **Merk instellen**, en via **Instellen opnieuw** loop je de stappen nog een
-keer langs.
+Alles wat er sinds de eerste pilotversie bij kwam: de app draait nu ook op een computer
+waar niemand iets op hoeft te installeren, hij zegt wat hij doet terwijl hij het doet, en
+hij weigert werk waar de schijf te klein voor is.
 
 **Je ziet welke dienst je kiest.** De lijst van Kerkdienstgemist stond vol met vier keer
 "Morgendienst" onder elkaar. Nu staat er een beeldje uit de opname naast, en wie er
@@ -86,6 +79,19 @@ er verandert en waar je hem haalt. Bijwerken doe je zelf, wanneer het jou uitkom
 kerkenraad, over wat er op de computer blijft, wat er naar Claude gaat, en wat er in een
 uitgeschreven preek kan staan waar je niet aan denkt. De korte versie staat in de app, bij de
 kosten.
+
+## 0.9.0 — pilot
+
+De eerste versie die bedoeld is om bij een andere kerk te draaien dan die van de maker.
+
+**Welkomstscherm.** Open je de app voor het eerst, dan legt hij eerst uit wat hij doet en
+vraagt daarna de drie dingen die hij nodig heeft: een sleutel voor Claude, de naam van de
+kerk, en het nummer van jullie pagina op Kerkdienstgemist. De sleutel wordt meteen
+uitgeprobeerd, dus een verkeerd geplakte sleutel zegt dat op het scherm en niet pas twintig
+minuten later. Kerkdienstgemist kun je overslaan als jullie er niet op staan; dan opent de
+app vanzelf op het tabblad om een bestand te kiezen. Alles wat je hier invult blijft
+aanpasbaar onder **Merk instellen**, en via **Instellen opnieuw** loop je de stappen nog een
+keer langs.
 
 **Geen Kladblok meer nodig.** De sleutel hoeft niet meer met de hand in config.env. Hij
 wordt geschreven én meteen in gebruik genomen, dus de app hoeft er niet voor herstart.

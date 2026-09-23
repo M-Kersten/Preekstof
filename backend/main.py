@@ -19,7 +19,7 @@ from fastapi.staticfiles import StaticFiles
 from contextlib import asynccontextmanager
 from datetime import datetime, timezone
 
-from . import brands, clips, diagnose, discovery, fetch, fonts, health, journal, kerkdienstgemist, outro, renderer, room, selftest, settings, setup, speed, storage, tracking, transcription, version, wordlearn
+from . import brands, clips, diagnose, discovery, fetch, fonts, health, journal, kerkdienstgemist, outro, polish, renderer, room, selftest, settings, setup, speed, storage, tracking, transcription, version, wordlearn
 from .jobs import Cancelled, Estimator, Job, JobManager
 from .models import (ROOT, SERVICES_DIR, TEMPLATES_DIR, ChurchInfo, ClipCandidate, ClipOrigin, CropWindow, MusicSettings, ProcessedClip, Project, Watermark,
                      ProjectDetail, Service, ServiceDetail, Style, Track, Transcript, load_church_info, load_project,
@@ -1309,6 +1309,10 @@ def write_out(project: Project, accurate: bool = False, on_progress=None, should
             how=transcription.writing(accurate),
         )
         if heard.segments:
+            # And read back against the word list, in the sentence. A speech model hears
+            # sounds; only something reading the line knows that one word can follow "de
+            # brief aan de". It may swap words for listed ones and nothing else.
+            heard, _swapped = polish.polish(heard)
             save_transcript(project, heard)
     except Cancelled:
         raise

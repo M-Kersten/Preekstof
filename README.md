@@ -131,6 +131,28 @@ no prompt, which is what a list looks like once everything in it has fallen off 
 On a Mac with mlx-whisper there is no second budget: mlx takes `initial_prompt` and nothing else,
 so that path keeps only what fits in the prompt.
 
+**And a third place, where there is no budget at all.** Both of the above bias a model that hears
+sounds. Neither of them knows that only one word can follow "de brief aan de", which is why "de
+brief aan de eveneers" survives every amount of biasing. So after a clip has been heard properly,
+its subtitles are read back once against the whole vocabulary by a language model, which has the
+sentence in front of it and no size limit.
+
+That pass may swap a word and do nothing else. A swap happens only when the replacement is already
+on a list somebody wrote down, what it replaces really stands in that line, the two are the same
+number of words, and they look enough alike to be a mishearing rather than a different word
+(`backend/polish.py`). It cannot introduce vocabulary nobody listed, cannot rewrite a sentence and
+cannot tidy the grammar of a preacher who changed direction halfway, because subtitles sit under
+the face of a real person and have to say what was said.
+
+One word for one word is also what keeps the karaoke caption honest: `subtitles.word_times` uses
+whisper's own per-word timings while the count still matches the text. The one exception is a word
+whisper split or joined ("kerk en raad" is "kerkenraad" with the spaces in the wrong place); that
+caption falls back to spreading words by length, exactly as a line corrected by hand does.
+
+What it fixes twice becomes an ordinary entry in the church's `corrections`, after which the plain
+string replacement handles it and the model is not asked again. Costs about a tenth of a cent per
+clip. `POLISH_CLIPS=0` in `config.env` turns it off and leaves the words exactly as heard.
+
 So the file holds `words` in groups, ordered from droppable to precious inside each group and
 between them, and `initial_prompt()` trims from the front until what is left fits. Words the model
 already gets right earn nothing and are left out; what is in there is what it gets wrong. A church's

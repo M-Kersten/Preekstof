@@ -39,6 +39,9 @@ templates/church.json
 # how fast this particular computer writes out a service, learned from its own runs
 templates/speed.json
 
+# what the app noticed itself while reading clips back, on the way to the word list
+templates/verbeteringen.json
+
 # end screen: your own settings and the generated video (see templates/outro.example.json)
 templates/outro.json
 templates/outro.mp4

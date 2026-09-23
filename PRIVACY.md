@@ -19,8 +19,10 @@ geen server waar de app mee praat.
 uitgeschreven tekst van de dienst. De clips die eruit komen. De woordenlijst die de app van
 jullie leert. De instellingen. De logbestanden.
 
-**Naar Anthropic (api.anthropic.com).** Alleen de uitgeschreven tekst van het preekgedeelte,
-in één aanvraag per dienst, met jullie eigen API-sleutel. Er gaat nooit beeld of geluid heen.
+**Naar Anthropic (api.anthropic.com).** De uitgeschreven tekst van het preekgedeelte, in één
+aanvraag per dienst, met jullie eigen API-sleutel. En per fragment dat je klaarzet nog één
+kleine aanvraag: de ondertitels van dat fragment, om verkeerd verstane woorden eruit te halen.
+Dat is dus ook tekst uit de preek, van de stukken die jullie zelf gekozen hebben. Er gaat nooit beeld of geluid heen.
 Onder de zakelijke voorwaarden van de API wordt wat je stuurt niet gebruikt om modellen te
 trainen. Anthropic bewaart aanvragen tijdelijk voor misbruikcontrole; wat daarvoor geldt staat
 in hun eigen voorwaarden, die tussen jullie kerk en Anthropic gelden en niet via deze app
@@ -55,7 +57,10 @@ De app stuurt alleen het preekgedeelte, omdat hij de dienst in stukken knipt en 
 voorbedengedeelte overslaat. Dat scheelt, maar het is een inschatting van een computer en
 geen garantie. Een voorganger die tijdens de preek een naam noemt, stuurt die naam mee.
 
-**Wil de kerk dit niet, dan hoeft het niet.** Zet in `config.env`:
+Wil je dat laatste niet, zet dan `POLISH_CLIPS=0` in `config.env`. Dan gaat alleen de preek
+nog naar Claude om momenten te zoeken, en blijven de ondertitels zoals ze verstaan zijn.
+
+**Wil de kerk dit helemaal niet, dan hoeft het niet.** Zet in `config.env`:
 
     LLM_PROVIDER=ollama
 

@@ -339,12 +339,17 @@ def analyze_window(window: Window, about: str = "", wanted: int = 2, alone: bool
     return ask(window_request(window, about, wanted, alone), SYSTEM_PROMPT, LlmAnalysis).candidates
 
 
-def ask(user: str, system: str, schema):
-    """One call to the model, retried on the failures that are worth retrying."""
+def ask(user: str, system: str, schema, effort: str = ""):
+    """One call to the model, retried on the failures that are worth retrying.
+
+    `effort` names how hard to think about this one, for the callers whose question is not
+    the expensive one. Left out, the setting in config.env decides.
+    """
     last: Exception | None = None
     for attempt in range(LLM_ATTEMPTS):
         try:
-            return _ollama(user, system, schema) if LLM_PROVIDER == "ollama" else _anthropic(user, system, schema)
+            return _ollama(user, system, schema) if LLM_PROVIDER == "ollama" \
+                else _anthropic(user, system, schema, effort)
         except Retryable as exc:
             last = exc
             if attempt < LLM_ATTEMPTS - 1:
@@ -372,12 +377,12 @@ def check_provider() -> None:
         raise RuntimeError(NO_KEY_MESSAGE)
 
 
-def _anthropic(user: str, system: str = SYSTEM_PROMPT, schema=LlmAnalysis):
+def _anthropic(user: str, system: str = SYSTEM_PROMPT, schema=LlmAnalysis, effort: str = ""):
     import anthropic
 
     client = anthropic.Anthropic(timeout=LLM_TIMEOUT, max_retries=0)  # retries are handled per window
     try:
-        response = _anthropic_request(client, user, system, schema)
+        response = _anthropic_request(client, user, system, schema, effort)
     except anthropic.AuthenticationError as exc:
         raise RuntimeError("De Claude API-sleutel wordt niet geaccepteerd. Controleer ANTHROPIC_API_KEY in config.env.") from exc
     except anthropic.RateLimitError as exc:
@@ -406,12 +411,12 @@ def _anthropic(user: str, system: str = SYSTEM_PROMPT, schema=LlmAnalysis):
     return response.parsed_output
 
 
-def _anthropic_request(client, user: str, system: str, schema):
+def _anthropic_request(client, user: str, system: str, schema, effort: str = ""):
     return client.messages.parse(
         model=LLM_MODEL or "claude-opus-5",
         max_tokens=LLM_MAX_TOKENS,
         system=system,
-        output_config={"effort": LLM_EFFORT},
+        output_config={"effort": effort or LLM_EFFORT},
         messages=[{"role": "user", "content": user}],
         output_format=schema,
     )

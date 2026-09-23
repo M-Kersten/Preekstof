@@ -22,6 +22,17 @@ voorging als je kerk dat invult op je eigen pagina. Dat beeldje loopt mee naar b
 blijft bij de dienst staan in de app, ook nadat de opname is opgeruimd. Wie voorging gaat
 ook mee naar Claude, als naam en verder niets, dus namen worden beter verstaan.
 
+**De ondertitels worden nog een keer nagelezen.** Een spraakmodel hoort klanken en schrijft
+"de brief aan de eveneers", omdat het niet weet dat daar maar één woord kan staan. Nadat een
+fragment netjes is uitgeschreven leest Claude de ondertitels één keer na, met de hele
+woordenlijst erbij en zonder ruimtegrens. Hij mag alleen een woord vervangen door een woord
+dat al op de lijst staat, evenveel woorden terug als hij weghaalt, en verder niets: geen
+grammatica, geen zinnen mooier maken. Wat er staat moet zijn wat er gezegd is.
+
+Wat hij twee keer op dezelfde manier verbetert, komt in de woordenlijst van jullie kerk te
+staan. Daarna wordt het gewoon vervangen en hoeft er niets meer gevraagd te worden. Kost
+ongeveer een tiende cent per fragment. Uit te zetten met `POLISH_CLIPS=0` in config.env.
+
 **Meer kerkwoorden bereiken het spraakmodel.** Van de zeventig woorden in de woordenlijst
 kwamen er dertig helemaal niet aan, waaronder alle bijbelboeken: Whisper leest maar een stukje
 van zo'n lijst en de rest valt eraf zonder dat iemand dat merkt. Er blijkt een tweede plek te

@@ -1,4 +1,11 @@
 {
   "_lees_dit": "De standaardbibliotheek: muziek die met de app meekomt. Zet een bestand in deze map en voeg het hier toe met een titel en, als de licentie erom vraagt, de naam van de maker. Een bestand dat hier niet staat, verschijnt onder zijn bestandsnaam. De volgorde hier is de volgorde in de app.",
-  "tracks": []
+  "tracks": [
+      { "file": "agape.mp3", "title": "Agape", "credit": "Nicholas Britell" },
+      { "file": "and-we-walk-after.mp3", "title": "And we walk after", "credit": "Trevor Kowalski" },
+      { "file": "muted.mp3", "title": "Muted", "credit": "Hanna Lindgren" },
+      { "file": "one-way.mp3", "title": "One Way", "credit": "Daniel.mp3" },
+      { "file": "present.mp3", "title": "Present", "credit": "LLoyd Vaan" },
+      { "file": "the-beginning.mp3", "title": "The Beginning", "credit": "Flawed Mangoes" }
+  ]
 }

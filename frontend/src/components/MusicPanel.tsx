@@ -13,9 +13,6 @@ interface Props {
 const FRAGMENT = 15
 const FADE = 1.2
 
-/** "rustige_piano-01.mp3" reads as "rustige piano 01". The file keeps its own name. */
-const shown = (file: string) => file.replace(/\.[^.]+$/, '').replace(/[_-]+/g, ' ').trim() || file
-
 const clock = (seconds: number) =>
   `${Math.floor(seconds / 60)}:${String(Math.floor(seconds % 60)).padStart(2, '0')}`
 
@@ -53,12 +50,12 @@ function useListen() {
     setShare(0)
   }, [])
 
-  const listen = useCallback((file: string) => {
+  const listen = useCallback((file: string, url: string) => {
     const same = audio.current && playing === file
     stop()
     if (same) return
     setBroken(null)
-    const track = new Audio(api.musicUrl(file))
+    const track = new Audio(url)
     track.volume = 0
     audio.current = track
     setPlaying(file)
@@ -95,7 +92,7 @@ export default function MusicPanel({ music, onChange }: Props) {
   const [lengths, setLengths] = useState<Record<string, number>>({})
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
-  const { playing, share, broken, listen } = useListen()
+  const { playing, share, broken, listen, stop } = useListen()
 
   const load = () => api.music().then(setFiles).catch(() => setFiles([]))
   useEffect(() => {
@@ -111,7 +108,7 @@ export default function MusicPanel({ music, onChange }: Props) {
       const note = (seconds: number) => setLengths((known) => ({ ...known, [f.file]: seconds }))
       probe.onloadedmetadata = () => note(probe.duration)
       probe.onerror = () => note(Number.NaN)
-      probe.src = api.musicUrl(f.file)
+      probe.src = f.url
       return probe
     })
     return () => probes.forEach((probe) => {
@@ -135,8 +132,61 @@ export default function MusicPanel({ music, onChange }: Props) {
     }
   }
 
+  /** Throw away one of the church's own tracks. A clip that used it goes back to no music. */
+  const remove = async (track: MusicFile) => {
+    if (!window.confirm(`${track.title} weggooien? Clips die het al gebruikten, worden zonder muziek gemaakt.`)) return
+    setError(null)
+    try {
+      if (playing === track.file) stop()
+      await api.deleteMusic(track.file)
+      if (music.file === track.file) onChange({ ...music, file: '' })
+      await load()
+    } catch (e) {
+      setError(e instanceof Error ? e.message : String(e))
+    }
+  }
+
   const choose = (file: string) => onChange({ ...music, file })
   const on = Boolean(music.file)
+  const library = files.filter((f) => f.library)
+  const own = files.filter((f) => !f.library)
+
+  const row = (f: MusicFile) => {
+    const chosen = music.file === f.file
+    const listening = playing === f.file
+    const length = lengths[f.file]
+    const facts = broken === f.file
+      ? 'Dit bestand kan de browser niet afspelen'
+      : [f.credit, length && Number.isFinite(length) ? clock(length) : '',
+         f.library ? '' : `${String(f.sizeMb).replace('.', ',')} MB`].filter(Boolean).join(' · ')
+    return (
+      <li key={`${f.library ? 'lib' : 'own'}-${f.file}`}
+          className={`music-track${chosen ? ' on' : ''}${listening ? ' playing' : ''}`}>
+        <button
+          className="music-play"
+          onClick={() => listen(f.file, f.url)}
+          aria-label={listening ? `Stop ${f.title}` : `Luister naar ${f.title}`}
+          title={listening ? 'Stoppen' : `Luister naar de eerste ${FRAGMENT} seconden`}
+        >
+          {listening ? <StopIcon /> : <PlayIcon />}
+        </button>
+        <button className="music-pick" role="radio" aria-checked={chosen} onClick={() => choose(f.file)}>
+          <span className="music-name">{f.title}</span>
+          <span className="meta">{facts}</span>
+        </button>
+        {chosen && <span className="music-chosen">Gekozen</span>}
+        {!f.library && (
+          <button className="bare small music-remove" onClick={() => remove(f)} aria-label={`${f.title} weggooien`}
+                  title="Weggooien">✕</button>
+        )}
+        {listening && (
+          <div className="music-progress" aria-hidden="true">
+            <div style={{ width: `${Math.round(share * 100)}%` }} />
+          </div>
+        )}
+      </li>
+    )
+  }
 
   return (
     <Section
@@ -153,38 +203,10 @@ export default function MusicPanel({ music, onChange }: Props) {
           </button>
           {!on && <span className="music-chosen">Gekozen</span>}
         </li>
-        {files.map((f) => {
-          const chosen = music.file === f.file
-          const listening = playing === f.file
-          const length = lengths[f.file]
-          return (
-            <li key={f.file} className={`music-track${chosen ? ' on' : ''}${listening ? ' playing' : ''}`}>
-              <button
-                className="music-play"
-                onClick={() => listen(f.file)}
-                aria-label={listening ? `Stop ${shown(f.file)}` : `Luister naar ${shown(f.file)}`}
-                title={listening ? 'Stoppen' : `Luister naar de eerste ${FRAGMENT} seconden`}
-              >
-                {listening ? <StopIcon /> : <PlayIcon />}
-              </button>
-              <button className="music-pick" role="radio" aria-checked={chosen} onClick={() => choose(f.file)}>
-                <span className="music-name">{shown(f.file)}</span>
-                <span className="meta">
-                  {broken === f.file
-                    ? 'Dit bestand kan de browser niet afspelen'
-                    : [length && Number.isFinite(length) ? clock(length) : '',
-                       `${String(f.sizeMb).replace('.', ',')} MB`].filter(Boolean).join(' · ')}
-                </span>
-              </button>
-              {chosen && <span className="music-chosen">Gekozen</span>}
-              {listening && (
-                <div className="music-progress" aria-hidden="true">
-                  <div style={{ width: `${Math.round(share * 100)}%` }} />
-                </div>
-              )}
-            </li>
-          )
-        })}
+        {library.length > 0 && <li className="music-group" role="presentation">Standaard</li>}
+        {library.map(row)}
+        {own.length > 0 && <li className="music-group" role="presentation">Eigen muziek</li>}
+        {own.map(row)}
         <li className="music-track music-add">
           <label>
             <span className="music-play plus" aria-hidden="true">+</span>

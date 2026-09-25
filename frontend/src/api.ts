@@ -327,9 +327,17 @@ export interface LogoFile {
   file: string
 }
 
+/** A track that can go under a clip: one of the library that ships with the app, or the church's own. */
 export interface MusicFile {
   file: string
+  title: string
+  /** Who made it, as its licence asks for it to be named. */
+  credit: string
+  /** Ships with the app; cannot be thrown away. */
+  library: boolean
   sizeMb: number
+  /** Where the browser plays it from. */
+  url: string
 }
 
 /** The words a church uses that a speech model would not guess. */
@@ -513,7 +521,7 @@ export const api = {
   logoUrl: (name: string) => `/templates/logos/${encodeURIComponent(name)}`,
   music: () => request<MusicFile[]>('/music'),
   uploadMusic: (file: File, onProgress?: (f: number) => void) => upload<{ file: string }>('/music', file, onProgress),
-  musicUrl: (name: string) => `/templates/music/${encodeURIComponent(name)}`,
+  deleteMusic: (name: string) => request<{ file: string }>(`/music/${encodeURIComponent(name)}`, { method: 'DELETE' }),
   brands: () => request<BrandSummary[]>('/brands'),
   brand: (id: string) => request<Brand>(`/brands/${id}`),
   saveBrand: (brand: Brand) => request<Brand>(`/brands/${brand.id}`, json('PUT', brand)),

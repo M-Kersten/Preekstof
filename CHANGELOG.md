@@ -46,6 +46,10 @@ Die speelt de eerste vijftien seconden, want daar begint de muziek ook onder je 
 zacht op en gaat zacht weg. Er speelt er steeds één tegelijk, en naast de naam staat hoe lang de
 track duurt.
 
+Er komt nu ook een standaardbibliotheek mee met de app: muziek die elke kerk meteen kan
+gebruiken, onder **Standaard** in de lijst. Eigen muziek uploaden kan daarnaast, en staat onder
+**Eigen muziek**. Een eigen nummer gooi je weg met het kruisje; de standaardnummers blijven staan.
+
 **Onder de motorkap.** Het eindscherm werd vlak voor het maken van een video al die tijd niet
 bijgewerkt; dat gebeurde alleen bij het opstarten en bij het opslaan van het merk. Dat klopt nu.
 Windows weigert een video te vervangen die nog openstaat in een speler. De app wacht daar nu even

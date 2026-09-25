@@ -19,7 +19,7 @@ from fastapi.staticfiles import StaticFiles
 from contextlib import asynccontextmanager
 from datetime import datetime, timezone
 
-from . import brands, clips, diagnose, discovery, fetch, fonts, formats, health, journal, kerkdienstgemist, outro, polish, posts, renderer, room, selftest, settings, setup, speed, storage, tracking, transcription, version, wordlearn
+from . import brands, clips, diagnose, discovery, fetch, fonts, formats, health, journal, kerkdienstgemist, music, outro, polish, posts, renderer, room, selftest, settings, setup, speed, storage, tracking, transcription, version, wordlearn
 from .jobs import Cancelled, Estimator, Job, JobManager
 from .models import (ROOT, SERVICES_DIR, TEMPLATES_DIR, ChurchInfo, ClipCandidate, ClipOrigin, CropWindow, MusicSettings, ProcessedClip, Project, ShareSettings, Watermark,
                      ProjectDetail, Service, ServiceDetail, Style, Track, Transcript, load_church_info, load_project,
@@ -656,25 +656,23 @@ def delete_logo(name: str):
 
 # --- background music -----------------------------------------------------------
 
-MUSIC_DIR = TEMPLATES_DIR / "music"
-ALLOWED_MUSIC = {".mp3", ".m4a", ".wav", ".aac", ".ogg"}
-
-
-@app.get("/music")
+@app.get("/music", response_model=list[music.Track])
 def read_music():
-    """The music files that can go under a clip."""
-    MUSIC_DIR.mkdir(parents=True, exist_ok=True)
-    return [{"file": p.name, "sizeMb": round(p.stat().st_size / 1e6, 1)}
-            for p in sorted(MUSIC_DIR.iterdir()) if p.suffix.lower() in ALLOWED_MUSIC]
+    """The music that can go under a clip: the library that ships with the app, then the church's own."""
+    return music.everything()
 
 
 @app.post("/music")
 def upload_music(file: UploadFile):
     ext = Path(file.filename or "").suffix.lower()
-    if ext not in ALLOWED_MUSIC:
+    if ext not in music.ALLOWED:
         raise HTTPException(400, "Gebruik een mp3-, m4a-, wav-, aac- of ogg-bestand")
-    MUSIC_DIR.mkdir(parents=True, exist_ok=True)
-    target = MUSIC_DIR / Path(file.filename or f"muziek{ext}").name
+    name = Path(file.filename or f"muziek{ext}").name
+    if music.in_library(name):
+        raise HTTPException(400, f"Er staat al een nummer met de naam {name} in de standaardbibliotheek. "
+                                 "Geef je bestand een andere naam.")
+    music.OWN_DIR.mkdir(parents=True, exist_ok=True)
+    target = music.OWN_DIR / name
     with target.open("wb") as out:
         shutil.copyfileobj(file.file, out, length=1024 * 1024)
     return {"file": target.name}
@@ -682,8 +680,11 @@ def upload_music(file: UploadFile):
 
 @app.delete("/music/{name}")
 def delete_music(name: str):
-    target = MUSIC_DIR / Path(name).name
+    """Only a church's own upload can go. The library ships with the app and comes back with every update."""
+    target = music.OWN_DIR / Path(name).name
     if not target.is_file():
+        if music.in_library(name):
+            raise HTTPException(400, "Een nummer uit de standaardbibliotheek kan niet weggegooid worden")
         raise HTTPException(404, "Muziekbestand niet gevonden")
     target.unlink()
     return {"file": target.name}
@@ -709,11 +710,11 @@ def update_watermark(project_id: str, watermark: Watermark):
 
 
 @app.put("/projects/{project_id}/music", response_model=ProjectDetail)
-def update_music(project_id: str, music: MusicSettings):
+def update_music(project_id: str, chosen: MusicSettings):
     project = get_project(project_id)
-    if music.file and not (MUSIC_DIR / Path(music.file).name).is_file():
-        raise HTTPException(400, f"Het muziekbestand {music.file} staat niet in templates/music")
-    project.music = music
+    if chosen.file and music.path_for(chosen.file) is None:
+        raise HTTPException(400, f"Het muziekbestand {chosen.file} staat niet in templates/music of de bibliotheek")
+    project.music = chosen
     save_project(project)
     return detail(project)
 

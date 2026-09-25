@@ -725,7 +725,12 @@ Logo files live in `templates/logos/` (ignored by git) and are used in two place
 
 ## Background music
 
-The **Muziek** panel puts a track under the clip. Upload an mp3, m4a, wav, aac or ogg file once and it stays available for every clip; files live in `templates/music/`.
+The **Muziek** panel puts a track under the clip. Every track is a row with a play button that plays its first fifteen seconds, faded in and out, which is also how the track starts under a clip.
+
+Music comes from two places (`backend/music.py`):
+
+- **Standaard**: the library in `templates/library/music/`, tracked in git and part of every release. `tracks.json` there gives each file a title and a credit and sets the order; see the README in that folder for adding a track. A church cannot delete these.
+- **Eigen muziek**: what a church uploads, in `templates/music/`, which git ignores so an update never touches it. An upload may not take a file name the library already uses, so a name a clip remembers always leads to one file.
 
 - **Volume** sets the level of the bed.
 - **Onder de stem** turns on side-chain ducking: the music drops automatically while someone is speaking and comes back in the pauses. This is what makes a bed sound deliberate rather than loud.

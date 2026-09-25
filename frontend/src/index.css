@@ -1129,3 +1129,5 @@ a.button.small { padding: 0.22rem 0.55rem; font-size: 0.78rem; font-weight: 500;
 .music-add input { display: none; }
 .music-add:hover { border-color: var(--purple); }
 .music-settings { margin-top: 1rem; }
+.music-group { margin: 0.5rem 0 0; font-size: 0.75rem; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; color: var(--muted); }
+.music-remove { flex: none; color: var(--muted); }

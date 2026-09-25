@@ -337,11 +337,12 @@ def overlay_position(watermark: Watermark) -> str:
 
 
 def music_file(music: MusicSettings | None) -> Path | None:
-    """The music file to mix in, when one is chosen and still on disk."""
+    """The music file to mix in, when one is chosen and still on disk: the church's own or the library's."""
+    from . import music as tracks
+
     if music is None or not music.file:
         return None
-    path = TEMPLATES_DIR / "music" / music.file
-    return path if path.is_file() else None
+    return tracks.path_for(music.file)
 
 
 def music_filter(music: MusicSettings, total: float, index: int) -> str:

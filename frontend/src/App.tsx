@@ -4,6 +4,8 @@ import { remember, remembered } from './remember'
 import { useChurch } from './church'
 import BrandPanel, { type BrandTab } from './components/BrandPanel'
 import ClipEditor from './components/ClipEditor'
+import Mishap from './components/Mishap'
+import Outdated from './components/Outdated'
 import ServiceView from './components/ServiceView'
 import ProofPanel from './components/ProofPanel'
 import StoragePanel from './components/StoragePanel'
@@ -179,7 +181,10 @@ export default function App() {
         </div>
       </header>
       <main className="page">
-        {mode === 'service' ? <ServiceView onOpenClip={openClip} /> : <ClipEditor projectId={projectId} onProjectChange={setProjectId} />}
+        <Outdated />
+        <Mishap key={mode}>
+          {mode === 'service' ? <ServiceView onOpenClip={openClip} /> : <ClipEditor projectId={projectId} onProjectChange={setProjectId} />}
+        </Mishap>
       </main>
       {branding && <BrandPanel tab={brandTab} onClose={() => setBranding(false)} />}
       {tidying && <StoragePanel onClose={() => setTidying(false)} />}

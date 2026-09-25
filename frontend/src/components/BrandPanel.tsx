@@ -2,12 +2,16 @@ import { useEffect, useState } from 'react'
 import { api, type Brand, type BrandSummary, type ChurchInfo, type LogoFile, type OutroConfig, type ShareSettings } from '../api'
 import { announceBrandChange } from '../church'
 import { useFonts } from '../fonts'
+import Mishap from './Mishap'
 import ChurchTab from './brand/ChurchTab'
 import OutroTab from './brand/OutroTab'
 import ShareTab from './brand/ShareTab'
 import WordsTab, { type WordGroup } from './brand/WordsTab'
 
 export type BrandTab = 'church' | 'words' | 'outro' | 'share'
+
+/** What a brand saved before sharing existed gets, instead of nothing at all. */
+const NO_SHARE: ShareSettings = { shapes: [], address: 'je', hashtags: [], link: '' }
 
 const TABS: { id: BrandTab; label: string; says: string }[] = [
   { id: 'church', label: 'Gegevens', says: 'Naam, diensttijden en Instagram van deze kerk' },
@@ -78,7 +82,7 @@ export default function BrandPanel({ tab: opensOn = 'church', onClose }: Props) 
     api
       .brand(id)
       .then((b) => {
-        setBrand(b)
+        setBrand({ ...b, share: b.share ?? NO_SHARE })
         setDirty(false)
         setSaved(false)
       })
@@ -229,7 +233,7 @@ export default function BrandPanel({ tab: opensOn = 'church', onClose }: Props) 
           )}
         </header>
         <div className="sheet-body" role="tabpanel" id={`brandpane-${tab}`} aria-labelledby={`brandtab-${tab}`}>
-          {children}
+          <Mishap key={tab}>{children}</Mishap>
         </div>
         {foot}
       </div>

@@ -12,6 +12,7 @@ import {
   type ShareSettings,
 } from '../api'
 import { cropGeometry, defaultCrop } from '../crop'
+import Mishap from './Mishap'
 import { remember, remembered } from '../remember'
 import { cropAt } from '../track'
 
@@ -347,6 +348,7 @@ export default function DeliveryPanel({ project, renderStatus, version, onMake, 
         </header>
 
         <div className="sheet-body">
+          <Mishap>
           {error && <div className="error">{error}</div>}
           {!delivery ? (
             <p className="empty">Bezig met laden…</p>
@@ -533,6 +535,7 @@ export default function DeliveryPanel({ project, renderStatus, version, onMake, 
               </div>
             </div>
           )}
+          </Mishap>
         </div>
 
         <footer className="sheet-foot">

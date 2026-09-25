@@ -424,6 +424,8 @@ export class ApiError extends Error {
 }
 
 export const OFFLINE_MESSAGE = 'Geen verbinding met de app. Staat het zwarte venster nog open?'
+export const OUTDATED_MESSAGE =
+  'Dit kent de app nog niet: het zwarte venster draait een oudere versie. Sluit het en start de app opnieuw.'
 
 async function request<T>(url: string, init?: RequestInit): Promise<T> {
   let res: Response
@@ -440,6 +442,9 @@ async function request<T>(url: string, init?: RequestInit): Promise<T> {
       /* not JSON */
     }
     if (res.status >= 500 && !detail) detail = 'De app kon dit niet verwerken. Kijk in het zwarte venster voor details.'
+    // Every route of ours answers a 404 in Dutch. The bare English one means the route is not
+    // there at all: the interface is newer than the server that is running.
+    if (res.status === 404 && detail === 'Not Found') detail = OUTDATED_MESSAGE
     throw new ApiError(typeof detail === 'string' ? detail : JSON.stringify(detail))
   }
   return res.json() as Promise<T>

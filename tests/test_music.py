@@ -113,3 +113,21 @@ def test_the_library_ships_with_the_app():
     assert not ignored
     catalogue = json.loads((main.ROOT / "templates" / "library" / "music" / "tracks.json").read_text("utf-8"))
     assert isinstance(catalogue["tracks"], list)
+
+
+@pytest.mark.parametrize("path, tracked", [
+    ("templates/library/music/lied.mp3", True),
+    ("templates/library/music/lied.wav", True),
+    ("templates/music/lied.mp3", False),
+])
+def test_library_audio_is_tracked_even_when_a_global_gitignore_says_otherwise(tmp_path, path, tracked):
+    """Many machines ignore *.mp3 everywhere. The library must still reach the repository."""
+    import subprocess
+
+    everywhere = tmp_path / "global-ignore"
+    everywhere.write_text("*.mp3\n*.wav\n")
+    said = subprocess.run(["git", "-c", f"core.excludesFile={everywhere}", "check-ignore", "--no-index",
+                           "--non-matching", "-v", path], cwd=main.ROOT, capture_output=True, text=True)
+    rule = said.stdout.split("\t")[0]
+    ignored = bool(rule.strip(": ")) and not rule.split(":")[-1].startswith("!")
+    assert ignored is not tracked, said.stdout

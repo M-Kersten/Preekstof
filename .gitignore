@@ -66,3 +66,9 @@ templates/outro-achtergrond.*
 evaluation/*/
 !evaluation/voorbeeld-dienst/
 evaluation/*.json
+
+# The music library ships with the app, whatever a global gitignore says about audio files.
+# A pattern here outranks core.excludesFile, so this keeps *.mp3 in this one folder tracked.
+!templates/library/
+!templates/library/music/
+!templates/library/music/**

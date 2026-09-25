@@ -7,13 +7,16 @@ without touching the rest of the pipeline.
 
 import json
 import math
+import os
 import subprocess
+import time
 from dataclasses import dataclass
 from fractions import Fraction
 from pathlib import Path
 from typing import Callable
 
-from .models import FONTS_DIR, TEMPLATES_DIR, CropWindow, MusicSettings, Output, Track, VideoInfo, Watermark
+from .models import (FONTS_DIR, REPLACE_TRIES, REPLACE_WAIT, TEMPLATES_DIR, CropWindow, MusicSettings, Output,
+                     Track, VideoInfo, Watermark)
 
 ProgressCallback = Callable[[float, str], None]
 
@@ -230,12 +233,16 @@ def build_command(
     music: MusicSettings | None = None,
     watermark: Watermark | None = None,
     source_start: float | None = None,
+    commands: Path | None = None,
 ) -> tuple[list[str], float]:
     """Build the ffmpeg command line. Returns (argv, total output duration).
 
     `source_start` set means the clip is a range of a longer recording: seek there and take
     source_info.duration seconds, instead of reading a separately cut copy. Input-side -ss
     rebases the timestamps to zero, so the subtitles still line up with the clip.
+
+    `commands` is where the moving crop writes its script. Each shape of a clip walks its own
+    window, so each gets its own file; left out, it sits next to the subtitles.
     """
     w, h, fps = output.width, output.height, output.fps
     cmd = ["ffmpeg", "-y", "-hide_banner", "-loglevel", "error", "-nostats", "-progress", "pipe:1"]
@@ -254,7 +261,7 @@ def build_command(
         inputs.append(logo_path)  # a still image; overlay repeats its single frame
 
     crop_chain = build_crop_filter(source_info, output, crop_strategy, track, crop,
-                                   commands=subtitles.with_name('track.cmd'))
+                                   commands=commands or subtitles.with_name('track.cmd'))
     clip_label = "v0raw" if logo_path is not None else "v0"
     filters.append(
         f"[0:v]{crop_chain},fps={fps},setsar=1,format=yuv420p,"
@@ -368,13 +375,14 @@ def render_video(
     source_start: float | None = None,
     on_progress: ProgressCallback | None = None,
     should_stop: Callable[[], None] | None = None,
+    commands: Path | None = None,
 ) -> Path:
     outro_info = probe(outro) if outro is not None and outro.is_file() else None
     if outro_info is None:
         outro = None
     cmd, total = build_command(
         source, source_info, subtitles, outro, outro_info, output, destination, crop_strategy, track, crop, music,
-        watermark, source_start
+        watermark, source_start, commands
     )
     tmp = destination.with_suffix(".part.mp4")
     cmd[-1] = str(tmp)
@@ -401,5 +409,24 @@ def render_video(
     if proc.wait() != 0:
         tmp.unlink(missing_ok=True)
         raise RuntimeError(ffmpeg_message(stderr))
-    tmp.replace(destination)
+    put_in_place(tmp, destination)
     return destination
+
+
+def put_in_place(made: Path, destination: Path) -> None:
+    """Swap the finished video in for the one before it.
+
+    Windows refuses while anything still has the old file open, and the window that shows a
+    finished clip plays it straight from disk. A player lets go within a moment, so this
+    waits a little rather than throw away a render that took a minute.
+    """
+    for attempt in range(REPLACE_TRIES):
+        try:
+            os.replace(made, destination)
+            return
+        except PermissionError:
+            if attempt == REPLACE_TRIES - 1:
+                made.unlink(missing_ok=True)
+                raise RuntimeError("De vorige versie van deze video is nog geopend in een ander "
+                                   "programma. Sluit dat en maak de video opnieuw.") from None
+            time.sleep(REPLACE_WAIT * (attempt + 1))

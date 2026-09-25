@@ -3,7 +3,7 @@
 Eén pagina, bedoeld om aan een kerkenraad te geven. Wie liever de korte versie leest: die
 staat in de app zelf, bij het scherm waar de kosten van het zoeken staan.
 
-Versie 0.10.0 (pilot). Als de app op iets anders draait dan wat hier staat, klopt deze pagina
+Versie 0.11.0 (pilot). Als de app op iets anders draait dan wat hier staat, klopt deze pagina
 niet meer; het versienummer staat onderin het gereedheidspaneel.
 
 ## In het kort
@@ -22,7 +22,10 @@ jullie leert. De instellingen. De logbestanden.
 **Naar Anthropic (api.anthropic.com).** De uitgeschreven tekst van het preekgedeelte, in één
 aanvraag per dienst, met jullie eigen API-sleutel. En per fragment dat je klaarzet nog één
 kleine aanvraag: de ondertitels van dat fragment, om verkeerd verstane woorden eruit te halen.
-Dat is dus ook tekst uit de preek, van de stukken die jullie zelf gekozen hebben. Er gaat nooit beeld of geluid heen.
+De eerste keer dat je van een fragment een video maakt volgt er nog een, om de tekst onder de
+post te schrijven. Daarin gaan dezelfde ondertitels mee, de titel van het fragment, de naam van
+de kerk en wat jullie over de dienst hebben ingevuld. Dat is dus ook tekst uit de preek, van de
+stukken die jullie zelf gekozen hebben. Er gaat nooit beeld of geluid heen.
 Onder de zakelijke voorwaarden van de API wordt wat je stuurt niet gebruikt om modellen te
 trainen. Anthropic bewaart aanvragen tijdelijk voor misbruikcontrole; wat daarvoor geldt staat
 in hun eigen voorwaarden, die tussen jullie kerk en Anthropic gelden en niet via deze app
@@ -57,8 +60,10 @@ De app stuurt alleen het preekgedeelte, omdat hij de dienst in stukken knipt en 
 voorbedengedeelte overslaat. Dat scheelt, maar het is een inschatting van een computer en
 geen garantie. Een voorganger die tijdens de preek een naam noemt, stuurt die naam mee.
 
-Wil je dat laatste niet, zet dan `POLISH_CLIPS=0` in `config.env`. Dan gaat alleen de preek
-nog naar Claude om momenten te zoeken, en blijven de ondertitels zoals ze verstaan zijn.
+Wil je die twee aanvragen per fragment niet, zet dan `POLISH_CLIPS=0` en `WRITE_POSTS=0` in
+`config.env`. Dan gaat alleen de preek nog naar Claude om momenten te zoeken. De ondertitels
+blijven zoals ze verstaan zijn, en de tekst onder de post maakt de app zelf uit de titel van het
+fragment.
 
 **Wil de kerk dit helemaal niet, dan hoeft het niet.** Zet in `config.env`:
 

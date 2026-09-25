@@ -1,17 +1,19 @@
 import { useEffect, useState } from 'react'
-import { api, type Brand, type BrandSummary, type ChurchInfo, type LogoFile, type OutroConfig } from '../api'
+import { api, type Brand, type BrandSummary, type ChurchInfo, type LogoFile, type OutroConfig, type ShareSettings } from '../api'
 import { announceBrandChange } from '../church'
 import { useFonts } from '../fonts'
 import ChurchTab from './brand/ChurchTab'
 import OutroTab from './brand/OutroTab'
+import ShareTab from './brand/ShareTab'
 import WordsTab, { type WordGroup } from './brand/WordsTab'
 
-export type BrandTab = 'church' | 'words' | 'outro'
+export type BrandTab = 'church' | 'words' | 'outro' | 'share'
 
 const TABS: { id: BrandTab; label: string; says: string }[] = [
   { id: 'church', label: 'Gegevens', says: 'Naam, diensttijden en Instagram van deze kerk' },
   { id: 'words', label: 'Woorden', says: 'Namen die de computer bij het uitschrijven moet kennen' },
   { id: 'outro', label: 'Afsluiter', says: 'Het eindscherm dat achter elke video komt' },
+  { id: 'share', label: 'Delen', says: 'Formaten, en de vaste regels onder elke post' },
 ]
 
 interface Props {
@@ -95,6 +97,11 @@ export default function BrandPanel({ tab: opensOn = 'church', onClose }: Props) 
 
   const edit = (patch: Partial<OutroConfig>) => {
     setBrand((b) => (b ? { ...b, outro: { ...b.outro, ...patch } } : b))
+    touched()
+  }
+
+  const editShare = (patch: Partial<ShareSettings>) => {
+    setBrand((b) => (b ? { ...b, share: { ...b.share, ...patch } } : b))
     touched()
   }
 
@@ -237,6 +244,7 @@ export default function BrandPanel({ tab: opensOn = 'church', onClose }: Props) 
     <>
       {tab === 'church' && <ChurchTab church={brand.church} onChange={editChurch} />}
       {tab === 'words' && <WordsTab vocabulary={brand.vocabulary} onChange={editWords} onForget={forget} />}
+      {tab === 'share' && <ShareTab share={brand.share} onChange={editShare} />}
       {tab === 'outro' && (
         <OutroTab
           config={brand.outro}
@@ -259,7 +267,7 @@ export default function BrandPanel({ tab: opensOn = 'church', onClose }: Props) 
       {error ? (
         <span className="wrong">{error}</span>
       ) : dirty ? (
-        <span className="meta">Nog niet opgeslagen. Opslaan geldt voor alle drie de tabbladen.</span>
+        <span className="meta">Nog niet opgeslagen. Opslaan geldt voor alle tabbladen tegelijk.</span>
       ) : saved ? (
         <span className="meta">Opgeslagen; de afsluiter is opnieuw gemaakt.</span>
       ) : (

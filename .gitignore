@@ -49,6 +49,9 @@ templates/outro.ass
 # what building the end screen leaves behind, including a half-written render
 templates/outro.bg.*
 templates/outro.part.*
+# the end screens of the other shapes, made from the same settings when first needed
+templates/outro.4x5.*
+templates/outro.1x1.*
 
 # logos, brands, music and the word list: your own content (see the .example.json files)
 templates/logos/*

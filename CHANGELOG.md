@@ -3,6 +3,49 @@
 Per versie, in gewone taal. Welke versie jij draait staat onderin het paneel dat opengaat
 als je in de balk op **Alles gereed** klikt.
 
+## 0.11.0 — pilot
+
+Een gemaakte video is nog geen geplaatste video. Deze versie gaat over de stap daartussen.
+
+**Na Video maken opent Klaar om te delen.** Daar staat de clip, en ernaast wat je ermee kunt.
+Het venster komt later terug onder **Delen en downloaden**, op de plek waar eerst alleen een
+downloadlink stond.
+
+**Dezelfde clip in drie vormen.** Staand 9:16 voor Reels, Shorts, TikTok en een WhatsApp-status.
+Tijdlijn 4:5 voor Facebook en de tijdlijn van Instagram, waar een staande video wordt afgekapt.
+Vierkant voor Facebook op de computer, de website en de nieuwsbrief. Het is steeds dezelfde clip:
+de ondertitels, het beeldkader, het volgen van de spreker, het logo en de muziek gaan mee. In de
+bredere vormen komt er meer van de kerk naast de spreker in beeld, en de ondertitels staan lager,
+omdat er in een tijdlijn niets over de video heen ligt. De afsluiter wordt voor elke vorm opnieuw
+getekend, met logo en regels in het midden. Een vorm die nog niet gemaakt is, laat meteen zien hoe
+het beeld erin valt. Maken is één klik, en met **Voortaan altijd meemaken** gebeurt het daarna bij
+elke clip vanzelf.
+
+Wie na het maken nog een woord verbetert, ziet bij de vormen van daarvoor staan dat ze van vóór
+die wijziging zijn.
+
+**De tekst onder de post staat klaar.** Claude schrijft er drie: een korte voor Instagram, een
+met iets meer context voor Facebook en een zin of twee om door te sturen via WhatsApp. Het
+schrijft alleen de tekst zelf. Wat eronder hoort zet de app erbij, uit wat jullie één keer
+instellen: de link naar de hele dienst met jullie vaste hashtags, en het bijbelgedeelte als de clip
+er een noemt. Een link die een taalmodel zelf opschrijft kan verkeerd zijn, en een verkeerde link
+onder een post van de kerk is erger dan geen link.
+
+Wat Claude schrijft wordt nagelopen. Een citaat moet woord voor woord in de clip staan. Een
+bijbeltekst moet in de clip genoemd zijn, of in wat jullie over de dienst invulden, en een
+hoofdstuk of vers dat niemand uitsprak valt weg. Kopiëren is één knop. Wat je zelf aanpast blijft
+staan.
+
+Of een post je of u zegt, kies je in het venster zelf. Daar staan ook de vaste hashtags en de
+link naar de diensten, en later vind je ze terug onder **Merk instellen → Delen**. Kost ongeveer een
+tiende cent per clip. Zonder sleutel, of met `WRITE_POSTS=0` in config.env, maakt de app een
+eenvoudige tekst uit de titel van de clip.
+
+**Onder de motorkap.** Het eindscherm werd vlak voor het maken van een video al die tijd niet
+bijgewerkt; dat gebeurde alleen bij het opstarten en bij het opslaan van het merk. Dat klopt nu.
+Windows weigert een video te vervangen die nog openstaat in een speler. De app wacht daar nu even
+op, in plaats van een render van een minuut weg te gooien.
+
 ## 0.10.0 — pilot
 
 Alles wat er sinds de eerste pilotversie bij kwam: de app draait nu ook op een computer

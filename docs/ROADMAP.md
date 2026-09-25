@@ -690,6 +690,51 @@ Not a feature list. Three things, at the end of the pilot:
 
 ---
 
+## Phase 6 · From a made clip to a posted one
+
+Phase 5 kept new output out on purpose. This phase lets it back in, for one reason: the pilot
+churches post on Facebook and WhatsApp more than anywhere else, and a clip that only exists as a
+9:16 file with no words under it stops one step short of either. A volunteer on a Monday evening
+who still has to reframe the video and write three texts is the volunteer who posts it with only
+the title under it, or not at all.
+
+### Step 27 · Van gemaakte clip naar geplaatste post — gedaan (0.11.0)
+Serves (share, 5)
+
+**Wat er staat.** Na **Video maken** opent **Klaar om te delen**. Links de clip, rechts twee
+dingen. Eerst de vorm: staand 9:16, tijdlijn 4:5 en vierkant, elk met de plek waar hij voor is
+(`backend/formats.py`). Daaronder de tekst voor Instagram, Facebook en WhatsApp, met een knop om
+te kopiëren (`backend/posts.py`). Het venster komt terug onder **Delen en downloaden**.
+
+**Hoe de vormen dezelfde clip blijven.** Het beeldkader houdt zijn midden en zijn zoom, dus het
+pad dat de spreker volgt past op elke vorm zonder opnieuw te zoeken; een bredere vorm laat meer
+kerk naast de spreker zien. Ondertitels zakken in de kortere vormen van 320 pixels naar 9% van
+de hoogte, omdat een tijdlijn niets over de video legt. De afsluiter wordt per vorm getekend: het
+blok logo en regels houdt zijn onderlinge afstanden, schuift naar het midden en krimpt alleen als
+het anders niet past. Wat er gemaakt is en waarvan, staat in `output/made.json`; een vorm van
+vóór een verbeterd woord zegt dat.
+
+**Hoe de tekst te vertrouwen blijft.** Het model schrijft alleen de lopende tekst. Link, vaste
+hashtags en bijbelgedeelte zet de app eronder uit de instellingen van de kerk. Een citaat dat
+niet woord voor woord in de clip staat, laat die tekst terugvallen op een eenvoudige uit de titel.
+Een bijbelgedeelte moet genoemd zijn in de clip of in wat de kerk over de dienst invulde, en een
+hoofdstuk of vers dat niet uitgesproken is valt weg. Hashtags en links in de lopende tekst gaan
+eruit. De aanspreekvorm (je of u) gaat mee naar het model.
+
+**Wat er niet staat.** Een draai tegen het echte model: ook hier geen sleutel in de omgeving waar
+het gebouwd is, dus de controles zijn getest met een nagemaakt antwoord. En een kijk op een echte
+telefoon: de vormen zijn gerenderd en bekeken als beeld, niet geplaatst.
+
+### Wat hierna komt, als de pilot erom vraagt
+
+- **Het bijbelgedeelte in beeld.** Het nagelopen gedeelte uit stap 27 staat al klaar; als klein
+  label in de clip herkent een kerkganger het meteen.
+- **Een citaatkaart.** Eén zin uit de preek op een stilstaand beeld met de naam van de spreker en
+  het logo, voor een WhatsApp-status en de nieuwsbrief.
+- **Een weekplanning.** De gekozen clips over de week verdeeld, als aanloop naar de volgende dienst.
+
+---
+
 ## Deliberately deferred
 
 Multi-platform publishing, scheduling, an asset library, analytics, thumbnail generation, output

@@ -159,8 +159,7 @@ class CropWindow(BaseModel):
 class Project(BaseModel):
     id: str
     createdAt: str
-    title: str | None = None
-    description: str = ""  # short text to paste under the post
+    title: str | None = None  # names the downloaded file; the text under a post is in post.json
     origin: ClipOrigin | None = None
     # A clip either owns its footage (a file in the project directory) or points into the
     # service recording it was cut from. Pointing avoids a second encode of every clip;
@@ -215,6 +214,22 @@ class ChurchInfo(BaseModel):
     # The number in the address of this church's page on kerkdienstgemist.nl. With it, the
     # services can be listed and fetched without leaving the app.
     kerkdienstgemistStation: str = ""
+
+
+Address = Literal["je", "u"]
+
+
+class ShareSettings(BaseModel):
+    """How this church puts its clips out. Set once, and used for every clip after that."""
+
+    # Shapes made every time next to the upright one ("4x5", "1x1"). Each one is another
+    # render, so this starts empty and a church adds what it actually posts.
+    shapes: list[str] = []
+    # How a post speaks to its reader. Churches differ on this more than on almost anything
+    # else a stranger would notice, and a post in the wrong one reads as somebody else's.
+    address: Address = "je"
+    hashtags: list[str] = []  # under every post, before the ones that belong to the clip
+    link: str = ""  # where the whole service can be watched; empty: the page it came from
 
 
 # --- storage -----------------------------------------------------------------
@@ -436,6 +451,7 @@ class Service(BaseModel):
     series: str = ""  # the series it belongs to, if there is one
     preacher: str = ""  # who spoke, as the church wrote it on its own page
     poster: str | None = None  # our own copy of the platform's still, next to the recording
+    link: str = ""  # the page it was fetched from, where anybody can watch the whole service
     shape: list[dict] = []  # the parts of the service: welcome, songs, sermon, notices...
     candidates: list[ClipCandidate] = []
     clips: list[ProcessedClip] = []

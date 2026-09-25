@@ -244,6 +244,24 @@ def sermon_windows(segments: list[Segment],
     return passages, shape, left_out
 
 
+def sermon_context(service) -> str:
+    """What the church already knows about this service, for the model to lean on.
+
+    The same words go with every question about this service: finding its moments, and
+    writing the text that goes under a clip of it.
+    """
+    said = []
+    if service.sermonTitle.strip():
+        said.append(f"De preek van deze dienst heet: {service.sermonTitle.strip()}.")
+    if service.series.strip():
+        said.append(f"Hij hoort bij de serie: {service.series.strip()}.")
+    if service.preacher.strip():
+        # Said as a name and nothing more. Most churches write an initial and a surname,
+        # which says nothing about who is standing there, and the app does not fill that in.
+        said.append(f"De spreker staat aangekondigd als: {service.preacher.strip()}.")
+    return " ".join(said)
+
+
 # --- LLM call ----------------------------------------------------------------
 
 

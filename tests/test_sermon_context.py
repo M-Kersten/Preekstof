@@ -7,7 +7,7 @@ model reading a wall of text cold and one that knows what it is looking at.
 
 import pytest
 
-from backend.main import sermon_context
+from backend.discovery import sermon_context
 from backend.models import Service
 
 

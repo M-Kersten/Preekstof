@@ -10,6 +10,7 @@ from . import fonts
 from .models import Output, Segment, Spoken, Style, Transcript
 
 SAFE_MARGIN_BOTTOM = 320  # px from the bottom edge at 1080x1920 (clear of the Reels UI)
+TIMELINE_MARGIN = 0.09  # share of the height, in a shape nothing is laid over (4:5, square)
 SAFE_MARGIN_SIDE = 90  # px from the left/right edges
 CHAR_WIDTH_RATIO = 0.58  # average glyph width relative to font size (bold sans-serif)
 MIN_FONT_SCALE = 0.6  # never shrink a line below this fraction of the chosen size
@@ -146,6 +147,19 @@ def escape_text(text: str) -> str:
     return text.replace("{", "(").replace("}", ")").replace("\n", " ")
 
 
+def safe_bottom(output: Output) -> int:
+    """How far the captions stay above the bottom edge.
+
+    Upright, Instagram, TikTok and YouTube lay the account name, the post text and their
+    buttons over the lowest sixth of the picture, and a caption down there is a caption
+    nobody can read. A timeline lays nothing over the video, so in the shorter shapes the
+    captions come down to where the eye expects them.
+    """
+    if output.height * 9 >= output.width * 16:
+        return SAFE_MARGIN_BOTTOM
+    return round(output.height * TIMELINE_MARGIN)
+
+
 def animation_tags(style: Style, output: Output) -> str:
     """The ASS tags that make a line appear, in the style the user picked."""
     ms = style.animationSpeed
@@ -156,7 +170,7 @@ def animation_tags(style: Style, output: Output) -> str:
         return f"\\fad(60,80)\\fscx72\\fscy72\\t(0,{ms},\\fscx100\\fscy100)"
     if style.animation == "slide":
         # Alignment 2 anchors the bottom centre of the block; slide it up into that spot.
-        anchor_y = output.height - SAFE_MARGIN_BOTTOM
+        anchor_y = output.height - safe_bottom(output)
         return f"\\fad(60,80)\\move({output.width // 2},{anchor_y + 40},{output.width // 2},{anchor_y},0,{ms})"
     return ""
 
@@ -220,7 +234,7 @@ def build_ass(transcript: Transcript, style: Style, output: Output) -> str:
         f"Style: Default,{name},{style.fontSize},{ass_color(style.color)},{ass_color(style.color)},"
         f"{ass_color(style.outlineColor)},{ass_color('#000000', BACKGROUND_ALPHA)},"
         f"{-1 if bold else 0},0,0,0,100,100,0,0,{border_style},{style.outline},0,2,"
-        f"{SAFE_MARGIN_SIDE},{SAFE_MARGIN_SIDE},{SAFE_MARGIN_BOTTOM},1",
+        f"{SAFE_MARGIN_SIDE},{SAFE_MARGIN_SIDE},{safe_bottom(output)},1",
         "",
         "[Events]",
         "Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text",

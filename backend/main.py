@@ -19,9 +19,9 @@ from fastapi.staticfiles import StaticFiles
 from contextlib import asynccontextmanager
 from datetime import datetime, timezone
 
-from . import brands, clips, diagnose, discovery, fetch, fonts, health, journal, kerkdienstgemist, outro, polish, renderer, room, selftest, settings, setup, speed, storage, tracking, transcription, version, wordlearn
+from . import brands, clips, diagnose, discovery, fetch, fonts, formats, health, journal, kerkdienstgemist, outro, polish, posts, renderer, room, selftest, settings, setup, speed, storage, tracking, transcription, version, wordlearn
 from .jobs import Cancelled, Estimator, Job, JobManager
-from .models import (ROOT, SERVICES_DIR, TEMPLATES_DIR, ChurchInfo, ClipCandidate, ClipOrigin, CropWindow, MusicSettings, ProcessedClip, Project, Watermark,
+from .models import (ROOT, SERVICES_DIR, TEMPLATES_DIR, ChurchInfo, ClipCandidate, ClipOrigin, CropWindow, MusicSettings, ProcessedClip, Project, ShareSettings, Watermark,
                      ProjectDetail, Service, ServiceDetail, Style, Track, Transcript, load_church_info, load_project,
                      load_service, load_service_transcript, load_transcript, new_project, new_service, project_dir,
                      recover_services, save_project, save_service, save_service_transcript, save_transcript, service_dir)
@@ -288,13 +288,44 @@ def update_framing(project_id: str, follow: bool = Body(default=False, embed=Tru
     return detail(project)
 
 
+# Which shape of a clip is being written at this moment, so that one is not handed out
+# half-replaced while the others can still be downloaded.
+rendering_now: dict[str, str] = {}
+
+
+def end_screen(project: Project, shape: formats.Shape) -> Path | None:
+    """The end screen for this shape, made now if it has to be. Never a reason to fail a render.
+
+    A shape whose own end screen cannot be made gets the upright one, with bars beside it.
+    """
+    upright = ROOT / project.outro
+    try:
+        made = outro.ensure_outro(shape)
+    except Exception as exc:  # noqa: BLE001  keep the end screen there is and carry on
+        print(f"[outro] {exc}")
+        made = None
+    if shape.key == formats.MAIN or made is None:
+        return upright if upright.is_file() else None
+    return made
+
+
 @app.post("/projects/{project_id}/render")
-def render_project(project_id: str):
+def render_project(project_id: str, shapes: list[str] | None = Body(default=None, embed=True)):
+    """Make the clip, in the shapes asked for.
+
+    Asked for nothing in particular, which is the button under the preview, it makes the
+    upright clip and whatever shapes this church said it wants every time.
+    """
     project = get_project(project_id)
     if not project.sourceInfo:
         raise HTTPException(400, "Upload eerst een video")
     if jobs.is_running(project.id):
         raise HTTPException(409, "De video wordt al gemaakt")
+    brand = brands.active()
+    try:
+        wanted = formats.wanted(shapes, brand.share.shapes)
+    except ValueError as exc:
+        raise HTTPException(400, str(exc)) from exc
 
     try:
         source, source_start, _length = clips.source_of(project)
@@ -304,33 +335,46 @@ def render_project(project_id: str):
     transcript = load_transcript(project) or Transcript()
     work = project_dir(project.id) / "work"
     output_dir = project_dir(project.id) / "output"
-    outro = ROOT / project.outro
 
     def work_fn(job: Job) -> None:
-        job.message = "Afsluiter wordt voorbereid"
-        try:
-            outro.ensure_outro()
-        except Exception as exc:  # noqa: BLE001
-            print(f"[outro] {exc}")  # keep the existing outro.mp4 and carry on
-        job.message = "Ondertitels worden voorbereid"
-        subtitles = write_ass(transcript, project.style, project.output, work / "subtitles.ass")
-
+        made_from = formats.recipe(project, transcript, brand)
         left = Estimator()
+        for n, shape in enumerate(wanted):
+            job.check()
+            # With one shape the message stays what it always was; with more, it says which.
+            named = f"{shape.name} {shape.ratio} · " if len(wanted) > 1 else ""
+            job.message = f"{named}Afsluiter wordt voorbereid"
+            closing = end_screen(project, shape)
+            job.message = f"{named}Ondertitels worden voorbereid"
+            output = formats.output_for(shape, project.output)
+            subtitles = write_ass(transcript, project.style, output, work / formats.work_name(shape, "subtitles.ass"))
 
-        def on_progress(fraction: float, message: str) -> None:
-            job.advance(fraction)
-            job.message = left.note(fraction, message)
+            def on_progress(fraction: float, message: str, n=n, named=named) -> None:
+                at = (n + fraction) / len(wanted)
+                job.advance(at)
+                job.message = left.note(at, named + message)
 
-        renderer.render_video(
-            source, info, subtitles, project.output, output_dir / "final.mp4",
-            outro=outro if outro.is_file() else None,
-            crop_strategy=project.cropStrategy, track=project.track, crop=project.crop, music=project.music,
-            watermark=project.watermark,
-            source_start=None if project.sourceVideo else source_start,
-            on_progress=on_progress, should_stop=job.check,
-        )
+            rendering_now[project.id] = shape.key
+            try:
+                renderer.render_video(
+                    source, info, subtitles, output, output_dir / shape.file,
+                    outro=closing,
+                    crop_strategy=project.cropStrategy, track=project.track, crop=project.crop,
+                    music=project.music, watermark=project.watermark,
+                    source_start=None if project.sourceVideo else source_start,
+                    on_progress=on_progress, should_stop=job.check,
+                    commands=work / formats.work_name(shape, "track.cmd"),
+                )
+            finally:
+                rendering_now.pop(project.id, None)
+            formats.note_made(project.id, shape, made_from)
 
-    return jobs.start(project.id, work_fn).to_dict()
+    started = jobs.start(project.id, work_fn).to_dict()
+    # The text for under the post is written alongside, the first time, so it is there by
+    # the time the video is. Afterwards only somebody asking writes it again.
+    if posts.load(project.id) is None:
+        write_post(project.id)
+    return started
 
 
 @app.post("/projects/{project_id}/render/stop")
@@ -351,13 +395,90 @@ def render_status(project_id: str):
 
 
 @app.get("/projects/{project_id}/output")
-def read_output(project_id: str):
+def read_output(project_id: str, shape: str = formats.MAIN):
     project = get_project(project_id)
-    path = project_dir(project.id) / "output" / "final.mp4"
-    if jobs.is_running(project.id) or not path.is_file():
+    chosen = formats.SHAPES.get(shape)
+    if chosen is None:
+        raise HTTPException(404, f"Onbekend formaat: {shape}")
+    path = project_dir(project.id) / "output" / chosen.file
+    if rendering_now.get(project.id) == chosen.key or not path.is_file():
         raise HTTPException(404, "Er is nog geen video gemaakt")
     name = brands.slug(project.title) if project.title else project.id
-    return FileResponse(path, media_type="video/mp4", filename=f"{name}.mp4")
+    return FileResponse(path, media_type="video/mp4", filename=f"{name}{chosen.tag}.mp4")
+
+
+@app.get("/projects/{project_id}/delivery")
+def read_delivery(project_id: str):
+    """What the window after "Video maken" shows: every shape, and whether it is made."""
+    project = get_project(project_id)
+    brand = brands.active()
+    transcript = load_transcript(project) or Transcript()
+    return {
+        "shapes": formats.overview(project, transcript, brand, busy=rendering_now.get(project.id)),
+        "canMake": project.sourceInfo is not None and clips.has_footage(project),
+        "share": brand.share.model_dump(),
+    }
+
+
+# --- the text under the post ----------------------------------------------------------
+
+def post_key(project_id: str) -> str:
+    """Writing the text has its own progress, apart from making the video."""
+    return f"{project_id}:post"
+
+
+def write_post(project_id: str) -> dict:
+    key = post_key(project_id)
+    if jobs.is_running(key):
+        return jobs.get(key).to_dict()
+
+    def work(job: Job) -> None:
+        job.message = "De tekst wordt geschreven"
+        posts.write(project_id)
+
+    return jobs.start(key, work).to_dict()
+
+
+@app.get("/projects/{project_id}/post")
+def read_post(project_id: str):
+    project = get_project(project_id)
+    return {"job": jobs.get(post_key(project.id)).to_dict(), "post": posts.view(project)}
+
+
+@app.post("/projects/{project_id}/post")
+def rewrite_post(project_id: str):
+    """Write the texts again. What somebody changed by hand in them goes."""
+    project = get_project(project_id)
+    if jobs.is_running(post_key(project.id)):
+        raise HTTPException(409, "De tekst wordt al geschreven")
+    return {"job": write_post(project.id), "post": posts.view(project)}
+
+
+@app.put("/projects/{project_id}/post")
+def edit_post(project_id: str, platform: str = Body(embed=True), text: str = Body(embed=True)):
+    project = get_project(project_id)
+    try:
+        return {"job": jobs.get(post_key(project.id)).to_dict(), "post": posts.edit(project, platform, text)}
+    except ValueError as exc:
+        raise HTTPException(400, str(exc)) from exc
+
+
+@app.get("/share", response_model=ShareSettings)
+def read_share():
+    """How this church puts its clips out: the shapes, the tone, the lines under every post."""
+    return brands.active().share
+
+
+@app.put("/share", response_model=ShareSettings)
+def save_share(share: ShareSettings):
+    """Saved on the brand, so a second church or location keeps its own."""
+    brand = brands.active()
+    try:
+        brand.share = posts.tidy_share(share)
+    except ValueError as exc:
+        raise HTTPException(400, str(exc)) from exc
+    brands.save(brand)
+    return brand.share
 
 
 @app.get("/church", response_model=ChurchInfo)
@@ -458,6 +579,10 @@ def update_brand(brand_id: str, brand: brands.Brand):
         raise HTTPException(404, "Merk niet gevonden")
     if brand.subtitleStyle.font not in fonts.names() or brand.outro.font not in fonts.names():
         raise HTTPException(400, "Onbekend lettertype")
+    try:
+        brand.share = posts.tidy_share(brand.share)
+    except ValueError as exc:
+        raise HTTPException(400, str(exc)) from exc
     brand.id = brand_id
     brands.save(brand)
     if brands.active_id() == brand_id and brand.outro.generate:
@@ -565,11 +690,10 @@ def delete_music(name: str):
 
 
 @app.put("/projects/{project_id}/meta", response_model=ProjectDetail)
-def update_meta(project_id: str, title: str = Body(default="", embed=True), description: str = Body(default="", embed=True)):
-    """The title names the downloaded file; the description is the text to paste under the post."""
+def update_meta(project_id: str, title: str = Body(default="", embed=True)):
+    """The title names the downloaded file. The text under a post has its own place: /post."""
     project = get_project(project_id)
     project.title = title.strip() or None
-    project.description = description.strip()
     save_project(project)
     return detail(project)
 
@@ -928,7 +1052,7 @@ def upload_service_video(service_id: str, file: UploadFile):
 
 
 def adopt_recording(service: Service, target: Path, title: str,
-                    preacher: str = "", poster: Path | None = None) -> None:
+                    preacher: str = "", poster: Path | None = None, link: str = "") -> None:
     """Make `target` the recording of this service, whichever way it arrived.
 
     A different recording is a different service in everything but its id, so what the
@@ -939,6 +1063,7 @@ def adopt_recording(service: Service, target: Path, title: str,
     service.sourceInfo = renderer.probe(target)
     service.title = title
     service.preacher = preacher
+    service.link = link
     if poster is None:
         for old in service_dir(service.id).glob("poster.*"):
             old.unlink(missing_ok=True)
@@ -999,7 +1124,10 @@ def fetch_service_video(service_id: str, url: str = Body(default="", embed=True)
         if not info.hasAudio:
             target.unlink(missing_ok=True)
             raise RuntimeError("Wat er binnenkwam heeft geen geluid, dus er valt niets uit te schrijven.")
-        adopt_recording(service, target, got.title, got.preacher, got.poster)
+        # The page it came from is where anybody can watch the whole service, which is the
+        # link that belongs under a clip of it. A link straight to the file is not a page.
+        page = "" if fetch.is_direct_media(address) else address
+        adopt_recording(service, target, got.title, got.preacher, got.poster, page)
         save_service(service)
 
     return run_service_job(service, "fetching", "uploaded", work)
@@ -1098,20 +1226,6 @@ def transcribe_service(service_id: str):
     return run_service_job(service, "transcribing", "transcribed", work)
 
 
-def sermon_context(service: Service) -> str:
-    """What the church already knows about this service, for the model to lean on."""
-    said = []
-    if service.sermonTitle.strip():
-        said.append(f"De preek van deze dienst heet: {service.sermonTitle.strip()}.")
-    if service.series.strip():
-        said.append(f"Hij hoort bij de serie: {service.series.strip()}.")
-    if service.preacher.strip():
-        # Said as a name and nothing more. Most churches write an initial and a surname,
-        # which says nothing about who is standing there, and the app does not fill that in.
-        said.append(f"De spreker staat aangekondigd als: {service.preacher.strip()}.")
-    return " ".join(said)
-
-
 @app.put("/services/{service_id}/about", response_model=ServiceDetail)
 def update_about(service_id: str, sermonTitle: str = Body(default="", embed=True),
                  series: str = Body(default="", embed=True)):
@@ -1150,7 +1264,7 @@ def analyze_service(service_id: str):
         began = time.monotonic()
         result = discovery.discover(transcript, on_progress, should_stop=job.check, cache_dir=cache,
                                     duration=service.sourceInfo.duration if service.sourceInfo else None,
-                                    about=sermon_context(service))
+                                    about=discovery.sermon_context(service))
         told = discovery.estimate(transcript, service.sourceInfo.duration if service.sourceInfo else None)
         journal.note("zoeken", service=service.id, seconds=time.monotonic() - began,
                      windows=result.windows, failed=result.failed,

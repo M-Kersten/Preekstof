@@ -7,9 +7,13 @@ interface Props {
   transcribeStatus: RenderStatus
   canRender: boolean
   renderStatus: RenderStatus
-  outputUrl: string | null
+  /** A made video exists, so there is something to share. */
+  made: boolean
+  /** The other shapes this church has made every time, in words: "4:5 en 1:1". */
+  alsoMaking: string
   onTranscribe: () => void
   onRender: () => void
+  onShare: () => void
   onStop: () => void
   onStopTranscribe: () => void
 }
@@ -36,8 +40,11 @@ export default function RenderControls(props: Props) {
           </button>
         )}
       </div>
-      {props.outputUrl && props.renderStatus.status === 'done' && !transcribing && (
-        <p className="hint"><a href={props.outputUrl} download>Download de video (mp4)</a></p>
+      {props.made && !busy && (
+        <button className="share-open" onClick={props.onShare}>Delen en downloaden</button>
+      )}
+      {props.alsoMaking && props.canRender && !busy && (
+        <p className="hint">Wordt ook gemaakt in {props.alsoMaking}.</p>
       )}
       {!props.hasAudio && <p className="hint">Deze video heeft geen geluid. Typ de ondertitels zelf, of ga direct door.</p>}
       {props.hasAudio && !props.hasSubtitles && !busy && props.transcribeStatus.status === 'idle' && (

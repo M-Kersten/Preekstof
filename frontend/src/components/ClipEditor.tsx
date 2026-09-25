@@ -1,7 +1,8 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { ApiError, api, type CropWindow, type MusicSettings, type Project, type RenderStatus, type Segment, type Style, type Watermark } from '../api'
+import { ApiError, api, type CropWindow, type MusicSettings, type Project, type RenderStatus, type Segment, type ShapeKey, type ShareSettings, type Style, type Watermark } from '../api'
 import { useChurch } from '../church'
 import { forget, remember, remembered } from '../remember'
+import DeliveryPanel from './DeliveryPanel'
 import FramingPanel from './FramingPanel'
 import LogoPanel from './LogoPanel'
 import MusicPanel from './MusicPanel'
@@ -12,6 +13,7 @@ import WordSuggestions from './WordSuggestions'
 import VideoPreview, { type PreviewHandle } from './VideoPreview'
 
 const IDLE: RenderStatus = { status: 'idle', progress: 0, message: '', error: null }
+const RATIOS: Record<ShapeKey, string> = { '9x16': '9:16', '4x5': '4:5', '1x1': '1:1' }
 const STORAGE_KEY = 'project'
 const CLEAN = { transcript: false, style: false, crop: false, music: false, watermark: false }
 
@@ -45,6 +47,12 @@ export default function ClipEditor({ projectId, onProjectChange }: Props) {
   // The clip's own framing: whether it follows the speaker, and whether it is out looking.
   const [searching, setSearching] = useState(false)
   const [searchNote, setSearchNote] = useState('')
+  // The window that opens when a video is made: the shapes, and the text to go with it.
+  const [delivering, setDelivering] = useState(false)
+  const [share, setShare] = useState<ShareSettings | null>(null)
+  // Whether a video of this clip exists. A second shape that fails to render does not take
+  // away the first, so this is not the same as the last render having gone well.
+  const [made, setMade] = useState(false)
   const previewRef = useRef<PreviewHandle>(null)
   const dirty = useRef({ ...CLEAN })
 
@@ -59,6 +67,7 @@ export default function ClipEditor({ projectId, onProjectChange }: Props) {
 
   const adopt = useCallback((p: Project) => {
     setProject(p)
+    setMade(false)
     setStyle(p.style)
     setCrop(p.crop)
     setMusic(p.music)
@@ -81,18 +90,27 @@ export default function ClipEditor({ projectId, onProjectChange }: Props) {
       })
       .then(([render, transcribe]) => {
         setRenderStatus(render)
+        if (render.status === 'done') setMade(true)
         // A transcription that is still running survives a page reload.
         if (transcribe.status === 'running') setTranscribeStatus(transcribe)
       })
       .catch(() => forget(STORAGE_KEY))
   }, [projectId, project?.id, adopt])
 
-  // The brand lives in its own menu now; when it is saved the end screen is made again.
+  // The brand lives in its own menu now; when it is saved the end screen is made again, and
+  // the shapes it always wants may have changed.
+  const loadShare = useCallback(() => {
+    api.share().then(setShare).catch(() => setShare(null))
+  }, [])
   useEffect(() => {
-    const again = () => setOutroVersion((v) => v + 1)
+    loadShare()
+    const again = () => {
+      setOutroVersion((v) => v + 1)
+      loadShare()
+    }
     window.addEventListener('brand-changed', again)
     return () => window.removeEventListener('brand-changed', again)
-  }, [])
+  }, [loadShare])
 
   const upload = async (file: File) => {
     setError(null)
@@ -250,18 +268,23 @@ export default function ClipEditor({ projectId, onProjectChange }: Props) {
     return () => clearInterval(handle)
   }, [project, transcribeStatus.status])
 
-  const render = async () => {
+  /** Make the clip in these shapes, or in the ones the church always makes. Throws on failure. */
+  const make = useCallback(async (shapes?: ShapeKey[]) => {
     if (!project || !style) return
+    // Flush pending edits before rendering.
+    await api.saveTranscript(project.id, { language: 'nl', segments })
+    await api.saveStyle(project.id, style)
+    if (crop) await api.saveCrop(project.id, crop)
+    if (music) await api.saveMusic(project.id, music)
+    if (watermark) await api.saveWatermark(project.id, watermark)
+    dirty.current = { ...CLEAN }
+    setRenderStatus(await api.render(project.id, shapes))
+  }, [project, style, segments, crop, music, watermark])
+
+  const render = async () => {
     setError(null)
     try {
-      // Flush pending edits before rendering.
-      await api.saveTranscript(project.id, { language: 'nl', segments })
-      await api.saveStyle(project.id, style)
-      if (crop) await api.saveCrop(project.id, crop)
-      if (music) await api.saveMusic(project.id, music)
-      if (watermark) await api.saveWatermark(project.id, watermark)
-      dirty.current = { ...CLEAN }
-      setRenderStatus(await api.render(project.id))
+      await make()
     } catch (e) {
       fail(e)
     }
@@ -277,7 +300,12 @@ export default function ClipEditor({ projectId, onProjectChange }: Props) {
         misses = 0
         setOffline(false)
         setRenderStatus(s)
-        if (s.status === 'done') setOutputVersion((v) => v + 1)
+        if (s.status === 'done') {
+          setMade(true)
+          setOutputVersion((v) => v + 1)
+          // The natural next step after making a video is doing something with it.
+          setDelivering(true)
+        }
       } catch (e) {
         misses += 1
         if (misses >= 3) fail(e)
@@ -300,6 +328,7 @@ export default function ClipEditor({ projectId, onProjectChange }: Props) {
 
   // A clip either owns a file or points at the recording it was cut from; both count.
   const hasVideo = Boolean(project?.sourceInfo && project.hasFootage)
+  const alsoMaking = (share?.shapes ?? []).map((key) => RATIOS[key]).join(' en ')
 
   return (
     <div>
@@ -310,12 +339,20 @@ export default function ClipEditor({ projectId, onProjectChange }: Props) {
 
       {offline && <div className="offline">Geen verbinding met de app. Staat het zwarte venster nog open? Zodra het weer draait gaat dit vanzelf verder.</div>}
       {error && <div className="error">{error}</div>}
-      {project && !project.hasFootage && (
+      {project && !project.hasFootage && (made ? (
+        // The recording went after the video was made, which is what cleaning up is for. The
+        // video and the text for under it are still here to take.
+        <div className="notice">
+          De opname waar dit fragment uit komt is opgeruimd, dus er valt niets meer aan te veranderen.
+          De gemaakte video en de tekst erbij staan nog klaar.{' '}
+          <button className="small" onClick={() => setDelivering(true)}>Delen en downloaden</button>
+        </div>
+      ) : (
         <div className="error">
           De opname waar dit fragment uit komt is opgeruimd, dus er valt niets meer te bewerken of te maken.
           Upload de dienst opnieuw als je dit fragment alsnog wilt hebben.
         </div>
-      )}
+      ))}
 
       <label
         className={`drop ${dragging ? 'active' : ''} ${hasVideo ? 'compact' : ''}`}
@@ -388,9 +425,11 @@ export default function ClipEditor({ projectId, onProjectChange }: Props) {
               transcribeStatus={transcribeStatus}
               canRender={hasVideo}
               renderStatus={renderStatus}
-              outputUrl={renderStatus.status === 'done' ? `${api.outputUrl(project.id)}?v=${outputVersion}` : null}
+              made={made}
+              alsoMaking={alsoMaking}
               onTranscribe={transcribe}
               onRender={render}
+              onShare={() => setDelivering(true)}
               onStop={stopRender}
               onStopTranscribe={stopTranscribe}
             />
@@ -420,6 +459,19 @@ export default function ClipEditor({ projectId, onProjectChange }: Props) {
             <MusicPanel music={music} onChange={changeMusic} />
           </div>
         </div>
+      )}
+
+      {project && delivering && (
+        <DeliveryPanel
+          project={project}
+          renderStatus={renderStatus}
+          version={outputVersion}
+          onMake={make}
+          onClose={() => {
+            setDelivering(false)
+            loadShare()
+          }}
+        />
       )}
     </div>
   )

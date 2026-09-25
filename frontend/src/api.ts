@@ -110,7 +110,6 @@ export interface Project {
   id: string
   createdAt: string
   title: string | null
-  description: string
   origin: ClipOrigin | null
   sourceVideo: string | null
   sourceInfo: VideoInfo | null
@@ -136,6 +135,69 @@ export interface RenderStatus {
   message: string
   error: string | null
   canStop?: boolean
+}
+
+/** The shapes a clip can be made in. Upright is always made; the others on request. */
+export type ShapeKey = '9x16' | '4x5' | '1x1'
+export const MAIN_SHAPE: ShapeKey = '9x16'
+
+/** One shape of one clip, and where the clip stands with it. */
+export interface ShapeState {
+  key: ShapeKey
+  /** How a person writes it: "4:5". */
+  ratio: string
+  name: string
+  /** Where it goes, in the words of somebody posting it. */
+  use: string
+  width: number
+  height: number
+  ready: boolean
+  /** Made before the last change to the clip, so it shows the version from before. */
+  stale: boolean
+  madeAt: string | null
+  mb: number | null
+  /** Made every time "Video maken" is pressed. */
+  always: boolean
+}
+
+/** How this church puts its clips out. Set once, used for every clip. */
+export interface ShareSettings {
+  /** Shapes made every time next to the upright one. */
+  shapes: ShapeKey[]
+  address: 'je' | 'u'
+  hashtags: string[]
+  /** Where the whole service can be watched; empty uses the page it came from. */
+  link: string
+}
+
+export interface Delivery {
+  shapes: ShapeState[]
+  /** False when the recording is gone and nothing new can be made from it. */
+  canMake: boolean
+  share: ShareSettings
+}
+
+export type Platform = 'instagram' | 'facebook' | 'whatsapp'
+
+/** The texts to put under the clip, one per place, ready to paste. */
+export interface PostView {
+  texts: Record<Platform, string>
+  /** Platforms whose text was changed by hand. */
+  own: Platform[]
+  /** The passage the clip names, checked against what was said. */
+  bible: string
+  by: 'model' | 'template'
+  /** Why the plain version is showing, when it is. */
+  note: string
+  written: string
+  link: string
+  /** Where the link came from: typed in, this service's own page, or the church's page. */
+  linkFrom: '' | 'merk' | 'dienst' | 'station'
+}
+
+export interface PostState {
+  job: RenderStatus
+  post: PostView | null
 }
 
 /** One recording or clip that could be cleaned up, and what that would give back. */
@@ -289,6 +351,7 @@ export interface Brand {
   music: MusicSettings
   watermark: Watermark
   vocabulary: Vocabulary
+  share: ShareSettings
 }
 
 export interface BrandSummary {
@@ -432,8 +495,7 @@ export const api = {
   trackStatus: (id: string) =>
     request<{ job: RenderStatus | null; cropStrategy: 'static' | 'tracked'; track: Track | null }>(`/projects/${id}/track`),
   saveMusic: (id: string, music: MusicSettings) => request<Project>(`/projects/${id}/music`, json('PUT', music)),
-  saveMeta: (id: string, title: string, description: string) =>
-    request<Project>(`/projects/${id}/meta`, json('PUT', { title, description })),
+  saveMeta: (id: string, title: string) => request<Project>(`/projects/${id}/meta`, json('PUT', { title })),
   saveWatermark: (id: string, watermark: Watermark) =>
     request<Project>(`/projects/${id}/watermark`, json('PUT', watermark)),
   wordSuggestions: (id: string) =>
@@ -452,7 +514,17 @@ export const api = {
   createBrand: (name: string, copyFrom?: string) => request<Brand>('/brands', json('POST', { name, copyFrom })),
   activateBrand: (id: string) => request<Brand>(`/brands/${id}/activate`, { method: 'POST' }),
   deleteBrand: (id: string) => request<BrandSummary[]>(`/brands/${id}`, { method: 'DELETE' }),
-  render: (id: string) => request<RenderStatus>(`/projects/${id}/render`, { method: 'POST' }),
+  /** Make the clip. Without shapes: upright, plus whatever the church always wants. */
+  render: (id: string, shapes?: ShapeKey[]) =>
+    request<RenderStatus>(`/projects/${id}/render`, shapes ? json('POST', { shapes }) : { method: 'POST' }),
+  delivery: (id: string) => request<Delivery>(`/projects/${id}/delivery`),
+  post: (id: string) => request<PostState>(`/projects/${id}/post`),
+  /** Write the texts again; what was changed by hand in them goes. */
+  rewritePost: (id: string) => request<PostState>(`/projects/${id}/post`, { method: 'POST' }),
+  editPost: (id: string, platform: Platform, text: string) =>
+    request<PostState>(`/projects/${id}/post`, json('PUT', { platform, text })),
+  share: () => request<ShareSettings>('/share'),
+  saveShare: (share: ShareSettings) => request<ShareSettings>('/share', json('PUT', share)),
   stopRender: (id: string) => request<RenderStatus>(`/projects/${id}/render/stop`, { method: 'POST' }),
   health: () => request<Health>('/health'),
   /** Ten seconds through the whole chain, so nobody finds out on a Sunday. */
@@ -472,7 +544,8 @@ export const api = {
   uploadOutroBackground: (file: File) => upload<{ image: string }>('/outro/background', file),
   rebuildOutro: () => request<OutroConfig>('/outro/rebuild', { method: 'POST' }),
   sourceUrl: (id: string) => `/projects/${id}/source`,
-  outputUrl: (id: string) => `/projects/${id}/output`,
+  outputUrl: (id: string, shape: ShapeKey = MAIN_SHAPE) =>
+    shape === MAIN_SHAPE ? `/projects/${id}/output` : `/projects/${id}/output?shape=${shape}`,
   outroUrl: (version = 0) => `/templates/outro.mp4?v=${version}`,
 }
 

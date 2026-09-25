@@ -11,7 +11,7 @@ export default defineConfig({
     // coming back where JSON was expected, so the list is kept complete on purpose.
     proxy: Object.fromEntries(
       ['/brands', '/church', '/diagnose', '/fonts', '/health', '/kerkdienstgemist', '/logos', '/music',
-       '/outro', '/privacy', '/projects', '/selftest', '/services', '/setup', '/storage',
+       '/outro', '/privacy', '/projects', '/selftest', '/services', '/setup', '/share', '/storage',
        '/templates', '/words'].map((path) => [path, backend]),
     ),
   },

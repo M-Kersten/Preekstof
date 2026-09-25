@@ -352,7 +352,7 @@ a machine you are not sure about. `WHISPER_DEVICE=cpu` never tries, and never me
 4. Set the framing. The **Beeldkader** panel shows the whole source with the 9:16 output frame drawn on it, and two ways to place it. **Volg de spreker** lets the frame walk along the path found for this clip (see [Following the speaker](#following-the-speaker)); **Zelf kaderen** hands it back to you, so drag the frame (or drag the preview itself) to choose which part of the picture ends up in the reel, and use the zoom slider to crop in further or, at the low end, to fit the whole picture with black bars. Landscape clips start centred and filling the frame; portrait clips start with the whole picture visible. **Herstel** returns to that default.
 5. Pick a style: font, weight, size (24–200), text colour, outline size and colour, optional dark translucent background, and how a line appears. Subtitles always sit bottom-centre, above the safe margin that Reels and Shorts overlay with UI. A bigger font spreads over more lines (up to three) before anything is scaled down, so turning the size up really does make the text bigger on screen.
 6. Put the church logo in a corner if you want one. The **Logo in beeld** panel picks the corner, the width as a share of the frame, the opacity and the margin, and draws it straight into the preview. Files live in `templates/logos/` and are shared with the end screen.
-7. Click **Render video**. Rendering runs as a background job with a progress bar; when it finishes a download link for `final.mp4` appears.
+7. Click **Video maken**. Rendering runs as a background job with a progress bar. When it finishes, the window **Klaar om te delen** opens: the clip in each shape it can be made in, and the text to put under the post. See [After the render](#after-the-render-the-shapes-and-the-text-under-the-post). It comes back later under **Delen en downloaden**.
 
 The preview is an HTML `<video>` with `object-fit` mimicking the static crop and an HTML overlay for subtitles; it uses the same fonts and layout rules as the renderer. When the clip ends, the outro plays in the preview as well. Nothing is rendered until you click **Render video**.
 
@@ -396,6 +396,54 @@ and reads the pixels back to prove the highlight really walks along the line.
 2.5 words a second, standing longer than 7 seconds, or holding a word this church has already
 written down as a mishearing, and says which. `frontend/src/captionCheck.ts` holds the rules;
 `GET /words` gives the browser the same corrections the transcription applies.
+
+## After the render: the shapes and the text under the post
+
+A made clip is not a posted clip. Two questions are left at that point, and the window that opens
+after **Video maken** answers both.
+
+**Which shape.** The same clip comes in three shapes (`backend/formats.py`):
+
+| Shape | Size | For |
+| --- | --- | --- |
+| Staand 9:16 | 1080×1920 | Reels, Shorts, TikTok, a WhatsApp status. Always made. |
+| Tijdlijn 4:5 | 1080×1350 | the Facebook and Instagram timeline, as tall as a timeline lets a video be |
+| Vierkant 1:1 | 1080×1080 | Facebook on a computer, the website, a newsletter |
+
+Every shape is the same clip: the words, the framing (and the path it follows), the logo, the music
+and the end screen all come along. The crop window keeps its centre and its zoom, so a wider shape
+shows more of the church beside the speaker. Captions sit lower in the shorter shapes, because a
+timeline lays nothing over the video and a Reel lays its buttons over the lowest sixth. The end
+screen is drawn again for each shape from the same settings: the block of logo and lines keeps its
+own spacing, moves to the middle of the shorter card, and is drawn smaller only when it would not
+fit. A church that made its own `outro.mp4` gets that one behind every shape, with bars beside it,
+unless it drops a hand-made `outro.4x5.mp4` or `outro.1x1.mp4` next to it.
+
+A shape that is not made yet shows its framing straight away and is one click away. Ticking
+**Voortaan altijd meemaken** makes it part of every **Video maken** after that. Each shape is written
+down with a fingerprint of everything that went into it (`output/made.json`), so a shape made
+before somebody fixed a word says so instead of being handed over as if nothing changed.
+
+**What to write under it.** The first time a clip is made, the model writes three texts from what is
+said in it (`backend/posts.py`): a short one for Instagram, one with a bit more context for Facebook,
+and a sentence or two to forward on WhatsApp. It writes the body and nothing else. The app then adds
+the lines that have to be exactly right, from settings the church makes once:
+
+- the link to the whole service: the one the church typed, otherwise the page the recording came
+  from, otherwise the church's page on Kerkdienstgemist. Facebook and WhatsApp get the link itself,
+  Instagram gets "de link staat in onze bio";
+- the church's own hashtags, and on Instagram two to four that belong to the clip;
+- the Bible passage, when the clip names one.
+
+What the model writes is checked where it can be. A quote has to stand in the clip word for word,
+or that text is replaced by a plain one built from the title. A Bible passage has to be named in the
+clip or in what the church said about the service; a chapter or verse that was not said, as a
+number or as a word, is left off. Hashtags and links in the body are taken out again. Anything
+somebody edits by hand is kept, and wins over the settings until **Opnieuw schrijven**.
+
+Without a key the texts come from the clip's title and summary, and the window says which it is
+showing. `WRITE_POSTS=0` in `config.env` makes that permanent. The tone (*je* or *u*), the hashtags
+and the link sit in the window itself and under **Merk instellen → Delen**.
 
 ## Bringing the recording in
 
@@ -776,12 +824,20 @@ PUT  /projects/{id}/transcript      save edited segments
 PUT  /projects/{id}/style           save subtitle style
 PUT  /projects/{id}/crop            save the crop window {x, y, zoom}
 PUT  /projects/{id}/music           save the background music for this clip
-PUT  /projects/{id}/meta            save the title and the description for sharing
+PUT  /projects/{id}/meta            save the title, which names the downloaded file
 PUT  /projects/{id}/watermark       save the corner logo {file, corner, width, opacity, margin}
-POST /projects/{id}/render          start the background render job
+POST /projects/{id}/render          start the background render job; {shapes: ["4x5"]} makes
+                                    only those, nothing makes upright plus the church's usual
 POST /projects/{id}/render/stop     stop the render that is running
 GET  /projects/{id}/render-status   {status, progress, message, error, canStop}
-GET  /projects/{id}/output          the rendered final.mp4, named after the clip's title
+GET  /projects/{id}/output          the rendered video, named after the clip's title;
+                                    ?shape=4x5 or ?shape=1x1 for the other shapes
+GET  /projects/{id}/delivery        every shape: made or not, out of date or not, and the settings
+GET  /projects/{id}/post            the texts for under the post, and whether they are being written
+POST /projects/{id}/post            write them again (drops what was changed by hand)
+PUT  /projects/{id}/post            keep a text somebody changed {platform, text}
+GET  /share                         how this church posts: shapes, je or u, hashtags, link
+PUT  /share                         save that on the active brand
 GET  /projects/{id}/source          the footage behind the clip; for a clip cut from a service
                                     that is the whole recording, and the interface skips to
                                     `sourceStart` and stops at the end of the range
@@ -847,6 +903,8 @@ backend/
   brands.py         brand presets: church, end screen, subtitle style, music
   health.py         the checks the interface shows
   clips.py          create_clip(source, start, end): cuts a range into a regular clip project
+  formats.py        the shapes a clip is made in, and which were made from what
+  posts.py          the text under a post: the model writes it, the app checks it and adds the fixed lines
   mac.py            speech on the graphics chip of an Apple Silicon Mac, via mlx-whisper
   vision.py         the two ONNX detectors: faces (YuNet) and people (YOLOv10n)
   tracking.py       detections -> one calm path for the crop window to walk
@@ -869,7 +927,7 @@ frontend/src/
   components/BrandPanel.tsx    brand switch, church details and the end-screen editor
   components/MusicPanel.tsx    background music under the clip
   components/LogoPanel.tsx     the church logo in a corner of the clip
-  components/SharePanel.tsx    title (file name) and description for the post
+  components/DeliveryPanel.tsx the window after a render: the shapes, and the text for each platform
   components/SystemCheck.tsx   the readiness check in the app bar
   fonts.ts                     font catalogue: loads the faces and resolves weights
   components/VideoPreview.tsx  9:16 preview with subtitle overlay and outro
@@ -898,8 +956,9 @@ projects/project-3d25a7a1/
   project.json      metadata, style, output settings, crop strategy, tracking path
   source.mp4        original upload
   transcript.json   {"segments": [{"start", "end", "text"}, ...]}
-  work/             audio.wav, subtitles.ass, track.cmd
-  output/final.mp4
+  post.json         the texts for under the post, and what was changed in them by hand
+  work/             audio.wav, subtitles.ass, track.cmd (and -4x5, -1x1 for the other shapes)
+  output/           final.mp4, final-4x5.mp4, final-1x1.mp4, made.json
 ```
 
 ## Render pipeline

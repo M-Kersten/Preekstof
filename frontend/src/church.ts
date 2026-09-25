@@ -5,7 +5,7 @@ import { api, type ChurchInfo } from './api'
 export const announceBrandChange = () => window.dispatchEvent(new Event('brand-changed'))
 
 /** Opens the brand menu from wherever you are, on the tab that holds what you need. */
-export const openBrand = (tab?: 'church' | 'words' | 'outro') =>
+export const openBrand = (tab?: 'church' | 'words' | 'outro' | 'share') =>
   window.dispatchEvent(new CustomEvent('open-brand', { detail: tab }))
 
 /** The church of the active brand, kept up to date when the brand is switched or edited. */

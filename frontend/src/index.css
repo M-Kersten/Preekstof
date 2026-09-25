@@ -1095,3 +1095,37 @@ a.button.small { padding: 0.22rem 0.55rem; font-size: 0.78rem; font-weight: 500;
 .post-lines { margin-top: 0.9rem; border-top: 1px solid var(--line); padding-top: 0.7rem; }
 .post-lines summary { cursor: pointer; font-weight: 600; font-size: 0.88rem; color: var(--purple); }
 .post-lines .fields { margin-top: 0.8rem; }
+
+/* Background music: a list to listen through, one track playing at a time. */
+.music-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 0.4rem; }
+.music-track {
+  position: relative; display: flex; align-items: center; gap: 0.75rem; padding: 0.5rem 0.7rem;
+  border: 1px solid var(--line); border-radius: 12px; background: var(--white); overflow: hidden;
+}
+.music-track.on { border-color: var(--purple); background: var(--lavender); }
+.music-track.playing { border-color: var(--gold); }
+.music-play {
+  flex: none; display: grid; place-items: center; width: 2.3rem; height: 2.3rem; padding: 0;
+  border-radius: 50%; border: 1px solid var(--line); background: var(--white); color: var(--purple);
+}
+.music-play:hover:not(:disabled) { border-color: var(--purple); background: var(--lavender); }
+.music-track.playing .music-play { background: var(--gold); border-color: var(--gold); color: #2A1140; }
+.music-play.none { border-style: dashed; background: transparent; }
+.music-play.plus { font-size: 1.2rem; font-weight: 600; line-height: 1; }
+.music-pick {
+  flex: 1; min-width: 0; display: flex; flex-direction: column; align-items: flex-start; gap: 0.05rem;
+  border: none; background: none; padding: 0.1rem 0; text-align: left; color: var(--ink); font-weight: 400;
+}
+.music-pick:hover:not(:disabled) { border: none; }
+.music-name { font-weight: 600; font-size: 0.92rem; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.music-track .meta { font-size: 0.78rem; }
+.music-chosen { flex: none; font-size: 0.75rem; font-weight: 700; color: var(--purple); }
+.music-progress { position: absolute; left: 0; right: 0; bottom: 0; height: 3px; padding: 0; background: rgba(201, 151, 28, 0.2); }
+.music-progress div { height: 100%; background: var(--gold); }
+.music-add { border-style: dashed; background: transparent; }
+.music-add label { flex: 1; display: grid; grid-template-columns: auto 1fr; grid-template-rows: auto auto; column-gap: 0.75rem; align-items: center; cursor: pointer; }
+.music-add .music-play { grid-row: 1 / 3; }
+.music-add .music-name { color: var(--purple); }
+.music-add input { display: none; }
+.music-add:hover { border-color: var(--purple); }
+.music-settings { margin-top: 1rem; }

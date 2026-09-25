@@ -41,6 +41,11 @@ link naar de diensten, en later vind je ze terug onder **Merk instellen → Dele
 tiende cent per clip. Zonder sleutel, of met `WRITE_POSTS=0` in config.env, maakt de app een
 eenvoudige tekst uit de titel van de clip.
 
+**Muziek kies je op het gehoor.** Elke track staat in een lijst met een afspeelknop ernaast.
+Die speelt de eerste vijftien seconden, want daar begint de muziek ook onder je clip, en komt
+zacht op en gaat zacht weg. Er speelt er steeds één tegelijk, en naast de naam staat hoe lang de
+track duurt.
+
 **Onder de motorkap.** Het eindscherm werd vlak voor het maken van een video al die tijd niet
 bijgewerkt; dat gebeurde alleen bij het opstarten en bij het opslaan van het merk. Dat klopt nu.
 Windows weigert een video te vervangen die nog openstaat in een speler. De app wacht daar nu even

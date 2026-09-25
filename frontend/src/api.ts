@@ -513,6 +513,7 @@ export const api = {
   logoUrl: (name: string) => `/templates/logos/${encodeURIComponent(name)}`,
   music: () => request<MusicFile[]>('/music'),
   uploadMusic: (file: File, onProgress?: (f: number) => void) => upload<{ file: string }>('/music', file, onProgress),
+  musicUrl: (name: string) => `/templates/music/${encodeURIComponent(name)}`,
   brands: () => request<BrandSummary[]>('/brands'),
   brand: (id: string) => request<Brand>(`/brands/${id}`),
   saveBrand: (brand: Brand) => request<Brand>(`/brands/${brand.id}`, json('PUT', brand)),

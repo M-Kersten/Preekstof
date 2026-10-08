@@ -325,7 +325,9 @@ def glide(targets: list[float | None], cuts: list[bool], reach: float, start_at:
 # 1080p one, which is the honest answer rather than a soft clip.
 FILL = 0.62  # how much of the frame height the speaker should take up
 ZOOM_MAX = 1.6  # never crop in further than this, whatever the arithmetic asks for
-UPSCALE_MAX = 3.2  # ... and never past this many output pixels per source pixel
+UPSCALE_MAX = 2.7  # ... and never past this many output pixels per source pixel. 3.2 let a
+# 720p recording be cropped into until the speaker's face went soft; at 2.7 a 720p recording
+# is not cropped into at all (it is 2.67 at the plain 9:16 cut), and 1080p gets about 1.5x.
 WORTH_IT = 1.08  # under this much zoom the difference is not worth the softness
 EYE_LINE = 0.33  # where the head ends up in the frame, measured from the top
 HEADS_TALL = 7.5  # a standing person, when only the face was found (measured on real footage)

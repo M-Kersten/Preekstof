@@ -328,3 +328,11 @@ def test_the_frame_stays_on_the_picture_however_high_the_speaker_stands():
     for at in (0.05, 0.5, 0.95):
         y = tracking.suggest_y(a_body(0.3, at=at), WIDE, OUT, 1.6)
         assert y is not None and 0.0 <= y <= 1.0
+
+
+def test_a_720p_recording_is_not_cropped_into():
+    """A 9:16 cut from 720p is enlarged 2.67 times already; zooming further made faces soft."""
+    hd = VideoInfo(width=1280, height=720, duration=30.0, fps=25.0, videoCodec="h264",
+                   hasAudio=True, audioCodec="aac", audioSampleRate=48000, audioChannels=2)
+    assert tracking.suggest_zoom(a_body(0.15), hd, OUT) is None
+    assert tracking.suggest_zoom(a_body(0.15), WIDE, OUT) is not None, "1080p still gets some"

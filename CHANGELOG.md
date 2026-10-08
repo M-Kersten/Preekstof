@@ -72,6 +72,22 @@ met begin en einde erbij. Twee versies met precies hetzelfde begin en einde staa
 oude versie gooi je daar weg met **Weghalen**. Bij het fragment zelf staat nu ook dat het verwerkt
 is, met een knop naar de clip, en wie het nog een keer kiest leest wat er dan gebeurt.
 
+**Scherper beeld bij het uitsnijden.** Een staande video uit een brede opname is altijd een
+vergroting. Uit een opname van 1280×720, zoals Kerkdienstgemist die vaak levert, wordt elke pixel
+2,7 pixels in de clip, nog voor er ingezoomd wordt. De app rekte dat beeld op de eenvoudigste
+manier op. Nu gebruikt hij een nauwkeurigere methode, haalt hij eerst wat compressieruis weg en
+verscherpt hij daarna een beetje, meer naarmate het beeld verder vergroot is. Op een echte opname
+van 1 Mbit/s zijn haar, ogen en stof duidelijk scherper. Het maken duurt ongeveer 7% langer.
+
+Automatisch inzoomen op een kleine spreker gaat minder ver: tot 2,7 keer vergroot in plaats van
+3,2. Uit een 720p-opname wordt dan niet meer ingezoomd, uit 1080p tot ongeveer anderhalf keer.
+Onder de zoomschuif staat hoe groot de opname is en hoe ver hij vergroot wordt. Wordt het zichtbaar
+zacht, dan staat dat er in rood bij.
+
+Een AI-upscaler is ook geprobeerd. Die maakt randen strakker, maar gezichten worden wasachtig, en
+op een gewone computer kost hij vier seconden per beeldje: een uur voor een clip van een halve
+minuut. Die zit er dus niet in.
+
 **De spreker volgen gaat rustiger.** Het kader zette in één keer op volle snelheid aan en stond
 net zo abrupt weer stil, vaak met de spreker nog aan de rand, zodat de volgende beweging een
 moment later al begon. Nu trekt het kader langzaam op, haalt de spreker terug naar het midden en

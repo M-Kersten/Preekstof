@@ -142,9 +142,45 @@ def edge_for(centre: float, scaled: int, window: int) -> int:
     return half_up(min(max(centre * scaled - window / 2, 0), scaled - window))
 
 
+# --- enlarging -------------------------------------------------------------------
+
+# A 9:16 frame cut out of a wide recording is an enlargement before anybody zooms in: from a
+# 720p recording every pixel of the source becomes 2.7 pixels of the clip, from 1080p 1.8.
+# Nothing brings back detail the camera never sent, but the way the pixels are stretched
+# still shows. Measured on a real 720p stream at 1 Mbit/s: Lanczos keeps edges that the
+# default bicubic softens, a light clean-up of the compression noise first keeps the
+# sharpening from turning that noise into grain, and a little sharpening afterwards gives
+# back some of the crispness the stretching took. Together about 7% more render time.
+CLEAN_FROM = 1.5  # enlarged more than this, the compression noise is worth taking out first
+CLEAN = "hqdn3d=1.5:1.5:2.5:2.5"
+SHARPEN_PER = 0.45  # unsharp amount for every step of enlargement above 1
+SHARPEN_MAX = 0.9  # past this, edges get halos
+
+
+def enlargement(info: VideoInfo, output: Output, crop: CropWindow | None) -> float:
+    """How many pixels of the clip one pixel of the recording becomes."""
+    g = crop_geometry(info, output, crop)
+    return g.scaled_w / info.width if info.width else 1.0
+
+
+def before_scaling(enlarged: float) -> str:
+    return f"{CLEAN}," if enlarged > CLEAN_FROM else ""
+
+
+def after_cropping(enlarged: float) -> str:
+    """Sharpening in proportion to the stretch, on the picture itself and not on the bars."""
+    amount = min(SHARPEN_MAX, SHARPEN_PER * (enlarged - 1))
+    if amount < 0.05:
+        return ""
+    size = 7 if enlarged >= 2 else 5
+    return f",unsharp={size}:{size}:{amount:.2f}:{size}:{size}:0"
+
+
 def static_crop_filter(info: VideoInfo, output: Output, crop: CropWindow | None = None) -> str:
     g = crop_geometry(info, output, crop)
-    return (f"scale={g.scaled_w}:{g.scaled_h},crop={g.crop_w}:{g.crop_h}:{g.left}:{g.top},"
+    enlarged = enlargement(info, output, crop)
+    return (f"{before_scaling(enlarged)}scale={g.scaled_w}:{g.scaled_h}:flags=lanczos,"
+            f"crop={g.crop_w}:{g.crop_h}:{g.left}:{g.top}{after_cropping(enlarged)},"
             f"pad={output.width}:{output.height}:(ow-iw)/2:(oh-ih)/2:color=black")
 
 
@@ -206,8 +242,10 @@ def tracked_crop_filter(info: VideoInfo, output: Output, crop: CropWindow | None
     commands.parent.mkdir(parents=True, exist_ok=True)
     commands.write_text(track_commands(info, output, crop, track), encoding="utf-8")
     start = edge_for(track.x[0], g.scaled_w, g.crop_w) if track.x else g.left
-    return (f"scale={g.scaled_w}:{g.scaled_h},sendcmd=f='{_ffpath(commands)}',"
-            f"crop@track={g.crop_w}:{g.crop_h}:{start}:{g.top},"
+    enlarged = enlargement(info, output, crop)
+    return (f"{before_scaling(enlarged)}scale={g.scaled_w}:{g.scaled_h}:flags=lanczos,"
+            f"sendcmd=f='{_ffpath(commands)}',"
+            f"crop@track={g.crop_w}:{g.crop_h}:{start}:{g.top}{after_cropping(enlarged)},"
             f"pad={output.width}:{output.height}:(ow-iw)/2:(oh-ih)/2:color=black")
 
 

@@ -1027,11 +1027,21 @@ above or below worth following, and vertical drift is the first thing that reads
 of that is a distant figure in a lot of empty church, so the search also proposes a zoom. The person
 box says how tall the speaker is (without the person model, a head and the seven and a half heads a
 standing adult measures); the zoom that would make them fill 62% of the frame height is worked out
-and then capped, at 1.6× and at 3.2 output pixels per source pixel, whichever bites first. A 720p
+and then capped, at 1.6× and at 2.7 output pixels per source pixel, whichever bites first. A 720p
 recording therefore gets far less room than a 1080p one, which is the honest answer rather than a
 soft clip. Cropping in makes the vertical position matter, so a starting y comes with it, putting
 the head about a third of the way down. Both are a starting point: the zoom slider and dragging the
 frame up and down stay the user's, and only sideways is locked while the frame follows.
+
+**Enlarging.** A 9:16 frame from a wide recording is an enlargement before anybody zooms in: 2.7
+output pixels per source pixel from 720p, 1.8 from 1080p. `renderer.py` scales with Lanczos instead
+of FFmpeg's default bicubic, takes some compression noise out first (`hqdn3d`, light) once the
+enlargement passes 1.5, and sharpens the cropped picture with `unsharp` in proportion to the
+enlargement (0.45 per step above 1, at most 0.9), before the bars are added so their edge gets no
+halo. On a real 720p stream at 1 Mbit/s this is visibly crisper for about 7% more render time. The
+framing panel says how far the recording is enlarged and warns past 2.75. A learned upscaler
+(Real-ESRGAN general x4v3, through onnxruntime) was tried and left out: four seconds a frame on a
+four-core CPU, and faces came out waxy.
 
 **What renders.** `renderer.track_commands` reads the path at 50 a second and writes a `sendcmd`
 script, one line per moment the window would land on a different pixel, driving a labelled

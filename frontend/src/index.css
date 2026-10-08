@@ -1170,3 +1170,6 @@ a.button.small { padding: 0.22rem 0.55rem; font-size: 0.78rem; font-weight: 500;
 .house-style .hint { margin: 0; flex: 1 1 18rem; }
 .house-style .check { display: flex; align-items: baseline; gap: 0.45rem; font-size: 0.85rem; cursor: pointer; white-space: nowrap; }
 .house-style .check input { transform: translateY(2px); }
+
+/* How far the recording is blown up, under the zoom slider. */
+.hint.enlarged.soft { color: var(--danger); }

@@ -1,6 +1,9 @@
 import { useEffect, useRef } from 'react'
 import type { CropWindow, Output, Track, VideoInfo } from '../api'
 import { MAX_ZOOM, canPan, clampCrop, cropGeometry, defaultCrop, minZoom } from '../crop'
+
+/** Past this enlargement the picture goes soft. Just above the 2.7 that caps the automatic zoom in tracking.py, so a plain 9:16 cut from 720p does not warn. */
+const SOFT = 2.75
 import { cropAt } from '../track'
 import Section from './Section'
 
@@ -54,6 +57,10 @@ export default function FramingPanel({
   const pan = canPan(sourceInfo, output, crop)
   const movable = { x: pan.x && !following, y: pan.y }
   const low = minZoom(sourceInfo, output)
+  // How many pixels of the clip one pixel of the recording becomes. backend/renderer.py
+  // stretches and sharpens with care, but past SOFT a face visibly goes soft.
+  const enlarged = g.scaledW / sourceInfo.width
+  const soft = enlarged > SOFT
   // Frame rectangle in fractions of the source; the frame can be larger than the source (letterbox).
   const frame = {
     left: (g.left - (output.width - g.cropW) / 2) / g.scaledW,
@@ -170,6 +177,15 @@ export default function FramingPanel({
           <button className="small" onClick={() => setZoom(1)} title="Vul de staande video helemaal">Beeldvullend</button>
         </div>
       </div>
+      {enlarged >= 1.5 && (
+        <p className={`hint enlarged ${soft ? 'soft' : ''}`}>
+          De opname is {sourceInfo.width}×{sourceInfo.height}. In de clip wordt elke pixel daarvan{' '}
+          {enlarged.toFixed(1).replace('.', ',')} pixels
+          {soft
+            ? '. Zo ver vergroot wordt het beeld zichtbaar zacht. Zoom minder ver in, of gebruik een opname met een hogere resolutie.'
+            : '.'}
+        </p>
+      )}
       <p className="hint">
         Het donkere deel valt weg. Met de zoom-schuif snijd je verder in, of laat je het hele beeld zien met zwarte balken.
         {following && ' Links en rechts gaat op de spreker; omhoog en omlaag sleep je zelf.'}

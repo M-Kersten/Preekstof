@@ -131,5 +131,5 @@ def report() -> dict:
     checks = [_ffmpeg(), _whisper(), _speed(), _tracking(), _llm(), _disk(), _folders()]
     # The version rides along with the checks because this is the panel somebody already
     # opens when something is wrong, and it is the first thing a support call asks for.
-    return {"ok": all(c.ok for c in checks), "version": version.full(),
+    return {"ok": all(c.ok for c in checks), "version": version.full(), "build": version.BUILD,
             "checks": [c.model_dump() for c in checks]}

@@ -115,6 +115,13 @@ Hetzelfde verschil in lettergrootte zat in het voorbeeld van de ondertitels. De 
 verandert daar niet, het voorbeeld wel: dat laat de ondertitels nu even groot zien als ze in de
 video komen.
 
+**Geen vastgelopen scherm meer na bijwerken zonder herstart.** Werk je de app bij terwijl het
+zwarte venster openstaat, dan draait de server nog de oude code terwijl het scherm al nieuw is. De
+balk die daarvoor waarschuwt keek alleen naar het versienummer, en dat verandert pas bij een nieuwe
+release. Daardoor liep het bewerken van een clip vast op een melding over `on`. Nu vergelijken
+scherm en server ook een vingerafdruk van de code, dus de balk verschijnt meteen, en de editor
+loopt niet meer vast op een veld dat de oude server niet meestuurt.
+
 **Onder de motorkap.** Het eindscherm werd vlak voor het maken van een video al die tijd niet
 bijgewerkt; dat gebeurde alleen bij het opstarten en bij het opslaan van het merk. Dat klopt nu.
 Windows weigert een video te vervangen die nog openstaat in een speler. De app wacht daar nu even

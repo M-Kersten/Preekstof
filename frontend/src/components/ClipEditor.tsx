@@ -235,7 +235,8 @@ export default function ClipEditor({ projectId, onProjectChange }: Props) {
   }
 
   // Measuring takes a couple of seconds the first time; the answer is remembered after that.
-  const enhanceOn = project?.enhance.on ?? false
+  // A server from before colour correction sends no `enhance`; then it is simply off.
+  const enhanceOn = project?.enhance?.on ?? false
   const projectKey = project?.id
   useEffect(() => {
     if (!projectKey || !enhanceOn) {
@@ -274,7 +275,8 @@ export default function ClipEditor({ projectId, onProjectChange }: Props) {
     if (!project) return
     setError(null)
     // The box ticks at once; the answer from the server follows.
-    setProject({ ...project, own: own ? [...project.own, part] : project.own.filter((p) => p !== part) })
+    const before = project.own ?? []
+    setProject({ ...project, own: own ? [...before, part] : before.filter((p) => p !== part) })
     try {
       // What was changed a moment ago goes where it was meant to go before the switch flips.
       if (part === 'style' && style && dirty.current.style) await api.saveStyle(project.id, style)
@@ -514,15 +516,15 @@ export default function ClipEditor({ projectId, onProjectChange }: Props) {
               onChange={changeCrop}
               onFollow={follow}
               onSearch={search}
-              enhance={project.enhance.on}
+              enhance={enhanceOn}
               corrected={corrected}
               picture={picture}
               onEnhance={changeEnhance}
             />
             <StylePanel style={style} onChange={changeStyle}
-                        own={project.own.includes('style')} onOwn={(own) => keepOwn('style', own)} />
+                        own={(project.own ?? []).includes('style')} onOwn={(own) => keepOwn('style', own)} />
             <LogoPanel watermark={watermark} onChange={changeWatermark}
-                       own={project.own.includes('watermark')} onOwn={(own) => keepOwn('watermark', own)} />
+                       own={(project.own ?? []).includes('watermark')} onOwn={(own) => keepOwn('watermark', own)} />
             <MusicPanel music={music} onChange={changeMusic} />
           </div>
         </div>

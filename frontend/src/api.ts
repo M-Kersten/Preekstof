@@ -245,6 +245,8 @@ export interface Health {
   ok: boolean
   /** Which version is running, so a support call can start with an answer. */
   version: string
+  /** Fingerprint of the server code the running process started with. */
+  build?: string
   checks: HealthCheck[]
 }
 

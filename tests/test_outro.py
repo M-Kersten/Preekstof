@@ -1,12 +1,13 @@
-"""The end screen: the logo has to arrive with the text, not before it."""
+"""The end screen: what the video shows has to be what the preview showed."""
 
+import math
 import os
 from pathlib import Path
 
 import pytest
 
-from backend import outro
-from backend.models import OutroConfig
+from backend import fonts, outro
+from backend.models import ChurchInfo, OutroBackground, OutroConfig, OutroLine
 
 
 def config(**kwargs) -> OutroConfig:
@@ -45,27 +46,61 @@ def test_a_fade_of_nothing_leaves_the_logo_alone():
     assert "fade" not in outro.logo_chain(cfg, 1.0)
 
 
-def test_logo_is_scaled_with_the_oversized_background():
+def test_logo_is_scaled_with_a_shorter_card():
     cfg = config()
     cfg.logo.file = "whatever.png"
     cfg.logo.width = 420
     assert "scale=420:-1" in outro.logo_chain(cfg, 1.0)
-    assert f"scale={420 * outro.SUPER}:-1" in outro.logo_chain(cfg, float(outro.SUPER))
+    assert "scale=210:-1" in outro.logo_chain(cfg, 0.5)
 
 
-def test_the_camera_carries_the_logo(tmp_path):
-    """The logo is composited before the move, so it travels with the background."""
+def test_the_logo_stays_put_while_the_background_moves(tmp_path):
+    """The camera moves the background only. A logo carried along looked zoomed against the preview."""
     cfg, _ = with_logo(tmp_path, motion="in")
     steps = graph(outro.build_command(cfg, tmp_path / "bg.png", tmp_path / "o.ass", outro.BIG_W, tmp_path / "o.mp4"))
-    assert steps.index("overlay") < steps.index("zoompan")
-    # And the text is drawn after it, on the finished frame.
-    assert steps.index("zoompan") < steps.index("ass=filename=")
+    assert steps.index("zoompan") < steps.index("overlay")
+    assert f"scale={cfg.logo.width}:-1" in steps, "the logo is laid on the finished frame, at its own size"
+    # And the text is drawn last, on the finished frame.
+    assert steps.index("overlay") < steps.index("ass=filename=")
+
+
+def test_the_text_stands_still_whatever_the_camera_does():
+    for motion in ("none", "in", "out", "up"):
+        ass = outro.build_ass(config(motion=motion), ChurchInfo(churchName="De Kerk"))
+        assert "\\move" not in ass and "\\t(" not in ass and "\\fscx" not in ass
+        assert "\\pos(540.00,860.00)" in ass, motion
+
+
+def test_the_letters_are_as_big_as_the_preview_draws_them():
+    """libass sizes the whole line box; the preview in the browser sizes the letters."""
+    cfg = config(lines=[OutroLine(text="Kerk", size=100, font="Poppins")])
+    ass = outro.build_ass(cfg, ChurchInfo())
+    assert f"Style: L0,Poppins,{round(100 * fonts.box_of('Poppins'), 1):g}," in ass
+    assert 1.7 < fonts.box_of("Poppins") < 1.8
+
+
+def test_the_gradient_is_the_same_every_time_and_runs_like_css():
+    """A point outside the picture made FFmpeg pick a random one, so each rebuild differed."""
+    source = outro.gradient_source(OutroBackground(type="gradient", colors=["#000000", "#FFFFFF"], angle=115),
+                                   1080, 1920)
+    size = dict(part.split("=") for part in source.split(",")[0].removeprefix("gradients=").split(":"))
+    width, height = (int(n) for n in size["s"].split("x"))
+    for x, y in (("x0", "y0"), ("x1", "y1")):
+        assert 0 <= int(size[x]) < width and 0 <= int(size[y]) < height
+    crop = source.split(",crop=")[1].split(":")
+    assert crop[:2] == ["1080", "1920"]
+    # The colour line runs through the middle of the frame, at the angle the preview uses.
+    cx, cy = int(crop[2]) + 540, int(crop[3]) + 960
+    mid = ((int(size["x0"]) + int(size["x1"])) / 2, (int(size["y0"]) + int(size["y1"])) / 2)
+    assert abs(mid[0] - cx) <= 1 and abs(mid[1] - cy) <= 1
+    angle = math.degrees(math.atan2(int(size["y1"]) - int(size["y0"]), int(size["x1"]) - int(size["x0"])))
+    assert abs(angle - 115) < 0.2
 
 
 def test_without_a_logo_nothing_is_overlaid(tmp_path):
     steps = graph(outro.build_command(config(), tmp_path / "bg.png", tmp_path / "o.ass", outro.WIDTH, tmp_path / "o.mp4"))
     assert "overlay" not in steps
-    assert "[0:v]null[card]" in steps
+    assert "[card]ass=filename=" in steps
 
 
 def test_the_silent_track_is_mapped_whether_or_not_there_is_a_logo(tmp_path):

@@ -176,7 +176,10 @@ export default function OutroTab({
                 <option key={m.value} value={m.value}>{m.label}</option>
               ))}
             </select>
-            <p className="hint span">Een trage beweging houdt het eindscherm levend. Je ziet hem pas terug nadat je hebt opgeslagen.</p>
+            <p className="hint span">
+              Een trage beweging van de achtergrond houdt het eindscherm levend. Tekst en logo blijven staan waar je
+              ze zet, in de video net zo als hier.
+            </p>
           </div>
         </section>
 

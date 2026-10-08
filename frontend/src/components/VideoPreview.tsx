@@ -2,6 +2,7 @@ import { forwardRef, useCallback, useEffect, useImperativeHandle, useMemo, useRe
 import type { ChurchInfo, CropWindow, Output, Segment, Style, Track, VideoInfo, Watermark } from '../api'
 import { api } from '../api'
 import { canPan, clampCrop, cropGeometry } from '../crop'
+import { asLibass, useFonts } from '../fonts'
 import { cropAt } from '../track'
 import { BACKGROUND_ALPHA, SAFE_MARGIN_BOTTOM, SAFE_MARGIN_SIDE, cssWeight, formatTime, layoutText, litWords, wordTimes } from '../subtitleLayout'
 
@@ -53,6 +54,7 @@ const VideoPreview = forwardRef<PreviewHandle, Props>(function VideoPreview(prop
   const [playing, setPlaying] = useState(false)
   const [time, setTime] = useState(0)
   const [scale, setScale] = useState(360 / output.width)
+  const families = useFonts()
   const drag = useRef<{ x: number; y: number; crop: CropWindow; moved: boolean } | null>(null)
 
   useImperativeHandle(ref, () => ({
@@ -139,7 +141,8 @@ const VideoPreview = forwardRef<PreviewHandle, Props>(function VideoPreview(prop
   }
 
   const portrait = sourceInfo.height > sourceInfo.width
-  const fontSize = layout ? layout.fontSize * scale : 0
+  // The size goes to libass as it is, which draws smaller letters than a browser would.
+  const text = asLibass(families, style.font, layout ? layout.fontSize * scale : 0)
   const outline = style.outline * scale
 
   // Place the source inside the 9:16 frame exactly like the renderer's scale/crop/pad chain.
@@ -255,7 +258,8 @@ const VideoPreview = forwardRef<PreviewHandle, Props>(function VideoPreview(prop
               paddingRight: SAFE_MARGIN_SIDE * scale,
               fontFamily: `'${style.font}', sans-serif`,
               fontWeight: cssWeight(style.fontWeight),
-              fontSize,
+              fontSize: text.fontSize,
+              lineHeight: text.lineHeight,
               color: style.color,
               WebkitTextStroke: outline > 0 ? `${outline * 2}px ${style.outlineColor}` : undefined,
               paintOrder: 'stroke fill',

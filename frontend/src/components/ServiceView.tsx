@@ -14,6 +14,7 @@ import Steps from './Steps'
 
 const STORAGE_KEY = 'service'
 const BUSY = new Set(['fetching', 'transcribing', 'analyzing', 'processing'])
+const LISTEN = 3 // seconds heard before an end or after a start when a boundary is checked
 const STEPS = ['Opname binnenhalen', 'Uitschrijven', 'Momenten zoeken', 'Fragmenten kiezen', 'Clips maken']
 
 const STATUS_LABEL: Record<Service['status'], string> = {
@@ -205,6 +206,38 @@ export default function ServiceView({ onOpenClip }: Props) {
     setTime(0)
   }, [service?.id])
 
+  // The stretch the player is playing for a fragment, and where it has to stop. timeupdate
+  // only comes four times a second, which would let a quarter of a second past the cut be
+  // heard: exactly the bit somebody is listening for. So it is watched every frame as well.
+  const range = useRef<{ from: number; to: number } | null>(null)
+  const [until, setUntil] = useState<number | null>(null)
+  const stopAtCut = (v: HTMLVideoElement) => {
+    const r = range.current
+    if (!r) return false
+    if (v.currentTime < r.from - 0.5 || v.currentTime > r.to + 0.5) {
+      range.current = null // somebody went elsewhere in the recording themselves
+      return false
+    }
+    if (v.currentTime < r.to) return false
+    v.pause()
+    v.currentTime = r.to
+    range.current = null
+    return true
+  }
+  const watch = () => {
+    const v = videoRef.current
+    if (!v || v.paused || !range.current) return
+    if (!stopAtCut(v)) requestAnimationFrame(watch)
+  }
+  const playRange = (from: number, to: number) => {
+    const v = videoRef.current
+    if (!v) return
+    range.current = { from, to }
+    setUntil(to)
+    v.currentTime = from
+    void v.play().then(() => requestAnimationFrame(watch)).catch(() => undefined)
+  }
+
   const preview = (cand: ClipCandidate) => {
     const v = videoRef.current
     if (!v) return
@@ -213,8 +246,14 @@ export default function ServiceView({ onOpenClip }: Props) {
       return
     }
     setPlaying(cand.id)
-    v.currentTime = cand.start
-    void v.play().catch(() => undefined)
+    playRange(cand.start, cand.end)
+  }
+
+  /** The last seconds up to an end, or the first from a start: what the clip will sound like there. */
+  const listen = (cand: ClipCandidate, edge: 'start' | 'end', at: number) => {
+    setPlaying(cand.id)
+    if (edge === 'end') playRange(Math.max(cand.start, at - LISTEN), at)
+    else playRange(at, Math.min(cand.end, at + LISTEN))
   }
 
   /** From the timeline: play it, and put the card it belongs to in front of you. */
@@ -591,18 +630,13 @@ export default function ServiceView({ onOpenClip }: Props) {
                   playsInline
                   controls
                   onTimeUpdate={(e) => {
-                    const v = e.currentTarget
-                    setTime(v.currentTime)
-                    const cand = service.candidates.find((c) => c.id === playing)
-                    if (cand && v.currentTime >= cand.end) {
-                      v.pause()
-                      v.currentTime = cand.end
-                    }
+                    setTime(e.currentTarget.currentTime)
+                    stopAtCut(e.currentTarget)
                   }}
                 />
                 <p className="meta" style={{ marginTop: '0.35rem' }}>
                   {nowPlaying
-                    ? `${nowPlaying.title} speelt · stopt om ${formatTime(nowPlaying.end)}`
+                    ? `${nowPlaying.title} speelt · stopt om ${formatTime(until ?? nowPlaying.end)}`
                     : 'Klik op een balkje hierboven, of op een zin in de tekst.'}
                 </p>
               </div>
@@ -621,10 +655,10 @@ export default function ServiceView({ onOpenClip }: Props) {
               {tab === 'moments' ? (
                 <ClipSuggestions
                   service={service}
-                  video={videoRef}
                   playing={playing}
                   disabled={locked}
                   onPreview={preview}
+                  onListen={listen}
                   onChange={changeCandidates}
                 />
               ) : (

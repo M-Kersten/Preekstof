@@ -175,6 +175,8 @@ class Project(BaseModel):
     cropStrategy: CropStrategy = "static"
     crop: CropWindow | None = None  # None = default framing for the source (see renderer.default_crop)
     track: Track | None = None  # the path the crop walks when cropStrategy is "tracked"
+    # What this clip keeps to itself instead of sharing the house style: see house.py.
+    own: list[Literal["style", "watermark"]] = []
 
 
 class ProjectDetail(Project):

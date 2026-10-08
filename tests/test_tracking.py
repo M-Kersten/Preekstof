@@ -122,13 +122,41 @@ def test_leaving_the_dead_zone_eases_the_frame_back():
     assert max(steps) <= MAX_PAN * reach * 2 / PATH_FPS + 1e-9, "no faster than the speed limit"
 
 
-def test_the_ease_is_slowest_at_the_end():
+def test_a_move_sets_off_slowly_and_comes_to_rest_slowly():
     reach = 0.25
     target = 0.5 + DEAD_ZONE * reach * 2 * 2.0
     path, _ = glide([0.5] * 3 + [target] * 60, [False] * 63, reach=reach, start_at=0.5)
     steps = [b - a for a, b in zip(path, path[1:])]
     moving = [s for s in steps if s > 1e-7]
-    assert moving[0] > moving[-1], "it settles rather than stopping dead"
+    assert moving[0] < max(moving) / 4, "it gathers speed rather than starting at full tilt"
+    assert moving[-1] < max(moving) / 4, "it settles rather than stopping dead"
+    changes = [abs(b - a) * PATH_FPS * PATH_FPS for a, b in zip(steps, steps[1:])]
+    assert max(changes) <= tracking.ACCEL * reach * 2 + 1e-6, "no jolt anywhere in the move"
+
+
+def test_a_move_brings_the_speaker_back_to_the_middle():
+    """Stopping at the edge of the dead zone left the speaker there, ready to set off the next move."""
+    reach = 0.25
+    target = 0.5 + DEAD_ZONE * reach * 2 * 1.5
+    path, _ = glide([0.5] * 3 + [target] * 90, [False] * 93, reach=reach, start_at=0.5)
+    assert abs(target - path[-1]) < tracking.SETTLE * reach * 2 * 1.5
+
+
+def test_a_slow_walk_is_followed_in_one_move():
+    reach = 0.25
+    walk = [0.5] * 6 + [0.5 + 0.12 * i / 24 for i in range(24)] + [0.62] * 30
+    path, _ = glide(walk, [False] * len(walk), reach=reach, start_at=0.5)
+    steps = [b - a for a, b in zip(path, path[1:])]
+    crawl = MAX_PAN * reach * 2 / PATH_FPS / 20  # the last creep of a settling frame is no move
+    still = [abs(s) < crawl for s in steps]
+    started = [i for i in range(1, len(still)) if still[i - 1] and not still[i]]
+    assert len(started) == 1, "the frame goes along with them instead of stopping and starting"
+
+
+def test_one_stray_look_moves_nothing():
+    looks = [0.5] * 12 + [0.5 + DEAD_ZONE * 0.5 * 2.5] + [0.5] * 12
+    path, _ = glide(looks, [False] * len(looks), reach=0.25, start_at=0.5)
+    assert max(path) - min(path) == 0
 
 
 def test_someone_walking_out_of_the_frame_is_caught_faster_than_eased():
@@ -217,10 +245,10 @@ def test_the_zones_stay_in_the_order_they_are_meant_to_be_in():
     assert tracking.PATH_FPS > tracking.SAMPLE_FPS, "the path is written finer than it is sampled"
 
 
-def test_easing_covers_most_of_the_distance_within_its_own_time_constant():
-    ease = 1 - math.exp(-1 / (tracking.TAU * PATH_FPS))
-    left = (1 - ease) ** (tracking.TAU * PATH_FPS)
-    assert 0.3 < left < 0.4, "one tau leaves about a third of the way to go"
+def test_full_speed_can_be_shed_before_arriving():
+    """Slowing down from the top speed must fit in the gentle braking, or the frame overshoots."""
+    assert tracking.MAX_PAN / tracking.TAU <= tracking.ACCEL
+    assert tracking.SETTLE < DEAD_ZONE
 
 
 # --- how tight to crop ------------------------------------------------------------

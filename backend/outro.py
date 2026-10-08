@@ -21,7 +21,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Literal
 
-from . import brands, formats
+from . import brands, fonts, formats
 from .models import FONTS_DIR, TEMPLATES_DIR, ChurchInfo, OutroBackground, OutroConfig
 from .subtitles import ass_color, family_for
 
@@ -30,7 +30,7 @@ CHURCH_PATH = TEMPLATES_DIR / "church.json"
 OUTRO_PATH = TEMPLATES_DIR / "outro.mp4"
 WIDTH, HEIGHT, FPS = 1080, 1920, 30
 MARGIN = 60  # safe space left and right
-ZOOM = 1.12  # how far a dolly travels
+ZOOM = 1.12  # how far a dolly into the background travels
 DRIFT = 1.08  # the fixed crop the upward drift moves within
 # The background is drawn larger only when it has to move, so a pixel of rounding in the
 # zoom lands well inside one pixel of the finished frame.
@@ -150,71 +150,23 @@ def ass_seconds(seconds: float) -> str:
     return f"{int(seconds // 3600)}:{int(seconds % 3600 // 60):02d}:{seconds % 60:05.2f}"
 
 
-def zoom_at(motion: str, moment: float, duration: float) -> float:
-    """How far the camera has pushed in at `moment`."""
-    part = 0.0 if duration <= 0 else max(0.0, min(1.0, moment / duration))
-    if motion == "in":
-        return 1 + (ZOOM - 1) * part
-    if motion == "out":
-        return ZOOM - (ZOOM - 1) * part
-    if motion == "up":
-        return DRIFT
-    return 1.0
-
-
-def drift_at(motion: str, moment: float, duration: float, height: int = HEIGHT) -> float:
-    """Vertical offset of the whole card at `moment`, for the upward drift."""
-    if motion != "up":
-        return 0.0
-    part = 0.0 if duration <= 0 else max(0.0, min(1.0, moment / duration))
-    # How far the crop window's view travels on screen: the extra height the zoom bought.
-    travel = height * (DRIFT - 1)
-    return travel * (0.5 - part)
-
-
-def place(anchor: tuple[float, float], motion: str, moment: float, duration: float,
-          card: Card = UPRIGHT) -> tuple[float, float]:
-    """Where an anchor point sits once the camera has moved."""
-    zoom = zoom_at(motion, moment, duration)
-    centre_x, centre_y = card.centre
-    x = centre_x + (anchor[0] - centre_x) * zoom
-    y = centre_y + (anchor[1] - centre_y) * zoom + drift_at(motion, moment, duration, card.height)
-    return x, y
-
-
-def motion_tags(motion: str, start: float, duration: float, anchor: tuple[float, float],
-                card: Card = UPRIGHT) -> str:
-    """Move and scale one line the way the camera does.
-
-    libass interpolates positions and scales as floating point, so the text glides
-    instead of snapping to whole pixels the way an FFmpeg crop would.
-    """
-    x0, y0 = place(anchor, motion, start, duration, card)
-    if motion == "none":
-        return f"\\pos({x0:.2f},{y0:.2f})"
-    x1, y1 = place(anchor, motion, duration, duration, card)
-    span = max(1, int((duration - start) * 1000))
-    begin, end = zoom_at(motion, start, duration), zoom_at(motion, duration, duration)
-    tags = f"\\move({x0:.2f},{y0:.2f},{x1:.2f},{y1:.2f},0,{span})\\fscx{begin * 100:.2f}\\fscy{begin * 100:.2f}"
-    if abs(end - begin) > 1e-6:
-        tags += f"\\t(0,{span},\\fscx{end * 100:.2f}\\fscy{end * 100:.2f})"
-    return tags
-
-
 def build_ass(config: OutroConfig, church: ChurchInfo, card: Card = UPRIGHT) -> str:
+    """The text of the end screen. It stands still where it was placed; only the background moves.
+
+    A size in the config is the size of the letters as the preview in the browser draws them.
+    libass reads the same number as the height of the whole line, so it is asked for more.
+    """
     fade_ms = int(config.fade * 1000)
-    # While the text scales, the wrap width has to leave room for it, or a line that just
-    # fits at rest would suddenly break in two halfway through the move.
-    wrap_margin = 0 if config.motion != "none" else MARGIN
     styles, events = [], []
     for i, line in enumerate(config.lines):
-        family, bold = family_for(line.font or config.font, line.weight)
-        size = line.size if card.scale == 1 else max(1, round(line.size * card.scale))
+        font = line.font or config.font
+        family, bold = family_for(font, line.weight)
+        size = round(line.size * card.scale * fonts.box_of(font), 1)
         spacing = line.spacing if card.scale == 1 else round(line.spacing * card.scale, 2)
         styles.append(
-            f"Style: L{i},{family},{size},{ass_color(line.color)},{ass_color(line.color)},"
+            f"Style: L{i},{family},{size:g},{ass_color(line.color)},{ass_color(line.color)},"
             f"&H00000000,&H00000000,{-1 if bold else 0},0,0,0,100,100,{spacing},0,1,0,0,5,"
-            f"{wrap_margin},{wrap_margin},0,1"
+            f"{MARGIN},{MARGIN},0,1"
         )
         text = fill(line.text, church).replace("{", "(").replace("}", ")").strip()
         if line.uppercase:
@@ -224,10 +176,9 @@ def build_ass(config: OutroConfig, church: ChurchInfo, card: Card = UPRIGHT) -> 
         align, anchor_x = {"left": (4, MARGIN), "center": (5, card.width // 2),
                            "right": (6, card.width - MARGIN)}[line.align]
         start = min(line.delay, config.duration)
-        moves = motion_tags(config.motion, start, config.duration, (anchor_x, card.y(line.y)), card)
         events.append(
             f"Dialogue: 0,{ass_seconds(start)},{ass_seconds(config.duration)},L{i},,0,0,0,,"
-            f"{{\\fad({fade_ms},{fade_ms})\\an{align}{moves}}}{text}"
+            f"{{\\fad({fade_ms},{fade_ms})\\an{align}\\pos({anchor_x:.2f},{card.y(line.y):.2f})}}{text}"
         )
     return "\n".join([
         "[Script Info]", "ScriptType: v4.00+", f"PlayResX: {card.width}", f"PlayResY: {card.height}",
@@ -244,11 +195,11 @@ def build_ass(config: OutroConfig, church: ChurchInfo, card: Card = UPRIGHT) -> 
 
 
 def motion_filter(motion: str, duration: float, card: Card = UPRIGHT) -> str:
-    """Move the background the same way the text moves.
+    """Move the background slowly, behind text and a logo that stay where they were placed.
 
-    A gradient or photograph has no fine detail, so the whole-pixel steps an FFmpeg
-    crop takes are invisible here; the text, which does have fine detail, is moved by
-    libass instead. Both follow the same straight line, so the two layers stay together.
+    The text used to travel along, which made the finished end screen look zoomed in or out
+    against the preview it was designed in. A gradient or photograph has no fine detail, so
+    the whole-pixel steps of an FFmpeg crop are invisible here.
     """
     size = f"{card.width}x{card.height}"
     if motion == "none":
@@ -261,24 +212,37 @@ def motion_filter(motion: str, duration: float, card: Card = UPRIGHT) -> str:
     if motion == "out":
         return f"zoompan=z='max({ZOOM}-{step:.6f}*on,1.0)':d=1:{centre}:s={size}:fps={FPS}"
     # "up": a fixed slight crop that travels down the card, so the picture rises.
-    # The window walks the same 1 - 1/DRIFT of the height that drift_at() moves the text.
     return (f"zoompan=z={DRIFT}:d=1:x='iw/2-(iw/zoom/2)':y='(ih-ih/zoom)*(on/{frames})'"
             f":s={size}:fps={FPS}")
 
 
 def gradient_source(background: OutroBackground, width: int, height: int) -> str:
+    """The gradient the preview draws with CSS linear-gradient, at the same angle.
+
+    CSS runs the colours between two points just outside the frame, on a line through the
+    middle. FFmpeg swaps any point outside its picture for a random one, which gave every
+    rebuild a gradient of its own. So the gradient is drawn on a canvas wide enough to hold
+    both points and then cut back to the frame.
+    """
     colors = [c for c in background.colors if c.strip()][:8] or ["#4B1E78", "#9B1B3A"]
     if len(colors) == 1:
         colors = colors * 2
     radians = math.radians(background.angle)
     dx, dy = math.cos(radians), math.sin(radians)
     half = (width * abs(dx) + height * abs(dy)) / 2
-    points = [max(0, round(width / 2 - dx * half)), max(0, round(height / 2 - dy * half)),
-              max(0, round(width / 2 + dx * half)), max(0, round(height / 2 + dy * half))]
+    xs = (width / 2 - dx * half, width / 2 + dx * half)
+    ys = (height / 2 - dy * half, height / 2 + dy * half)
+    pad_x = math.ceil(max(0.0, -min(xs), max(xs) - (width - 1))) + 1
+    pad_y = math.ceil(max(0.0, -min(ys), max(ys) - (height - 1))) + 1
+    big_w, big_h = width + 2 * pad_x, height + 2 * pad_y
+    points = [min(big_w - 1, max(0, round(xs[0] + pad_x))), min(big_h - 1, max(0, round(ys[0] + pad_y))),
+              min(big_w - 1, max(0, round(xs[1] + pad_x))), min(big_h - 1, max(0, round(ys[1] + pad_y)))]
     args = ":".join(f"c{i}=0x{c.lstrip('#')}" for i, c in enumerate(colors))
-    # speed at its minimum keeps the gradient still instead of rotating.
-    return (f"gradients=s={width}x{height}:r={FPS}:d=1:n={len(colors)}:{args}"
-            f":x0={points[0]}:y0={points[1]}:x1={points[2]}:y1={points[3]}:speed=0.00001")
+    # speed at its minimum keeps the gradient still instead of rotating; a fixed seed keeps
+    # FFmpeg from inventing anything should a point still fall outside.
+    return (f"gradients=s={big_w}x{big_h}:r={FPS}:d=1:n={len(colors)}:{args}"
+            f":x0={points[0]}:y0={points[1]}:x1={points[2]}:y1={points[3]}:speed=0.00001:seed=1"
+            f",crop={width}:{height}:{pad_x}:{pad_y}")
 
 
 def filter_path(path: Path) -> str:
@@ -360,21 +324,20 @@ def build_command(config: OutroConfig, still: Path, ass: Path, width: int, desti
                   card: Card = UPRIGHT) -> list[str]:
     """The FFmpeg call that turns the background still into the end screen.
 
-    Order matters. The logo is laid on the background first, so the camera carries it along
-    exactly as it carries the background; the text comes last, drawn by libass at the size
-    of the finished frame so it stays sharp.
+    Order matters. The background moves first, at the size of the still; the logo is laid
+    on the finished frame after that, so it stays where it was placed, and the text comes
+    last, drawn by libass at the size of the finished frame so it stays sharp.
     """
     inputs = ["-loop", "1", "-t", f"{config.duration}", "-r", str(FPS), "-i", str(still)]
     logo = logo_file(config)
-    steps = ["[0:v]null[card]"]
+    steps = [f"[0:v]{motion_filter(config.motion, config.duration, card)},setsar=1[card]"]
     if logo:
         inputs += ["-loop", "1", "-t", f"{config.duration}", "-r", str(FPS), "-i", str(logo)]
-        scale = width / card.width  # the background is drawn larger when it has to move
-        steps = [f"[1:v]{logo_chain(config, scale * card.scale)}[logo]",
-                 f"[0:v][logo]overlay=x=(W-w)/2:y={int(card.y(config.logo.y) * scale)}-h/2:format=auto[card]"]
+        steps += [f"[1:v]{logo_chain(config, card.scale)}[logo]",
+                  f"[card][logo]overlay=x=(W-w)/2:y={card.y(config.logo.y):.0f}-h/2:format=auto[shown]"]
     audio = 2 if logo else 1  # the silent track comes after the picture inputs
     inputs += ["-f", "lavfi", "-i", "anullsrc=r=48000:cl=stereo"]
-    steps.append(f"[card]{motion_filter(config.motion, config.duration, card)},setsar=1,"
+    steps.append(f"[{'shown' if logo else 'card'}]"
                  f"ass=filename='{filter_path(ass)}':fontsdir='{filter_path(FONTS_DIR)}',"
                  f"format=yuv420p[v]")
     return [ffmpeg_binary(), "-y", "-hide_banner", "-loglevel", "error", *inputs,

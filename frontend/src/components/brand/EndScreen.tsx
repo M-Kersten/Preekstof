@@ -12,7 +12,12 @@ interface Props {
   onMove: (index: number, patch: Partial<OutroLine>) => void
 }
 
-/** Live end screen. Drag a line to move it up or down, or sideways to align it. */
+/**
+ * Live end screen. Drag a line to move it up or down, or sideways to align it.
+ *
+ * Only the background moves, the way backend/outro.py moves it: the text and the logo stay
+ * where they are put, here and in the made video.
+ */
 export default function EndScreen({ config, church, active, onPick, onMove }: Props) {
   const box = useRef<HTMLDivElement>(null)
   const [scale, setScale] = useState(220 / 1080)
@@ -58,7 +63,11 @@ export default function EndScreen({ config, church, active, onPick, onMove }: Pr
   const onPointerUp = () => (drag.current = null)
 
   return (
-    <div className="endscreen" ref={box} style={style}>
+    <div className="endscreen" ref={box}>
+      <div
+        className={`endscreen-bg ${config.motion !== 'none' ? `moving-${config.motion}` : ''}`}
+        style={{ ...style, animationDuration: `${config.duration}s` }}
+      />
       {bg.type === 'image' && bg.darken > 0 && <div className="veil" style={{ background: `rgba(0,0,0,${bg.darken})` }} />}
       {config.logo.file && (
         <img

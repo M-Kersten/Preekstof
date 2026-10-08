@@ -106,6 +106,8 @@ export interface Track {
   enough: boolean
 }
 
+export type LookPart = 'style' | 'watermark'
+
 export interface Project {
   id: string
   createdAt: string
@@ -122,6 +124,8 @@ export interface Project {
   cropStrategy: 'static' | 'tracked'
   crop: CropWindow
   track: Track | null
+  /** What this clip keeps to itself instead of sharing the house style. */
+  own: LookPart[]
   transcriptData: Transcript | null
   /** Seconds into the source file where this clip begins; 0 when the clip owns its file. */
   sourceStart: number
@@ -314,6 +318,8 @@ export interface FontFamily {
   /** File-name prefix in /templates/fonts; empty for the system font. */
   stem: string
   weights: FontWeight[]
+  /** How tall libass draws a line, against the letter size a browser uses. See fonts.asLibass. */
+  box: number
 }
 
 export interface MusicSettings {
@@ -502,6 +508,8 @@ export const api = {
   saveStyle: (id: string, style: Style) => request<Project>(`/projects/${id}/style`, json('PUT', style)),
   saveCrop: (id: string, crop: CropWindow) => request<Project>(`/projects/${id}/crop`, json('PUT', crop)),
   /** Follow the speaker, or go back to the window set by hand. */
+  keepOwn: (id: string, part: LookPart, own: boolean) =>
+    request<Project>(`/projects/${id}/own`, json('PUT', { part, own })),
   setFraming: (id: string, follow: boolean) => request<Project>(`/projects/${id}/framing`, json('PUT', { follow })),
   /** Look through this clip for the speaker. Runs as a job; watch it with trackStatus. */
   track: (id: string) => request<RenderStatus>(`/projects/${id}/track`, { method: 'POST' }),

@@ -8,7 +8,7 @@ brand-new Project, which then goes through the unchanged Part 1 workflow
 import subprocess
 from pathlib import Path
 
-from . import renderer
+from . import house, renderer
 from .models import (ClipOrigin, Project, Segment, Spoken, Transcript, VideoInfo, load_service, new_project,
                      project_dir, save_project, save_transcript, service_dir)
 
@@ -68,7 +68,7 @@ def create_clip(
         raise ValueError("end must be after start")
     if origin is None:
         raise ValueError("a clip cut from a recording needs its origin")
-    project = new_project()
+    project = house.dress(new_project())
     project.sourceInfo = clip_info(source_info or renderer.probe(source), start, end)
     project.crop = renderer.default_crop(project.sourceInfo, project.output)
     project.title = title

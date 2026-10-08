@@ -35,6 +35,8 @@ config.env
 # your church's own details, made on first start from templates/church.example.json.
 # It used to ship filled in, which gave every new install another church's name.
 templates/church.json
+# whether the welcome steps were walked through on this computer
+templates/setup.json
 
 # how fast this particular computer writes out a service, learned from its own runs
 templates/speed.json

@@ -50,6 +50,36 @@ Er komt nu ook een standaardbibliotheek mee met de app: muziek die elke kerk met
 gebruiken, onder **Standaard** in de lijst. Eigen muziek uploaden kan daarnaast, en staat onder
 **Eigen muziek**. Een eigen nummer gooi je weg met het kruisje; de standaardnummers blijven staan.
 
+**Ondertitels en logo stel je één keer in.** Wie vijf clips uit een dienst haalde, moest bij elke
+clip opnieuw de letter, de kleur en het logo kiezen. Clips uit een dienst kregen de stijl van het
+merk niet eens mee. Wat je nu in één clip verandert, gaat mee naar de andere clips die nog niet
+gemaakt zijn, en elke nieuwe clip begint ermee. Een clip die al een video heeft blijft zoals hij
+is. Moet één clip er anders uitzien, vink dan **Alleen voor deze clip** aan.
+
+**Begin en einde bijstellen gaat op het gehoor.** Onder **Begin en einde bijstellen** staan de
+woorden rond de knip, met een gouden streep op de plek waar hij nu valt. Klik op een woord en de
+clip begint of eindigt daar, met een ademhaling ruimte zodat het woord niet wordt afgekapt. Met
+**‹ zin** en **zin ›** spring je naar het vorige of volgende zinseinde. Na elke verandering hoor
+je meteen de laatste drie seconden tot de knip, of de eerste drie erna, en de speler stopt precies
+waar de clip ophoudt. Valt de knip midden in een woord, dan staat dat erbij.
+
+**De spreker volgen gaat rustiger.** Het kader zette in één keer op volle snelheid aan en stond
+net zo abrupt weer stil, vaak met de spreker nog aan de rand, zodat de volgende beweging een
+moment later al begon. Nu trekt het kader langzaam op, haalt de spreker terug naar het midden en
+komt zacht tot stilstand. Wie rustig over het podium loopt, wordt in één doorgaande beweging
+gevolgd. Een enkele keer dat het gezicht verkeerd gezien wordt, verschuift het kader niet meer.
+Dit geldt voor clips die je vanaf nu maakt.
+
+**Het eindscherm ziet eruit zoals in het instellingenvenster.** Drie dingen weken af. De tekst
+stond in de video veel kleiner dan in het voorbeeld; in Poppins bijna de helft. Het kleurverloop
+kreeg bij elke keer opnieuw maken een andere richting. En met een camerabeweging zoomden tekst en
+logo mee, waardoor het leek alsof alles anders in beeld stond. Nu beweegt alleen de achtergrond,
+en dat zie je ook in het voorbeeld. Tekst en logo blijven staan waar je ze neerzet.
+
+Hetzelfde verschil in lettergrootte zat in het voorbeeld van de ondertitels. De video zelf
+verandert daar niet, het voorbeeld wel: dat laat de ondertitels nu even groot zien als ze in de
+video komen.
+
 **Onder de motorkap.** Het eindscherm werd vlak voor het maken van een video al die tijd niet
 bijgewerkt; dat gebeurde alleen bij het opstarten en bij het opslaan van het merk. Dat klopt nu.
 Windows weigert een video te vervangen die nog openstaat in een speler. De app wacht daar nu even

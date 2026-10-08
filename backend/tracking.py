@@ -7,8 +7,9 @@ walk, and almost all of the work here is about *not* moving:
 
   a dead zone   the speaker may drift around the middle of the frame without the camera
                 reacting at all, so someone standing still gives a still frame
-  a slow ease   when they do leave it, the frame glides back rather than snapping, at a
-                speed low enough that you notice the speaker and not the camera
+  a slow move   when they do leave it, the frame gathers speed, brings them back to the
+                middle and comes to rest again, the way a camera on a fluid head moves.
+                Slow enough that you notice the speaker and not the camera
   one subject   whoever is most central on stage at the start is held for the rest of the
                 clip, so a musician walking past does not steal the frame
   cuts          a church with several cameras cuts between them. There is nothing smooth
@@ -43,9 +44,14 @@ PATH_FPS = 12.5  # how finely the finished path is written down
 # needs to until they are safely inside again.
 DEAD_ZONE = 0.14  # ± this far from centre: no movement at all
 KEEP_IN = 0.34  # ± this far: never mind smooth, catch up (the edge is at 0.5)
-TAU = 0.45  # seconds for the frame to cover most of the distance back
-MAX_PAN = 0.40  # crop widths per second, while easing
-RESCUE_PAN = 1.10  # crop widths per second, while catching up
+SETTLE = 0.03  # once moving, the frame keeps going until the speaker is this close to the middle
+# A move that stopped as soon as the speaker was back inside the dead zone ended halfway, at
+# speed, and left them near its edge to set off the next one a moment later.
+TAU = 0.8  # seconds: the frame slows down over about this long as it closes in
+MAX_PAN = 0.25  # crop widths per second, at most, while easing
+ACCEL = 0.5  # crop widths per second per second: half a second to reach full speed
+RESCUE_PAN = 1.0  # crop widths per second, while catching up
+RESCUE_ACCEL = 2.5
 SNAP_AFTER = DEAD_ZONE  # a cut jumps only when the frame would have had to move anyway,
 # so cutting back to a camera that already had the speaker in the middle stays perfectly still
 
@@ -212,27 +218,65 @@ def anchors(seen: list[Sighting], width: int) -> list[float | None]:
     return [None if s.x is None else min(1.0, max(0.0, s.x / width)) for s in seen]
 
 
+def steady(targets: list[float | None], cuts: list[bool]) -> list[float | None]:
+    """Each sighting as the middle one of itself and its two neighbours.
+
+    Now and then a detector puts the head off to the side for a single look, on a raised hand
+    or a turned face. The middle of three ignores that one look, where an average would still
+    lean towards it. A neighbour on the other side of a cut is another camera and does not count.
+    """
+    out: list[float | None] = []
+    for i, target in enumerate(targets):
+        before = targets[i - 1] if i > 0 and not cuts[i] else None
+        after = targets[i + 1] if i + 1 < len(targets) and not cuts[i + 1] else None
+        if target is None or before is None or after is None:
+            out.append(target)
+        else:
+            out.append(sorted((before, target, after))[1])
+    return out
+
+
+def target_at(targets: list[float | None], cuts: list[bool], moment: float, sample_fps: float) -> float | None:
+    """Where the speaker is at `moment`, between two looks as well as on them.
+
+    Taking the nearest look would hand the frame a new place to go three times a second, in
+    steps; mixing the two around it gives a target that moves the way the speaker did.
+    """
+    place = moment * sample_fps
+    index = min(len(targets) - 1, int(place))
+    target = targets[index]
+    following = index + 1
+    if (target is None or following >= len(targets) or targets[following] is None or cuts[following]):
+        return target
+    return target + (targets[following] - target) * (place - index)
+
+
 def glide(targets: list[float | None], cuts: list[bool], reach: float, start_at: float,
           fps: float = PATH_FPS, sample_fps: float = SAMPLE_FPS) -> tuple[list[float], list[int]]:
     """Walk the crop centre along the targets, and mostly stand still.
 
-    `reach` is half the crop width; the dead zone and the speed limit are both measured in
-    it, so the same numbers behave the same way on a wide crop and a tight one.
+    `reach` is half the crop width; the zones and the speeds are all measured in it, so the
+    same numbers behave the same way on a wide crop and a tight one.
+
+    The frame has a speed of its own that changes gradually: it sets off slowly, travels,
+    and slows down as it arrives, instead of starting and stopping at full speed.
     """
     if not targets:
         return [], []
     span = (len(targets) - 1) / sample_fps
     steps = max(2, int(round(span * fps)) + 1)
     width = reach * 2
-    dead, keep, snap = DEAD_ZONE * width, KEEP_IN * width, SNAP_AFTER * width
-    limit, rescue = MAX_PAN * width / fps, RESCUE_PAN * width / fps
-    ease = 1 - math.exp(-1 / (TAU * fps))
+    dead, keep, settle, snap = DEAD_ZONE * width, KEEP_IN * width, SETTLE * width, SNAP_AFTER * width
+    calm, hurry = MAX_PAN * width, RESCUE_PAN * width
+    gentle, quick = ACCEL * width / fps, RESCUE_ACCEL * width / fps  # per step, in speed
+    targets = steady(targets, cuts)
 
     # Start on the speaker rather than panning onto them: the first frame of a clip is not
     # the moment for a camera move, and the window the user set is only a fallback for a
     # clip where nobody was found at all.
     first = next((t for t in targets if t is not None), None)
     at = first if first is not None else start_at
+    goal, speed, moving = at, 0.0, False
     jumping = False  # a cut has happened and we are waiting to see where the speaker went
     seen_cut = -1
     path: list[float] = []
@@ -242,21 +286,33 @@ def glide(targets: list[float | None], cuts: list[bool], reach: float, start_at:
         index = min(len(targets) - 1, int(moment * sample_fps))
         if cuts[index] and index != seen_cut:
             seen_cut, jumping = index, True
-        target = targets[index]
+        target = target_at(targets, cuts, moment, sample_fps)
         if jumping and target is not None:
             # A cut is not something to glide through: the room itself changed. Small
             # differences are left alone, or every cut back to the same camera would twitch.
             if abs(target - at) > snap:
                 at = target
                 jumps.append(step)
-            jumping = False
-        elif target is not None and abs(target - at) > keep:
-            away = target - at
-            at += max(-rescue, min(rescue, away))
-        elif target is not None and abs(target - at) > dead:
-            away = (target - at) * ease
-            at += max(-limit, min(limit, away))
-        path.append(round(min(1.0, max(0.0, at)), 5))
+            goal, speed, moving, jumping = at, 0.0, False, False
+        elif target is not None:
+            if abs(target - at) > dead:
+                moving = True
+            if moving:
+                goal = target
+                moving = abs(target - at) > settle
+
+        # About to lose them: calm stops being the point, and the limits are lifted.
+        rushed = target is not None and abs(target - at) > keep
+        top = hurry if rushed else calm
+        # Slowing down after a rush is as quick as speeding up for it, or the frame would
+        # sail on past the speaker it just caught.
+        change = quick if rushed or abs(speed) > calm else gentle
+        wanted = max(-top, min(top, (goal - at) / TAU))
+        speed += max(-change, min(change, wanted - speed))
+        at += speed / fps
+        if not 0.0 <= at <= 1.0:
+            at, speed = min(1.0, max(0.0, at)), 0.0
+        path.append(round(at, 5))
     return path, jumps
 
 

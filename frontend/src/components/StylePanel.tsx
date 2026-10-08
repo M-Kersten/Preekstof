@@ -1,17 +1,20 @@
 import { useEffect, useState } from 'react'
 import type { Style, SubtitleAnimation } from '../api'
-import { WEIGHT_LABELS, resolveWeight, useFonts, weightsOf } from '../fonts'
+import { WEIGHT_LABELS, asLibass, resolveWeight, useFonts, weightsOf } from '../fonts'
 import { cssWeight } from '../subtitleLayout'
+import HouseStyle from './HouseStyle'
 import Section from './Section'
 
 interface Props {
   style: Style
   onChange: (style: Style) => void
+  own: boolean
+  onOwn: (own: boolean) => void
 }
 
 const SPECIMEN = ['God', 'is', 'op', 'zoek', 'naar', 'jou']
 
-export default function StylePanel({ style, onChange }: Props) {
+export default function StylePanel({ style, onChange, own, onOwn }: Props) {
   const families = useFonts()
   const set = <K extends keyof Style>(key: K, value: Style[K]) => onChange({ ...style, [key]: value })
   // Some fonts have one weight only; keep the choice within what the family has.
@@ -34,6 +37,7 @@ export default function StylePanel({ style, onChange }: Props) {
   }, [style.highlight])
   return (
     <Section step={3} title="Stijl van de ondertitels" intro="Wit met een donkere rand leest bijna altijd het best.">
+      <HouseStyle own={own} what="zijn eigen ondertitels" onOwn={onOwn} />
       <div className="specimen">
         <span
           key={`${style.animation}-${style.animationSpeed}-${beat}`}
@@ -42,7 +46,7 @@ export default function StylePanel({ style, onChange }: Props) {
             animationDuration: `${style.animationSpeed}ms`,
             fontFamily: `'${style.font}', sans-serif`,
             fontWeight: cssWeight(style.fontWeight),
-            fontSize: `${style.fontSize * 0.4}px`,
+            fontSize: `${asLibass(families, style.font, style.fontSize * 0.4).fontSize}px`,
             color: style.color,
             WebkitTextStroke: outline > 0 ? `${outline * 2}px ${style.outlineColor}` : undefined,
             paintOrder: 'stroke fill',

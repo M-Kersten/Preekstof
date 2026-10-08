@@ -352,6 +352,8 @@ a machine you are not sure about. `WHISPER_DEVICE=cpu` never tries, and never me
 4. Set the framing. The **Beeldkader** panel shows the whole source with the 9:16 output frame drawn on it, and two ways to place it. **Volg de spreker** lets the frame walk along the path found for this clip (see [Following the speaker](#following-the-speaker)); **Zelf kaderen** hands it back to you, so drag the frame (or drag the preview itself) to choose which part of the picture ends up in the reel, and use the zoom slider to crop in further or, at the low end, to fit the whole picture with black bars. Landscape clips start centred and filling the frame; portrait clips start with the whole picture visible. **Herstel** returns to that default.
 5. Pick a style: font, weight, size (24–200), text colour, outline size and colour, optional dark translucent background, and how a line appears. Subtitles always sit bottom-centre, above the safe margin that Reels and Shorts overlay with UI. A bigger font spreads over more lines (up to three) before anything is scaled down, so turning the size up really does make the text bigger on screen.
 6. Put the church logo in a corner if you want one. The **Logo in beeld** panel picks the corner, the width as a share of the frame, the opacity and the margin, and draws it straight into the preview. Files live in `templates/logos/` and are shared with the end screen.
+
+   Subtitle style and corner logo are a **house style**, set once (`backend/house.py`). A change in one clip becomes the default of the active brand and goes along to every other clip that still had the old default and has no video yet; a new clip, from a service or on its own, starts from it. **Alleen voor deze clip** keeps one clip apart, both ways.
 7. Click **Video maken**. Rendering runs as a background job with a progress bar. When it finishes, the window **Klaar om te delen** opens: the clip in each shape it can be made in, and the text to put under the post. See [After the render](#after-the-render-the-shapes-and-the-text-under-the-post). It comes back later under **Delen en downloaden**.
 
 The preview is an HTML `<video>` with `object-fit` mimicking the static crop and an HTML overlay for subtitles; it uses the same fonts and layout rules as the renderer. When the clip ends, the outro plays in the preview as well. Nothing is rendered until you click **Render video**.
@@ -499,7 +501,7 @@ Link or upload → Transcribing → Analyzing service → Suggestions ready → 
 3. The sentences that belong to the singing, the notices and the blessing are dropped, and what is left is packed into as few passages as it fits in. `LLM_PASSAGE_MINUTES` is 40, so an ordinary sermon is a single call: the model reads the whole thing, is asked for the three to six moments the service is worth posting, and answers as structured JSON (start, end, title, summary, reason, confidence). See [One call, not sixteen](#one-call-not-sixteen).
 4. Candidate boundaries are snapped to sentence boundaries and proposals covering the same moment are merged (the extra boundaries stay available as alternatives).
 5. A sermon too long for one passage gets a **second round**, which reads every surviving proposal at once, with the shape of the service and an excerpt of what is actually said, and picks the ones worth posting. Confidence from two separate reads is not comparable on its own: the best moment of a dull three minutes scores the same as the best moment of the service. Every proposal comes back with a one-line verdict, including the ones passed over. A sermon that fitted in one passage skips this round entirely, because the model already had all of it in front of it.
-6. **De dienst** holds both ways of working, under one timeline and one player. **Fragmenten** lists the moments best first, hand-cut ones above the found ones, with the shape of the service drawn behind them. The ones that were found but passed over sit behind **Ook gevonden, niet gekozen** with the reason they lost. **Beluister** plays just that range; **Tekst en tijden** opens the full excerpt and the boundary editor with direct `mm:ss.s` input and -5 / -1 / +1 / +5 second nudges. **Hele tekst** is the whole service to read through, search and cut from yourself; see [Reading the service yourself](#reading-the-service-yourself). Selections and edits are saved automatically.
+6. **De dienst** holds both ways of working, under one timeline and one player. **Fragmenten** lists the moments best first, hand-cut ones above the found ones, with the shape of the service drawn behind them. The ones that were found but passed over sit behind **Ook gevonden, niet gekozen** with the reason they lost. **Beluister** plays just that range; **Begin en einde bijstellen** opens the full excerpt and the boundary editor. Each boundary shows the words around the cut with a gold mark where it falls; clicking a word puts the cut right before or after it, with a little room so the word is not clipped and never into its neighbour (`frontend/src/edges.ts`). **‹ zin** and **zin ›** jump to the previous or next sentence end, and `mm:ss.s` input and ±1 second nudges stay for the rest. Every change plays the three seconds up to an end, or from a start, and the player stops on the cut itself: it is watched every frame, because `timeupdate` alone overshoots by up to a quarter of a second. **Hele tekst** is the whole service to read through, search and cut from yourself; see [Reading the service yourself](#reading-the-service-yourself). Selections and edits are saved automatically.
 7. **Process selected clips** creates a normal clip project per selected range. Each one is then heard again over its own seconds, at the careful setting, so the subtitles a viewer reads are not the scan's; and the speaker is found in it, so it opens already framed. Both steps report into the bar at the bottom of the screen, which also lists the finished clips. **Open in editor** switches to the Clip tab for subtitles, styling, framing and rendering. Nothing about rendering lives in the discovery layer.
 
    Nothing is cut at this point. A clip records which recording it came from and which seconds it covers, and the renderer seeks into the original, so a finished clip is one encode away from the camera instead of two and processing eight moments takes a moment rather than several minutes. `clips.source_of()` answers where a clip's footage is; `clips.materialise()` gives a clip its own copy, which only happens when the recording is about to be removed.
@@ -766,7 +768,7 @@ Speech is levelled to -14 LUFS with `loudnorm` before the music is mixed in, and
   | `background.angle` | gradient direction in degrees; 0 is left to right, 90 top to bottom |
   | `background.image` | file name in `templates/` for `image` |
   | `background.darken` | 0–1, a black veil over the image so text stays readable |
-  | `motion` | `none`, `in` (slow dolly in), `out` (dolly out) or `up` (drift upwards) |
+  | `motion` | `none`, `in` (slow dolly in), `out` (dolly out) or `up` (drift upwards). Only the background moves; text and logo stay where they were placed, as the preview shows |
 
   | `logo.file` | optional PNG in `templates/logos/` (transparency supported) |
   | `logo.width`, `logo.y` | logo width and its vertical centre, in pixels of the 1080×1920 frame |
@@ -780,9 +782,11 @@ Speech is levelled to -14 LUFS with `loudnorm` before the music is mixed in, and
   | `lines[].uppercase` | render the text in capitals |
   | `lines[].delay` | seconds before this line appears |
 
-A line that is too wide is wrapped over two lines automatically, inside a 60 px margin on each side, so long church names and service times stay in frame. Move a line with its `y` when the wrapped text ends up too close to the next one. With a camera move the wrap point sits at the frame edge instead, so a line that fits at rest cannot suddenly break in two while it grows.
+A line that is too wide is wrapped over two lines automatically, inside a 60 px margin on each side, so long church names and service times stay in frame. Move a line with its `y` when the wrapped text ends up too close to the next one.
 
-The camera move is drawn in two layers. Text is moved and scaled by libass, which works in floating point, so it glides instead of snapping to whole pixels; the background is a single still that an FFmpeg crop travels over, which is invisible on a gradient or a photograph. Both follow the same straight line, so the layers stay together. Measured on the default end screen, this brings the frame-to-frame wobble of the text down from 0.76 px to 0.02 px.
+The camera move only moves the background: a single still, drawn three times larger, that an FFmpeg crop travels over, which is invisible on a gradient or a photograph. The logo is laid on afterwards and the text drawn last, both where they were placed. Text and logo used to travel with the camera, and the finished end screen then looked zoomed in or out against the preview it was designed in. The preview in **Merk instellen → Afsluiter** plays the same move on its background.
+
+A gradient is drawn the way CSS `linear-gradient` draws the preview: between two points just outside the frame, on a line through the middle. FFmpeg's `gradients` source swaps a point outside its picture for a random one, so the gradient is drawn on a canvas that holds both points and cut back to the frame.
 
 The end screen is rebuilt automatically whenever `outro.json` or `church.json` is newer than `outro.mp4`: on start and before every render. In the Clip tab, the **Afsluiter** panel shows the result and has a **Vernieuwen** button, so you can try colours without restarting. `python templates/make_outro.py` does the same from the command line.
 
@@ -813,7 +817,7 @@ by itself whenever the source is newer than the build.
 
 Arial comes from the operating system. The backend scans the folder on request, so **dropping a pair of files named `{Family}-{Weight}.ttf` into `templates/fonts/` adds that font to both the subtitle and end-screen pickers** with no code change. Weights are `Regular`, `Medium`, `SemiBold`, `Bold` and `ExtraBold`; the family name inside the file must be `Family` for Regular and Bold and `Family Weight` for the rest, which is how Google Fonts static instances are built. A family that lacks the chosen weight falls back to its nearest one, so single-weight fonts work everywhere.
 
-The renderer passes this directory to libass and the browser loads the same files, so the preview matches the output.
+The renderer passes this directory to libass and the browser loads the same files, so the preview matches the output. One difference had to be bridged: a browser asked for 92 px makes the letters 92 px (one em), libass makes the whole line box 92 px, from `usWinAscent` to `usWinDescent`. In Poppins that is 1.76 em, so the same number gave letters little more than half the size. `fonts.line_box()` reads that ratio from each font file. The end screen hands libass the size times the ratio, so its numbers mean what the preview shows; the subtitle preview divides by it, so it shows what libass will draw and the videos stay as they were.
 
 ## API
 
@@ -826,11 +830,12 @@ GET  /projects/{id}/transcribe-status  {status, progress, message, error, canSto
 POST /projects/{id}/transcribe/stop stop the transcription that is running
 GET  /projects/{id}                 project + transcript
 PUT  /projects/{id}/transcript      save edited segments
-PUT  /projects/{id}/style           save subtitle style
+PUT  /projects/{id}/style           save subtitle style (and the house style)
 PUT  /projects/{id}/crop            save the crop window {x, y, zoom}
 PUT  /projects/{id}/music           save the background music for this clip
 PUT  /projects/{id}/meta            save the title, which names the downloaded file
 PUT  /projects/{id}/watermark       save the corner logo {file, corner, width, opacity, margin}
+PUT  /projects/{id}/own             {part: style|watermark, own}: keep it to this clip, or wear the house style again
 POST /projects/{id}/render          start the background render job; {shapes: ["4x5"]} makes
                                     only those, nothing makes upright plus the church's usual
 POST /projects/{id}/render/stop     stop the render that is running
@@ -1002,9 +1007,15 @@ all of it is about not moving. Distances are shares of the crop window's own wid
 numbers behave the same way on a tight crop and a wide one, with the frame edge at 0.5:
 
 - **dead zone** (0.14) the speaker drifts around the middle and nothing happens at all
-- **ease** past it the frame glides back, exponentially, capped at 0.4 crop widths per second
+- **a move** past it the frame sets off, gathering speed over half a second (0.5 crop widths per
+  second per second, at most 0.25 crop widths per second), brings the speaker back to within 0.03 of
+  the middle and slows down over the last stretch. Moves that stopped at the edge of the dead zone
+  left the speaker there, ready to set off the next one; a speaker walking slowly is now followed in
+  one move instead of in stops and starts
 - **keep-in line** (0.34) they are about to walk out of the picture, so calm stops being the point
-  and the frame catches up at 1.1 crop widths per second
+  and the frame catches up at 1 crop width per second
+- **one look** each sighting is the middle of itself and its neighbours, so a single look that puts
+  the head off to the side moves nothing
 - **cuts** a church with several cameras cuts between them, and there is nothing smooth about a
   cut, so the frame jumps with it. The threshold is a spike against what this clip normally does,
   not a fixed number, because two cameras in one room differ far less than two rooms

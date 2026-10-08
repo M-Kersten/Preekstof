@@ -52,6 +52,17 @@ export function useFonts(): FontFamily[] {
   return families
 }
 
+/**
+ * Letter size in the browser for a size the way libass reads it. libass makes the whole line
+ * box that tall, the browser only the letters, so the same number would show bigger letters
+ * here than the video gets. See line_box() in backend/fonts.py. Returns the letter size and
+ * the line height, as a multiple of it, that keeps lines as far apart as libass puts them.
+ */
+export function asLibass(families: FontFamily[], name: string, size: number): { fontSize: number; lineHeight: number } {
+  const box = families.find((f) => f.name === name)?.box ?? 1
+  return { fontSize: size / box, lineHeight: box }
+}
+
 export function weightsOf(families: FontFamily[], name: string): FontWeight[] {
   return families.find((f) => f.name === name)?.weights ?? ['regular', 'bold']
 }

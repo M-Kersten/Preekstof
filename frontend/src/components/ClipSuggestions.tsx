@@ -1,22 +1,25 @@
-import { useState } from 'react'
-import type { ClipCandidate, Segment, Service } from '../api'
+import { Fragment, useMemo, useState } from 'react'
+import type { ClipCandidate, Segment, Service, Spoken } from '../api'
+import { type Edge, allWords, around, nextSentence, placeAt, splits } from '../edges'
 import { formatTime, parseTime } from '../subtitleLayout'
 
 interface Props {
   service: Service
-  video: React.RefObject<HTMLVideoElement | null>
   playing: string | null
   disabled: boolean
   onPreview: (candidate: ClipCandidate) => void
+  /** Play the seconds around a boundary, the way the clip will: stopping on the cut, or starting on it. */
+  onListen: (candidate: ClipCandidate, edge: Edge, at: number) => void
   onChange: (candidates: ClipCandidate[]) => void
 }
 
 /** The list of moments: the ones somebody cut by hand first, then what the search found. */
-export default function ClipSuggestions({ service, video, playing, disabled, onPreview, onChange }: Props) {
+export default function ClipSuggestions({ service, playing, disabled, onPreview, onListen, onChange }: Props) {
   const [expanded, setExpanded] = useState<string | null>(null)
   const [showRest, setShowRest] = useState(false)
   const duration = service.sourceInfo?.duration ?? 1
-  const segments = service.transcriptData?.segments ?? []
+  const segments = useMemo(() => service.transcriptData?.segments ?? [], [service.transcriptData])
+  const words = useMemo(() => allWords(segments), [segments])
 
   const update = (id: string, patch: Partial<ClipCandidate>) =>
     onChange(service.candidates.map((c) => (c.id === id ? { ...c, ...patch } : c)))
@@ -87,8 +90,8 @@ export default function ClipSuggestions({ service, video, playing, disabled, onP
                 <button className="small" onClick={() => onPreview(cand)}>
                   {playing === cand.id ? '■ Stop' : '▶ Beluister'}
                 </button>
-                <button className="small" onClick={() => setExpanded(open ? null : cand.id)}>
-                  {open ? 'Verberg tekst en tijden' : 'Tekst en tijden'}
+                <button className="small" onClick={() => setExpanded(open ? null : cand.id)} aria-expanded={open}>
+                  {open ? 'Klaar met begin en einde' : 'Begin en einde bijstellen'}
                 </button>
                 {/* Only the hand-cut ones can go: a found one is the search's answer, and
                     hiding it would make "opnieuw zoeken" bring it straight back. */}
@@ -106,23 +109,29 @@ export default function ClipSuggestions({ service, video, playing, disabled, onP
 
               {open && (
                 <div className="trim">
-                  <Boundary
-                    label="Begin"
+                  <p className="hint">
+                    Klik op het woord waar de clip moet beginnen of ophouden. Na elke verandering hoor je meteen hoe
+                    het begint of eindigt.
+                  </p>
+                  <EdgeRow
+                    edge="start"
                     value={cand.start}
                     min={0}
                     max={cand.end - 1}
+                    words={words}
                     disabled={disabled}
                     onChange={(t) => update(cand.id, { start: t })}
-                    onJump={() => video.current && (video.current.currentTime = cand.start)}
+                    onListen={(t) => onListen(cand, 'start', t)}
                   />
-                  <Boundary
-                    label="Einde"
+                  <EdgeRow
+                    edge="end"
                     value={cand.end}
                     min={cand.start + 1}
                     max={duration}
+                    words={words}
                     disabled={disabled}
                     onChange={(t) => update(cand.id, { end: t })}
-                    onJump={() => video.current && (video.current.currentTime = Math.max(cand.start, cand.end - 3))}
+                    onListen={(t) => onListen(cand, 'end', t)}
                   />
                   {cand.alternateBoundaries.length > 0 && (
                     <div className="row">
@@ -154,38 +163,95 @@ function shorten(segments: Segment[], max: number): string {
   return text.length > max ? `${text.slice(0, max).trimEnd()}…` : text
 }
 
-interface BoundaryProps {
-  label: string
+interface EdgeProps {
+  edge: Edge
   value: number
   min: number
   max: number
+  words: Spoken[]
   disabled: boolean
   onChange: (t: number) => void
-  onJump: () => void
+  onListen: (t: number) => void
 }
 
-function Boundary({ label, value, min, max, disabled, onChange, onJump }: BoundaryProps) {
+const SHOWN_INSIDE = 9 // words shown on the clip's side of the cut
+const SHOWN_OUTSIDE = 5 // ... and on the side that is left out
+
+/**
+ * One boundary of a fragment: the words around the cut, and ways to move it.
+ *
+ * A boundary is set by ear, so every change plays the seconds around it straight away, the
+ * way the clip will: up to the cut for an end, from the cut for a start.
+ */
+function EdgeRow({ edge, value, min, max, words, disabled, onChange, onListen }: EdgeProps) {
   const [text, setText] = useState(formatTime(value))
   const [lastValue, setLastValue] = useState(value)
   if (value !== lastValue) {
     setLastValue(value)
     setText(formatTime(value))
   }
-  const clamp = (t: number) => Math.round(Math.min(max, Math.max(min, t)) * 10) / 10
+  const clamp = (t: number) => Math.round(Math.min(max, Math.max(min, t)) * 100) / 100
+  const set = (t: number) => {
+    const next = clamp(t)
+    onChange(next)
+    onListen(next)
+  }
   const commit = () => {
     const parsed = parseTime(text)
     if (parsed === null) setText(formatTime(value))
-    else onChange(clamp(parsed))
+    else if (clamp(parsed) !== value) set(parsed)
   }
+  const ending = edge === 'end'
+  const { from, cut, to } = around(words, edge, value, SHOWN_INSIDE, SHOWN_OUTSIDE)
+  const split = splits(words, value)
+  const back = nextSentence(words, edge, value, -1)
+  const ahead = nextSentence(words, edge, value, 1)
+  const mark = <span className="cutmark" aria-hidden="true" />
+
   return (
-    <div className="row">
-      <span>{label}</span>
-      <button className="small" disabled={disabled} onClick={() => onChange(clamp(value - 5))}>−5</button>
-      <button className="small" disabled={disabled} onClick={() => onChange(clamp(value - 1))}>−1</button>
-      <input value={text} disabled={disabled} onChange={(e) => setText(e.target.value)} onBlur={commit} onKeyDown={(e) => e.key === 'Enter' && (e.target as HTMLInputElement).blur()} title="minuten:seconden" />
-      <button className="small" disabled={disabled} onClick={() => onChange(clamp(value + 1))}>+1</button>
-      <button className="small" disabled={disabled} onClick={() => onChange(clamp(value + 5))}>+5</button>
-      <button className="small bare" onClick={onJump} title="Spring hierheen in de speler">▶</button>
+    <div className="edge">
+      <div className="row">
+        <span>{ending ? 'Einde' : 'Begin'}</span>
+        <button className="small" disabled={disabled} onClick={() => set(value - 1)} title="Een seconde eerder">−1 s</button>
+        <input value={text} disabled={disabled} onChange={(e) => setText(e.target.value)} onBlur={commit}
+               onKeyDown={(e) => e.key === 'Enter' && (e.target as HTMLInputElement).blur()} title="minuten:seconden"
+               aria-label={ending ? 'Einde van het fragment' : 'Begin van het fragment'} />
+        <button className="small" disabled={disabled} onClick={() => set(value + 1)} title="Een seconde later">+1 s</button>
+        <span className="gap" />
+        <button className="small" disabled={disabled || back === null} onClick={() => back !== null && set(back)}
+                title={ending ? 'Laat de clip eindigen waar de zin ervoor ophoudt' : 'Laat de clip beginnen bij de zin ervoor'}>
+          ‹ zin
+        </button>
+        <button className="small" disabled={disabled || ahead === null} onClick={() => ahead !== null && set(ahead)}
+                title={ending ? 'Laat de clip eindigen waar de volgende zin ophoudt' : 'Laat de clip beginnen bij de volgende zin'}>
+          zin ›
+        </button>
+        <button className="small listen" onClick={() => onListen(value)}>
+          ▶ {ending ? 'Hoor het einde' : 'Hoor het begin'}
+        </button>
+      </div>
+      {words.length > 0 && (
+        <p className={`cutline ${ending ? 'ends' : 'starts'}`}>
+          {from > 0 && <span className="more">… </span>}
+          {words.slice(from, to).map((w, k) => {
+            const i = from + k
+            const inside = ending ? i < cut : i >= cut
+            return (
+              <Fragment key={i}>
+                {i === cut && mark}
+                <button type="button" className={`word ${inside ? '' : 'out'}`} disabled={disabled}
+                        onClick={() => set(placeAt(words, edge, i))}
+                        title={ending ? 'Laat de clip na dit woord ophouden' : 'Laat de clip met dit woord beginnen'}>
+                  {w.word}
+                </button>{' '}
+              </Fragment>
+            )
+          })}
+          {cut >= to && mark}
+          {to < words.length && <span className="more">…</span>}
+        </p>
+      )}
+      {split && <p className="warn">De knip valt nu midden in “{split.word}”. Klik op een woord om er netjes omheen te knippen.</p>}
     </div>
   )
 }

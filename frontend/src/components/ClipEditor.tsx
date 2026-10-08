@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { ApiError, api, type CropWindow, type MusicSettings, type Project, type RenderStatus, type Segment, type ShapeKey, type ShareSettings, type Style, type Watermark } from '../api'
+import { ApiError, api, type CropWindow, type LookPart, type MusicSettings, type Project, type RenderStatus, type Segment, type ShapeKey, type ShareSettings, type Style, type Watermark } from '../api'
 import { useChurch } from '../church'
 import { forget, remember, remembered } from '../remember'
 import DeliveryPanel from './DeliveryPanel'
@@ -230,6 +230,27 @@ export default function ClipEditor({ projectId, onProjectChange }: Props) {
     setStyle(next)
   }
 
+  /** Keep the subtitles or the logo to this clip, or go back to the house style. */
+  const keepOwn = async (part: LookPart, own: boolean) => {
+    if (!project) return
+    setError(null)
+    // The box ticks at once; the answer from the server follows.
+    setProject({ ...project, own: own ? [...project.own, part] : project.own.filter((p) => p !== part) })
+    try {
+      // What was changed a moment ago goes where it was meant to go before the switch flips.
+      if (part === 'style' && style && dirty.current.style) await api.saveStyle(project.id, style)
+      if (part === 'watermark' && watermark && dirty.current.watermark) await api.saveWatermark(project.id, watermark)
+      dirty.current[part] = false
+      const next = await api.keepOwn(project.id, part, own)
+      setProject(next)
+      if (part === 'style') setStyle(next.style)
+      else setWatermark(next.watermark)
+    } catch (e) {
+      setProject(project)
+      fail(e)
+    }
+  }
+
   const transcribe = async () => {
     if (!project) return
     setError(null)
@@ -454,8 +475,10 @@ export default function ClipEditor({ projectId, onProjectChange }: Props) {
               onFollow={follow}
               onSearch={search}
             />
-            <StylePanel style={style} onChange={changeStyle} />
-            <LogoPanel watermark={watermark} onChange={changeWatermark} />
+            <StylePanel style={style} onChange={changeStyle}
+                        own={project.own.includes('style')} onOwn={(own) => keepOwn('style', own)} />
+            <LogoPanel watermark={watermark} onChange={changeWatermark}
+                       own={project.own.includes('watermark')} onOwn={(own) => keepOwn('watermark', own)} />
             <MusicPanel music={music} onChange={changeMusic} />
           </div>
         </div>

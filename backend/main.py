@@ -8,6 +8,7 @@ import shutil
 import statistics
 import time
 from pathlib import Path
+from typing import Literal
 
 import traceback
 
@@ -19,7 +20,7 @@ from fastapi.staticfiles import StaticFiles
 from contextlib import asynccontextmanager
 from datetime import datetime, timezone
 
-from . import brands, clips, diagnose, discovery, fetch, fonts, formats, health, journal, kerkdienstgemist, music, outro, polish, posts, renderer, room, selftest, settings, setup, speed, storage, tracking, transcription, version, wordlearn
+from . import brands, clips, diagnose, discovery, fetch, fonts, formats, health, house, journal, kerkdienstgemist, music, outro, polish, posts, renderer, room, selftest, settings, setup, speed, storage, tracking, transcription, version, wordlearn
 from .jobs import Cancelled, Estimator, Job, JobManager
 from .models import (ROOT, SERVICES_DIR, TEMPLATES_DIR, ChurchInfo, ClipCandidate, ClipOrigin, CropWindow, MusicSettings, ProcessedClip, Project, ShareSettings, Watermark,
                      ProjectDetail, Service, ServiceDetail, Style, Track, Transcript, load_church_info, load_project,
@@ -105,12 +106,8 @@ def detail(project: Project) -> ProjectDetail:
 
 @app.post("/projects", response_model=ProjectDetail)
 def create_project():
-    """A new clip starts from the active brand: its subtitle style and its music."""
-    project = new_project()
-    brand = brands.active()
-    project.style = brand.subtitleStyle.model_copy(deep=True)
-    project.music = brand.music.model_copy(deep=True)
-    project.watermark = brand.watermark.model_copy(deep=True)
+    """A new clip starts from the active brand: its subtitle style, logo and music."""
+    project = house.dress(new_project())
     save_project(project)
     return detail(project)
 
@@ -261,12 +258,19 @@ def learn_words(project_id: str, corrections: dict[str, str] = Body(embed=True))
 
 @app.put("/projects/{project_id}/style", response_model=ProjectDetail)
 def update_style(project_id: str, style: Style):
+    """The subtitles of this clip, and of the house unless the clip keeps its own: see house.py."""
     project = get_project(project_id)
     if style.font not in fonts.names():
         raise HTTPException(400, f"onbekend lettertype: {style.font}")
-    project.style = style
-    save_project(project)
+    house.wear(project, "style", style, busy=lambda other: other in rendering_now)
     return detail(project)
+
+
+@app.put("/projects/{project_id}/own", response_model=ProjectDetail)
+def keep_own(project_id: str, part: Literal["style", "watermark"] = Body(..., embed=True),
+             own: bool = Body(..., embed=True)):
+    """Keep this clip's subtitles or logo to itself, or let it wear the house style again."""
+    return detail(house.keep_own(get_project(project_id), part, own))
 
 
 @app.put("/projects/{project_id}/crop", response_model=ProjectDetail)
@@ -575,8 +579,12 @@ def read_brand(brand_id: str):
 
 @app.put("/brands/{brand_id}", response_model=brands.Brand)
 def update_brand(brand_id: str, brand: brands.Brand):
-    if brands.load(brand_id) is None:
+    stored = brands.load(brand_id)
+    if stored is None:
         raise HTTPException(404, "Merk niet gevonden")
+    # The house style is set from the clips (house.py). The brand window does not edit it, and
+    # the copy it loaded before the last change in a clip would put the old one back.
+    brand.subtitleStyle, brand.watermark = stored.subtitleStyle, stored.watermark
     if brand.subtitleStyle.font not in fonts.names() or brand.outro.font not in fonts.names():
         raise HTTPException(400, "Onbekend lettertype")
     try:
@@ -704,8 +712,7 @@ def update_watermark(project_id: str, watermark: Watermark):
     project = get_project(project_id)
     if watermark.file and not (LOGO_DIR / Path(watermark.file).name).is_file():
         raise HTTPException(400, f"Het logo {watermark.file} staat niet in templates/logos")
-    project.watermark = watermark
-    save_project(project)
+    house.wear(project, "watermark", watermark, busy=lambda other: other in rendering_now)
     return detail(project)
 
 

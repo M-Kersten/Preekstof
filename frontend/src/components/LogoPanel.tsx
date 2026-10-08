@@ -1,10 +1,13 @@
 import { useEffect, useState } from 'react'
 import { api, type Corner, type LogoFile, type Watermark } from '../api'
+import HouseStyle from './HouseStyle'
 import Section from './Section'
 
 interface Props {
   watermark: Watermark
   onChange: (watermark: Watermark) => void
+  own: boolean
+  onOwn: (own: boolean) => void
 }
 
 const CORNERS: { key: Corner; label: string }[] = [
@@ -15,7 +18,7 @@ const CORNERS: { key: Corner; label: string }[] = [
 ]
 
 /** The church logo in a corner of the clip. Files are shared with the end screen. */
-export default function LogoPanel({ watermark, onChange }: Props) {
+export default function LogoPanel({ watermark, onChange, own, onOwn }: Props) {
   const [files, setFiles] = useState<LogoFile[]>([])
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -43,6 +46,7 @@ export default function LogoPanel({ watermark, onChange }: Props) {
   const on = Boolean(watermark.file)
   return (
     <Section step={4} title="Logo in beeld" intro="Een klein logo in de hoek maakt de video herkenbaar, ook als iemand hem doorstuurt.">
+      <HouseStyle own={own} what="zijn eigen logo" onOwn={onOwn} />
       <div className="logos">
         <button type="button" className={`plain ${on ? '' : 'on'}`} onClick={() => set('file', '')}>geen</button>
         {files.map((f) => (

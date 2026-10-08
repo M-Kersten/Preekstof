@@ -50,6 +50,12 @@ class MusicSettings(BaseModel):
     fadeOut: float = Field(default=2.0, ge=0.0, le=10.0)
 
 
+class Enhance(BaseModel):
+    """Colour and contrast lifted where the recording is flat: see look.py."""
+
+    on: bool = True
+
+
 SubtitleAnimation = Literal["none", "fade", "pop", "slide"]
 
 
@@ -172,6 +178,9 @@ class Project(BaseModel):
     outro: str = "templates/outro.mp4"  # relative to the repository root
     music: MusicSettings = MusicSettings()
     watermark: Watermark = Watermark()
+    # Off for a clip from before this existed, so its video stays the one that was made; a
+    # new clip takes the brand's, which is on (house.dress).
+    enhance: Enhance = Enhance(on=False)
     cropStrategy: CropStrategy = "static"
     crop: CropWindow | None = None  # None = default framing for the source (see renderer.default_crop)
     track: Track | None = None  # the path the crop walks when cropStrategy is "tracked"

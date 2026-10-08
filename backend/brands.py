@@ -14,8 +14,8 @@ from pathlib import Path
 
 from pydantic import BaseModel
 
-from .models import (TEMPLATES_DIR, ChurchInfo, MusicSettings, OutroConfig, ShareSettings, Style, Vocabulary,
-                     Watermark, write_atomic)
+from .models import (TEMPLATES_DIR, ChurchInfo, Enhance, MusicSettings, OutroConfig, ShareSettings, Style,
+                     Vocabulary, Watermark, write_atomic)
 
 BRANDS_DIR = TEMPLATES_DIR / "brands"
 ACTIVE_FILE = BRANDS_DIR / "actief.json"
@@ -29,6 +29,7 @@ class Brand(BaseModel):
     subtitleStyle: Style = Style()
     music: MusicSettings = MusicSettings()
     watermark: Watermark = Watermark()
+    enhance: Enhance = Enhance()
     vocabulary: Vocabulary = Vocabulary()
     share: ShareSettings = ShareSettings()
 

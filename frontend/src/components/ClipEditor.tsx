@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { ApiError, api, type CropWindow, type LookPart, type MusicSettings, type Project, type RenderStatus, type Segment, type ShapeKey, type ShareSettings, type Style, type Watermark } from '../api'
 import { useChurch } from '../church'
+import { cssFilter } from '../look'
 import { forget, remember, remembered } from '../remember'
 import DeliveryPanel from './DeliveryPanel'
 import FramingPanel from './FramingPanel'
@@ -53,6 +54,9 @@ export default function ClipEditor({ projectId, onProjectChange }: Props) {
   // Whether a video of this clip exists. A second shape that fails to render does not take
   // away the first, so this is not the same as the last render having gone well.
   const [made, setMade] = useState(false)
+  // The colour correction as the preview imitates it, and whether it found anything to do.
+  const [picture, setPicture] = useState<string | undefined>(undefined)
+  const [corrected, setCorrected] = useState<'measuring' | 'nothing' | 'yes'>('measuring')
   const previewRef = useRef<PreviewHandle>(null)
   const dirty = useRef({ ...CLEAN })
 
@@ -228,6 +232,41 @@ export default function ClipEditor({ projectId, onProjectChange }: Props) {
   const changeStyle = (next: Style) => {
     dirty.current.style = true
     setStyle(next)
+  }
+
+  // Measuring takes a couple of seconds the first time; the answer is remembered after that.
+  const enhanceOn = project?.enhance.on ?? false
+  const projectKey = project?.id
+  useEffect(() => {
+    if (!projectKey || !enhanceOn) {
+      setPicture(undefined)
+      return
+    }
+    let alive = true
+    setCorrected('measuring')
+    api.look(projectKey)
+      .then((answer) => {
+        if (!alive) return
+        setPicture(cssFilter(answer.look))
+        setCorrected(answer.look ? 'yes' : 'nothing')
+      })
+      .catch(() => alive && setCorrected('nothing'))
+    return () => {
+      alive = false
+    }
+  }, [projectKey, enhanceOn])
+
+  /** Colour correction on or off, for this clip and every clip not made yet. */
+  const changeEnhance = async (on: boolean) => {
+    if (!project) return
+    setError(null)
+    setProject({ ...project, enhance: { on } })
+    try {
+      setProject(await api.saveEnhance(project.id, on))
+    } catch (e) {
+      setProject(project)
+      fail(e)
+    }
   }
 
   /** Keep the subtitles or the logo to this clip, or go back to the house style. */
@@ -436,6 +475,7 @@ export default function ClipEditor({ projectId, onProjectChange }: Props) {
               following={project.cropStrategy === 'tracked'}
               watermark={watermark}
               sourceStart={project.sourceStart}
+              picture={picture}
               onCropChange={changeCrop}
               onTime={setCurrentTime}
               onPlayState={setPlaying}
@@ -474,6 +514,10 @@ export default function ClipEditor({ projectId, onProjectChange }: Props) {
               onChange={changeCrop}
               onFollow={follow}
               onSearch={search}
+              enhance={project.enhance.on}
+              corrected={corrected}
+              picture={picture}
+              onEnhance={changeEnhance}
             />
             <StylePanel style={style} onChange={changeStyle}
                         own={project.own.includes('style')} onOwn={(own) => keepOwn('style', own)} />

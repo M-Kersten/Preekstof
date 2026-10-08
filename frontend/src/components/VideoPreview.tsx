@@ -25,6 +25,8 @@ interface Props {
   watermark?: Watermark
   /** Seconds into the file where this clip starts; the preview stays in clip time. */
   sourceStart?: number
+  /** The colour correction as a CSS filter, imitating the render (look.ts). */
+  picture?: string
   onCropChange?: (crop: CropWindow) => void
   onTime: (time: number) => void
   onPlayState?: (playing: boolean) => void
@@ -37,7 +39,7 @@ interface Props {
  */
 const VideoPreview = forwardRef<PreviewHandle, Props>(function VideoPreview(props, ref) {
   const { sourceUrl, sourceInfo, outroUrl, church, segments, style, output, crop, track, following,
-          watermark, onCropChange, onTime, onPlayState } = props
+          watermark, picture, onCropChange, onTime, onPlayState } = props
   // Everything above this component counts from the start of the clip; the video element
   // counts from the start of the file it is playing, which for a clip cut from a service
   // is the whole recording.
@@ -163,6 +165,7 @@ const VideoPreview = forwardRef<PreviewHandle, Props>(function VideoPreview(prop
     top: (padY - g.top) * scale,
     display: phase === 'main' ? 'block' : 'none',
     cursor: onCropChange && (movable.x || movable.y) ? 'grab' : 'pointer',
+    filter: picture,
   }
 
   // Drag the video to move the crop window; a click without movement toggles playback.

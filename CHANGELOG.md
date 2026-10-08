@@ -84,6 +84,16 @@ Automatisch inzoomen op een kleine spreker gaat minder ver: tot 2,7 keer vergroo
 Onder de zoomschuif staat hoe groot de opname is en hoe ver hij vergroot wordt. Wordt het zichtbaar
 zacht, dan staat dat er in rood bij.
 
+**Kleur en contrast worden verbeterd.** Veel opnames uit de kerk zijn vlak: er zit geen echt zwart
+en geen echt wit in, en weinig kleur. De app meet nu per clip op twaalf beeldjes hoe donker en hoe
+licht het beeld echt gaat, rekt dat op tot het volle bereik en geeft een flets beeld tot een vijfde
+meer kleur. Een opname die het bereik al gebruikt blijft zoals hij is, en er is een grens zodat het
+nooit overdreven wordt. De witbalans blijft van de camera: een gekleurd kleed of beamerlicht stuurt
+een automatische witbalans de verkeerde kant op. De schakelaar staat onder **Beeldkader**, staat
+voor nieuwe clips aan en geldt, net als de ondertitelstijl, voor al je clips die nog niet gemaakt
+zijn. Het voorbeeld doet de correctie na; helemaal gelijk aan de video is dat niet. Clips die al
+een video hebben blijven zoals ze gemaakt zijn.
+
 Een AI-upscaler is ook geprobeerd. Die maakt randen strakker, maar gezichten worden wasachtig, en
 op een gewone computer kost hij vier seconden per beeldje: een uur voor een clip van een halve
 minuut. Die zit er dus niet in.

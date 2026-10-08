@@ -1,4 +1,4 @@
-"""The house style: the subtitles and the logo every clip of a church shares.
+"""The house style: the subtitles, the logo and the colour correction every clip of a church shares.
 
 Setting them clip by clip made a batch of five clips five times the same work. So a change
 in one clip becomes the house style of the active brand, and goes along to every other clip
@@ -16,8 +16,8 @@ from pydantic import BaseModel
 from . import brands, models
 from .models import Project, load_project, project_dir, save_project
 
-Part = Literal["style", "watermark"]
-IN_BRAND: dict[str, str] = {"style": "subtitleStyle", "watermark": "watermark"}
+Part = Literal["style", "watermark", "enhance"]
+IN_BRAND: dict[str, str] = {"style": "subtitleStyle", "watermark": "watermark", "enhance": "enhance"}
 
 
 def dress(project: Project) -> Project:
@@ -26,6 +26,7 @@ def dress(project: Project) -> Project:
     project.style = brand.subtitleStyle.model_copy(deep=True)
     project.music = brand.music.model_copy(deep=True)
     project.watermark = brand.watermark.model_copy(deep=True)
+    project.enhance = brand.enhance.model_copy(deep=True)
     return project
 
 

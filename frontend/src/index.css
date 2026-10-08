@@ -1173,3 +1173,9 @@ a.button.small { padding: 0.22rem 0.55rem; font-size: 0.78rem; font-weight: 500;
 
 /* How far the recording is blown up, under the zoom slider. */
 .hint.enlarged.soft { color: var(--danger); }
+
+/* Colour correction, at the bottom of the framing card. */
+.enhance-row { margin-top: 0.9rem; padding-top: 0.8rem; border-top: 1px solid var(--line); }
+.enhance-row .check { display: flex; align-items: baseline; gap: 0.5rem; font-weight: 600; cursor: pointer; }
+.enhance-row .check input { transform: translateY(2px); }
+.enhance-row .hint { margin-top: 0.3rem; }

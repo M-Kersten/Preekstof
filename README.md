@@ -836,6 +836,8 @@ PUT  /projects/{id}/music           save the background music for this clip
 PUT  /projects/{id}/meta            save the title, which names the downloaded file
 PUT  /projects/{id}/watermark       save the corner logo {file, corner, width, opacity, margin}
 PUT  /projects/{id}/own             {part: style|watermark, own}: keep it to this clip, or wear the house style again
+GET  /projects/{id}/look            the colour correction for this clip {on, look: {low, gain, colour} | null}
+PUT  /projects/{id}/enhance         {on}: colour correction for this clip and the house
 POST /projects/{id}/render          start the background render job; {shapes: ["4x5"]} makes
                                     only those, nothing makes upright plus the church's usual
 POST /projects/{id}/render/stop     stop the render that is running
@@ -1042,6 +1044,18 @@ halo. On a real 720p stream at 1 Mbit/s this is visibly crisper for about 7% mor
 framing panel says how far the recording is enlarged and warns past 2.75. A learned upscaler
 (Real-ESRGAN general x4v3, through onnxruntime) was tried and left out: four seconds a frame on a
 four-core CPU, and faces came out waxy.
+
+**Colour and contrast** (`backend/look.py`). Church recordings are often flat: the real stream this
+was tuned on ran from 30 to 204 of the 16 to 235 video range, with little colour. Each clip is
+measured once (twelve frames at 640×360 across its seconds, kept in `work/levels.json`): the 0.2
+and 99.8 percentiles of brightness and the mean distance from grey in U and V. The brightness is
+stretched to the full range with `lutyuv` (at most 1.3×, never taking anything brighter than 40 for
+black or darker than 195 for white), and a dull picture gets up to 1.2× saturation with `eq`. Only
+luma is stretched: stretching R, G and B would scale the colour by the same factor on top. White
+balance is not touched. The correction runs first in the picture chain, on the recording's own
+pixels. It is part of the house style (`Project.enhance`, `Brand.enhance`); clips from before it
+existed default to off and leave it out of their recipe, so their videos are not marked out of date.
+The preview imitates it with a CSS `brightness() contrast() saturate()` filter (`frontend/src/look.ts`).
 
 **What renders.** `renderer.track_commands` reads the path at 50 a second and writes a `sendcmd`
 script, one line per moment the window would land on a different pixel, driving a labelled

@@ -1,3 +1,5 @@
+import type { Look } from './look'
+
 export type FontWeight = 'regular' | 'medium' | 'semibold' | 'bold' | 'extrabold'
 
 export type SubtitleAnimation = 'none' | 'fade' | 'pop' | 'slide'
@@ -108,6 +110,11 @@ export interface Track {
 
 export type LookPart = 'style' | 'watermark'
 
+/** Colour and contrast lifted where the recording is flat (backend/look.py). */
+export interface Enhance {
+  on: boolean
+}
+
 export interface Project {
   id: string
   createdAt: string
@@ -126,6 +133,7 @@ export interface Project {
   track: Track | null
   /** What this clip keeps to itself instead of sharing the house style. */
   own: LookPart[]
+  enhance: Enhance
   transcriptData: Transcript | null
   /** Seconds into the source file where this clip begins; 0 when the clip owns its file. */
   sourceStart: number
@@ -519,6 +527,8 @@ export const api = {
   saveMeta: (id: string, title: string) => request<Project>(`/projects/${id}/meta`, json('PUT', { title })),
   saveWatermark: (id: string, watermark: Watermark) =>
     request<Project>(`/projects/${id}/watermark`, json('PUT', watermark)),
+  saveEnhance: (id: string, on: boolean) => request<Project>(`/projects/${id}/enhance`, json('PUT', { on })),
+  look: (id: string) => request<{ on: boolean; look: Look | null }>(`/projects/${id}/look`),
   wordSuggestions: (id: string) =>
     request<{ suggestions: Record<string, string> }>(`/projects/${id}/word-suggestions`),
   learnWords: (id: string, corrections: Record<string, string>) =>

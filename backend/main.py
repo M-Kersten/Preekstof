@@ -20,9 +20,9 @@ from fastapi.staticfiles import StaticFiles
 from contextlib import asynccontextmanager
 from datetime import datetime, timezone
 
-from . import brands, clips, diagnose, discovery, fetch, fonts, formats, health, house, journal, kerkdienstgemist, music, outro, polish, posts, renderer, room, selftest, settings, setup, speed, storage, tracking, transcription, version, wordlearn
+from . import brands, clips, diagnose, discovery, fetch, fonts, formats, health, house, look, journal, kerkdienstgemist, music, outro, polish, posts, renderer, room, selftest, settings, setup, speed, storage, tracking, transcription, version, wordlearn
 from .jobs import Cancelled, Estimator, Job, JobManager
-from .models import (ROOT, SERVICES_DIR, TEMPLATES_DIR, ChurchInfo, ClipCandidate, ClipOrigin, CropWindow, MusicSettings, ProcessedClip, Project, ShareSettings, Watermark,
+from .models import (ROOT, SERVICES_DIR, TEMPLATES_DIR, ChurchInfo, ClipCandidate, ClipOrigin, CropWindow, Enhance, MusicSettings, ProcessedClip, Project, ShareSettings, Watermark,
                      ProjectDetail, Service, ServiceDetail, Style, Track, Transcript, load_church_info, load_project,
                      load_service, load_service_transcript, load_transcript, new_project, new_service, project_dir,
                      recover_services, save_project, save_service, save_service_transcript, save_transcript, service_dir)
@@ -273,6 +273,34 @@ def keep_own(project_id: str, part: Literal["style", "watermark"] = Body(..., em
     return detail(house.keep_own(get_project(project_id), part, own))
 
 
+def look_of(project: Project) -> look.Look | None:
+    """The colour correction this clip gets, or None. Measured the first time, then remembered."""
+    if not project.enhance.on:
+        return None
+    try:
+        source, start, length = clips.source_of(project)
+    except clips.MissingFootage:
+        return None
+    levels = look.remembered(project_dir(project.id) / "work", source, start, length)
+    return look.look_for(levels) if levels else None
+
+
+@app.get("/projects/{project_id}/look")
+def read_look(project_id: str):
+    """What the colour correction does to this clip, for the preview to imitate."""
+    project = get_project(project_id)
+    found = look_of(project)
+    return {"on": project.enhance.on, "look": found.model_dump() if found else None}
+
+
+@app.put("/projects/{project_id}/enhance", response_model=ProjectDetail)
+def update_enhance(project_id: str, enhance: Enhance):
+    """Colour correction on or off, for this clip and the house: see house.py."""
+    project = get_project(project_id)
+    house.wear(project, "enhance", enhance, busy=lambda other: other in rendering_now)
+    return detail(project)
+
+
 @app.put("/projects/{project_id}/crop", response_model=ProjectDetail)
 def update_crop(project_id: str, crop: CropWindow):
     project = get_project(project_id)
@@ -342,6 +370,9 @@ def render_project(project_id: str, shapes: list[str] | None = Body(default=None
 
     def work_fn(job: Job) -> None:
         made_from = formats.recipe(project, transcript, brand)
+        if project.enhance.on:
+            job.message = "Kleur en contrast worden gemeten"
+        colour = look.chain(look_of(project))
         left = Estimator()
         for n, shape in enumerate(wanted):
             job.check()
@@ -368,6 +399,7 @@ def render_project(project_id: str, shapes: list[str] | None = Body(default=None
                     source_start=None if project.sourceVideo else source_start,
                     on_progress=on_progress, should_stop=job.check,
                     commands=work / formats.work_name(shape, "track.cmd"),
+                    look=colour,
                 )
             finally:
                 rendering_now.pop(project.id, None)
@@ -584,7 +616,7 @@ def update_brand(brand_id: str, brand: brands.Brand):
         raise HTTPException(404, "Merk niet gevonden")
     # The house style is set from the clips (house.py). The brand window does not edit it, and
     # the copy it loaded before the last change in a clip would put the old one back.
-    brand.subtitleStyle, brand.watermark = stored.subtitleStyle, stored.watermark
+    brand.subtitleStyle, brand.watermark, brand.enhance = stored.subtitleStyle, stored.watermark, stored.enhance
     if brand.subtitleStyle.font not in fonts.names() or brand.outro.font not in fonts.names():
         raise HTTPException(400, "Onbekend lettertype")
     try:

@@ -272,6 +272,7 @@ def build_command(
     watermark: Watermark | None = None,
     source_start: float | None = None,
     commands: Path | None = None,
+    look: str = "",
 ) -> tuple[list[str], float]:
     """Build the ffmpeg command line. Returns (argv, total output duration).
 
@@ -281,6 +282,8 @@ def build_command(
 
     `commands` is where the moving crop writes its script. Each shape of a clip walks its own
     window, so each gets its own file; left out, it sits next to the subtitles.
+
+    `look` is the colour correction (look.chain), done first, on the recording's own pixels.
     """
     w, h, fps = output.width, output.height, output.fps
     cmd = ["ffmpeg", "-y", "-hide_banner", "-loglevel", "error", "-nostats", "-progress", "pipe:1"]
@@ -302,7 +305,7 @@ def build_command(
                                    commands=commands or subtitles.with_name('track.cmd'))
     clip_label = "v0raw" if logo_path is not None else "v0"
     filters.append(
-        f"[0:v]{crop_chain},fps={fps},setsar=1,format=yuv420p,"
+        f"[0:v]{look}{crop_chain},fps={fps},setsar=1,format=yuv420p,"
         f"ass=filename='{_ffpath(subtitles)}':fontsdir='{_ffpath(FONTS_DIR)}'[{clip_label}]"
     )
     if logo_path is not None and watermark is not None:
@@ -415,13 +418,14 @@ def render_video(
     on_progress: ProgressCallback | None = None,
     should_stop: Callable[[], None] | None = None,
     commands: Path | None = None,
+    look: str = "",
 ) -> Path:
     outro_info = probe(outro) if outro is not None and outro.is_file() else None
     if outro_info is None:
         outro = None
     cmd, total = build_command(
         source, source_info, subtitles, outro, outro_info, output, destination, crop_strategy, track, crop, music,
-        watermark, source_start, commands
+        watermark, source_start, commands, look
     )
     tmp = destination.with_suffix(".part.mp4")
     cmd[-1] = str(tmp)

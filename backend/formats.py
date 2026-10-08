@@ -86,7 +86,7 @@ def wanted(asked: list[str] | None, always: list[str]) -> list[Shape]:
 # Everything about a clip that ends up in its picture or its sound. The title is not in
 # here, and neither is where the footage happens to live: a clip that gets its own copy
 # when the recording is cleaned up is still the same clip.
-RECIPE = {"origin", "style", "output", "outro", "music", "watermark", "cropStrategy", "crop", "track"}
+RECIPE = {"origin", "style", "output", "outro", "music", "watermark", "enhance", "cropStrategy", "crop", "track"}
 
 
 def recipe(project: Project, transcript: Transcript, brand) -> str:
@@ -96,8 +96,12 @@ def recipe(project: Project, transcript: Transcript, brand) -> str:
     out of date: somebody fixed a word, moved the frame or changed the end screen after it
     was made, and posting it means posting the version from before the fix.
     """
+    clip = project.model_dump(mode="json", include=RECIPE)
+    if not project.enhance.on:
+        # Left out when off, so a clip made before colour correction existed still matches.
+        clip.pop("enhance", None)
     said = {
-        "clip": project.model_dump(mode="json", include=RECIPE),
+        "clip": clip,
         "words": transcript.model_dump(mode="json"),
         "end": brand.outro.model_dump(mode="json"),
         "church": brand.church.model_dump(mode="json",

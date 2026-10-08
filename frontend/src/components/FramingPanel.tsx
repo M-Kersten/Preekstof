@@ -25,6 +25,11 @@ interface Props {
   onChange: (crop: CropWindow) => void
   onFollow: (follow: boolean) => void
   onSearch: () => void
+  /** Colour correction: on or off, and whether it found anything to correct. */
+  enhance: boolean
+  corrected: 'measuring' | 'nothing' | 'yes'
+  picture?: string
+  onEnhance: (on: boolean) => void
 }
 
 /**
@@ -34,6 +39,7 @@ interface Props {
 export default function FramingPanel({
   sourceUrl, sourceInfo, output, crop, currentTime, playing, sourceStart = 0,
   track, following, searching, searchNote, onChange, onFollow, onSearch,
+  enhance, corrected, picture, onEnhance,
 }: Props) {
   const videoRef = useRef<HTMLVideoElement>(null)
   const boxRef = useRef<HTMLDivElement>(null)
@@ -146,7 +152,8 @@ export default function FramingPanel({
           onPointerUp={onPointerUp}
           onPointerCancel={onPointerUp}
         >
-          <video ref={videoRef} src={sourceUrl} muted playsInline preload="auto" draggable={false} />
+          <video ref={videoRef} src={sourceUrl} muted playsInline preload="auto" draggable={false}
+                 style={{ filter: picture }} />
           <div
             className={following ? 'frame-box auto' : 'frame-box'}
             style={{
@@ -190,6 +197,22 @@ export default function FramingPanel({
         Het donkere deel valt weg. Met de zoom-schuif snijd je verder in, of laat je het hele beeld zien met zwarte balken.
         {following && ' Links en rechts gaat op de spreker; omhoog en omlaag sleep je zelf.'}
       </p>
+      <div className="enhance-row">
+        <label className="check">
+          <input type="checkbox" checked={enhance} onChange={(e) => onEnhance(e.target.checked)} />
+          <span>Kleur en contrast verbeteren</span>
+        </label>
+        <p className="hint">
+          {!enhance
+            ? 'Staat uit. '
+            : corrected === 'measuring'
+              ? 'Het beeld wordt gemeten. '
+              : corrected === 'nothing'
+                ? 'Deze opname gebruikt het hele bereik al, dus er verandert niets. '
+                : 'Een vlak, grijzig beeld wordt weer echt zwart en wit, met iets meer kleur. '}
+          Geldt voor al je clips die nog niet gemaakt zijn, en voor elke nieuwe clip.
+        </p>
+      </div>
     </Section>
   )
 }

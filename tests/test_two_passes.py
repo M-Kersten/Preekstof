@@ -6,6 +6,8 @@ scanned greedily and each chosen clip is heard again properly, over half a minut
 an hour and a half.
 """
 
+import time
+
 import pytest
 from fastapi.testclient import TestClient
 
@@ -14,15 +16,27 @@ from backend.models import (ClipCandidate, ClipOrigin, Output, Project, Segment,
                             Transcript, VideoInfo)
 
 
-@pytest.fixture
-def client(tmp_path, monkeypatch):
+@pytest.fixture(autouse=True)
+def folders(tmp_path, monkeypatch):
+    """Every test here makes a service and a clip, so none of them may touch the real folders."""
     for name in ("PROJECTS_DIR", "SERVICES_DIR"):
         folder = tmp_path / name.lower()
         folder.mkdir()
         monkeypatch.setattr(models, name, folder)
     monkeypatch.setattr(main, "SERVICES_DIR", tmp_path / "services_dir")
+
+
+@pytest.fixture
+def client(folders):
     with TestClient(main.app) as running:
         yield running
+        # The tests stop looking as soon as they saw what they came for, but the job goes on
+        # and saves the service at the end. Done after the folders are put back, that save
+        # landed in the real services/ folder.
+        for _ in range(500):
+            if not main.jobs.is_running("dienst"):
+                break
+            time.sleep(0.02)
 
 
 def a_recording() -> VideoInfo:

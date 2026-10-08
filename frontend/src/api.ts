@@ -686,5 +686,7 @@ export const serviceApi = {
     request<ClipCandidate[]>(`/services/${id}/candidates`, json('PUT', candidates)),
   processSelected: (id: string) => request<Service>(`/services/${id}/process-selected`, { method: 'POST' }),
   stop: (id: string) => request<Service>(`/services/${id}/stop`, { method: 'POST' }),
+  removeClip: (id: string, projectId: string) =>
+    request<Service>(`/services/${id}/clips/${projectId}`, { method: 'DELETE' }),
   sourceUrl: (id: string) => `/services/${id}/source`,
 }

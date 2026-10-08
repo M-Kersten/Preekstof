@@ -850,15 +850,26 @@ input[type='checkbox'] { accent-color: var(--purple); width: 1rem; height: 1rem;
   box-shadow: 0 -6px 20px rgba(46, 36, 56, 0.1); font-weight: 600; color: var(--purple);
 }
 .dock .row { display: flex; justify-content: space-between; align-items: center; gap: 1rem; }
-.dock .ready { display: flex; align-items: center; gap: 0.6rem; border-bottom: 1px solid var(--line); padding-bottom: 0.6rem; }
-.dock .ready > .meta { flex: none; font-weight: 600; color: var(--green); }
-.dock .chips { display: flex; gap: 0.4rem; overflow-x: auto; padding-bottom: 0.15rem; }
-.dock .chip {
-  flex: none; max-width: 20rem; padding: 0.3rem 0.6rem; font-size: 0.82rem; font-weight: 600;
-  border-radius: 999px; border: 1px solid var(--line); background: var(--lavender); color: var(--purple);
-  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
-}
-.dock .chip:hover:not(:disabled) { background: var(--purple); border-color: var(--purple); color: var(--white); }
+/* The clips made from this service: one line per fragment, versions under their title. */
+.dock .ready { display: flex; flex-direction: column; gap: 0.5rem; border-bottom: 1px solid var(--line); padding-bottom: 0.6rem; }
+.dock .ready.single { flex-direction: row; align-items: center; flex-wrap: wrap; }
+.dock .ready-says { color: var(--green); font-weight: 600; }
+.dock .ready-title { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.dock .ready-row { display: flex; align-items: center; }
+.dock .ready-toggle { display: flex; align-items: baseline; gap: 0.35rem; padding: 0.15rem 0; font-weight: 600; text-align: left; }
+.dock .ready-toggle .meta { font-weight: 500; }
+.dock .ready-open { margin-left: 0.4rem; font-size: 0.82rem; color: var(--purple); text-decoration: underline; text-underline-offset: 3px; }
+.made-list { list-style: none; margin: 0; padding: 0 0.4rem 0 0; max-height: min(45vh, 26rem); overflow-y: auto; display: flex; flex-direction: column; gap: 0.7rem; }
+.made-list li { display: flex; flex-direction: column; gap: 0.2rem; }
+.made-head { display: flex; align-items: baseline; gap: 0.5rem; color: var(--ink); }
+.made-head strong { font-weight: 600; }
+.made-version { display: flex; align-items: center; gap: 0.3rem 0.8rem; flex-wrap: wrap; padding: 0.3rem 0.5rem; border-radius: 8px; font-weight: 500; color: var(--ink); background: var(--lavender); }
+.made-version:not(.latest) { background: none; border: 1px dashed var(--line); }
+.made-version .tc { font-family: var(--mono); font-size: 0.8rem; }
+.made-acts { margin-left: auto; display: flex; gap: 0.3rem; }
+/* On the fragment itself: made already, and where to find it. */
+.suggestion .made-here { display: flex; align-items: center; justify-content: space-between; gap: 0.4rem 1rem; flex-wrap: wrap; margin: 0.6rem 0 0; padding: 0.45rem 0.6rem; border-radius: 8px; background: rgba(46, 125, 91, 0.08); color: var(--green); font-weight: 600; font-size: 0.88rem; }
+.suggestion .made-here .meta { font-weight: 500; }
 /* Making the clips is the long wait in the app, and the button for it sits down here, so
    this is where the bar belongs too. */
 .dock .progress.dock-busy { margin-top: 0; padding-right: 0.4rem; }

@@ -1326,6 +1326,30 @@ def stop_service_job(service_id: str):
     return service_detail(service)
 
 
+@app.delete("/services/{service_id}/clips/{project_id}", response_model=ServiceDetail)
+def remove_clip(service_id: str, project_id: str):
+    """Throw away one clip made from this service, usually an older version of a fragment.
+
+    Processing a fragment again makes a second clip next to the first, and the first is then
+    mostly in the way. Only clips of this service can go this way, and not while anything is
+    still working on them.
+    """
+    service = get_service(service_id)
+    if not any(c.projectId == project_id for c in service.clips):
+        raise HTTPException(404, "Deze clip hoort niet bij deze dienst")
+    if jobs.is_running(service.id):
+        raise HTTPException(409, "De dienst wordt nog verwerkt, wacht even")
+    keys = (project_id, transcribe_key(project_id), track_key(project_id), post_key(project_id))
+    if project_id in rendering_now or any(jobs.is_running(key) for key in keys):
+        raise HTTPException(409, "Aan deze clip wordt nog gewerkt. Wacht tot dat klaar is.")
+    folder = project_dir(project_id)
+    if folder.is_dir():
+        shutil.rmtree(folder)
+    service.clips = [c for c in service.clips if c.projectId != project_id]
+    save_service(service)
+    return service_detail(service)
+
+
 @app.get("/services/{service_id}/candidates", response_model=list[ClipCandidate])
 def read_candidates(service_id: str):
     return get_service(service_id).candidates

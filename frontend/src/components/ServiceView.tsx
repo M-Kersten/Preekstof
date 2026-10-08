@@ -3,7 +3,9 @@ import { ApiError, serviceApi, type ClipCandidate, type Service, type ServiceSum
 import { useChurch } from '../church'
 import { forget, remember, remembered } from '../remember'
 import { formatTime } from '../subtitleLayout'
+import type { Version } from '../versions'
 import ClipSuggestions from './ClipSuggestions'
+import MadeClips from './MadeClips'
 import Section from './Section'
 import ServiceTimeline from './ServiceTimeline'
 import ServiceTranscript from './ServiceTranscript'
@@ -346,6 +348,21 @@ export default function ServiceView({ onOpenClip }: Props) {
     serviceApi.get(id).then(adopt).catch(fail)
   }
 
+  /** Throw away one version of a fragment, after asking: the clip and its video go with it. */
+  const removeClip = async (version: Version, title: string) => {
+    if (!service) return
+    const which = version.latest ? 'De nieuwste versie' : `Versie ${version.number}`
+    if (!window.confirm(`${which} van "${title}" weggooien? De clip is dan weg, met de ondertitels en een video die je ervan maakte.`)) return
+    setError(null)
+    try {
+      const answer = await serviceApi.removeClip(service.id, version.projectId)
+      // Fragment edits still waiting to be saved stay as they are on screen.
+      setService((now) => (now && dirty.current ? { ...answer, candidates: now.candidates } : answer))
+    } catch (e) {
+      fail(e)
+    }
+  }
+
   const run = (action: (id: string) => Promise<Service>) => {
     if (!service) return
     setError(null)
@@ -660,6 +677,7 @@ export default function ServiceView({ onOpenClip }: Props) {
                   onPreview={preview}
                   onListen={listen}
                   onChange={changeCandidates}
+                  onOpenClip={onOpenClip}
                 />
               ) : (
                 <ServiceTranscript
@@ -675,23 +693,13 @@ export default function ServiceView({ onOpenClip }: Props) {
 
           {(service.candidates.length > 0 || service.clips.length > 0) && (
             <div className="dock">
-              {service.clips.length > 0 && (
-                <div className="ready">
-                  <span className="meta">Klaar om te bewerken</span>
-                  <div className="chips">
-                    {service.clips.map((clip) => (
-                      <button
-                        key={clip.projectId}
-                        className="chip"
-                        title={`${clip.title} · ${formatTime(clip.start)} – ${formatTime(clip.end)}`}
-                        onClick={() => onOpenClip(clip.projectId)}
-                      >
-                        {clip.title} →
-                      </button>
-                    ))}
-                  </div>
-                </div>
-              )}
+              <MadeClips
+                clips={service.clips}
+                candidates={service.candidates}
+                disabled={service.status === 'processing'}
+                onOpen={onOpenClip}
+                onRemove={removeClip}
+              />
               {/* Making the clips takes a while now that the speaker is looked for in each
                   of them, and the button that started it is down here, not up in the card. */}
               {service.status === 'processing' ? (

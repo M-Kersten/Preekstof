@@ -1,6 +1,7 @@
 import { Fragment, useMemo, useState } from 'react'
 import type { ClipCandidate, Segment, Service, Spoken } from '../api'
 import { type Edge, allWords, around, nextSentence, placeAt, splits } from '../edges'
+import { alreadyMade, madeOf } from '../versions'
 import { formatTime, parseTime } from '../subtitleLayout'
 
 interface Props {
@@ -11,10 +12,11 @@ interface Props {
   /** Play the seconds around a boundary, the way the clip will: stopping on the cut, or starting on it. */
   onListen: (candidate: ClipCandidate, edge: Edge, at: number) => void
   onChange: (candidates: ClipCandidate[]) => void
+  onOpenClip: (projectId: string) => void
 }
 
 /** The list of moments: the ones somebody cut by hand first, then what the search found. */
-export default function ClipSuggestions({ service, playing, disabled, onPreview, onListen, onChange }: Props) {
+export default function ClipSuggestions({ service, playing, disabled, onPreview, onListen, onChange, onOpenClip }: Props) {
   const [expanded, setExpanded] = useState<string | null>(null)
   const [showRest, setShowRest] = useState(false)
   const duration = service.sourceInfo?.duration ?? 1
@@ -43,6 +45,8 @@ export default function ClipSuggestions({ service, playing, disabled, onPreview,
         const open = expanded === cand.id
         const own = cand.source === 'self'
         const opensRest = rest.length > 0 && cand.id === rest[0].id
+        const versions = madeOf(service.clips, cand)
+        const same = versions.length > 0 && alreadyMade(service.clips, cand)
         return (
           <div key={cand.id}>
             {opensRest && (
@@ -57,7 +61,7 @@ export default function ClipSuggestions({ service, playing, disabled, onPreview,
               id={`f-${cand.id}`}
               hidden={!cand.shortlisted && !showRest}
               className={`suggestion ${cand.selected ? 'chosen' : ''} ${playing === cand.id ? 'playing' : ''}`
-                + ` ${cand.shortlisted ? '' : 'aside'} ${own ? 'own' : ''}`}
+                + ` ${cand.shortlisted ? '' : 'aside'} ${own ? 'own' : ''} ${versions.length ? 'made' : ''}`}
             >
               <header>
                 <span className="no">{String(index + 1).padStart(2, '0')}</span>
@@ -85,6 +89,25 @@ export default function ClipSuggestions({ service, playing, disabled, onPreview,
               {cand.summary && <p>{cand.summary}</p>}
               {cand.verdict && <p className="verdict">{cand.verdict}</p>}
               {cand.reason && <p className="why">{cand.reason}</p>}
+
+              {versions.length > 0 && (
+                <div className="made-here">
+                  <span>
+                    ✓ Verwerkt{versions.length > 1 ? `, ${versions.length} versies` : ''}
+                    {cand.selected && (
+                      <span className="meta">
+                        {' · '}
+                        {same
+                          ? 'zo is hij al gemaakt. Nog een keer verwerken geeft een kopie.'
+                          : 'verwerken maakt een nieuwe versie met dit begin en einde. De vorige blijft staan.'}
+                      </span>
+                    )}
+                  </span>
+                  <button className="small" onClick={() => onOpenClip(versions[0].projectId)}>
+                    {versions.length > 1 ? 'Nieuwste bewerken →' : 'Bewerken →'}
+                  </button>
+                </div>
+              )}
 
               <div className="acts">
                 <button className="small" onClick={() => onPreview(cand)}>

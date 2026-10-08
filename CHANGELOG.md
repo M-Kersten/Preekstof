@@ -63,6 +63,15 @@ clip begint of eindigt daar, met een ademhaling ruimte zodat het woord niet word
 je meteen de laatste drie seconden tot de knip, of de eerste drie erna, en de speler stopt precies
 waar de clip ophoudt. Valt de knip midden in een woord, dan staat dat erbij.
 
+**De clips van een dienst staan overzichtelijk onderin.** De balk onderaan liet de klaarstaande
+clips zien als een rij titels waar je zijwaarts doorheen moest scrollen, en een fragment dat je
+twee keer verwerkte stond er twee keer in, met dezelfde titel. Nu staat er hoeveel fragmenten
+klaar zijn, en **Bekijken** opent een lijst met één regel per fragment, in de volgorde van de
+dienst. Is een fragment vaker verwerkt, dan staan de versies onder de titel, de nieuwste bovenaan,
+met begin en einde erbij. Twee versies met precies hetzelfde begin en einde staan zo gemarkeerd. Een
+oude versie gooi je daar weg met **Weghalen**. Bij het fragment zelf staat nu ook dat het verwerkt
+is, met een knop naar de clip, en wie het nog een keer kiest leest wat er dan gebeurt.
+
 **De spreker volgen gaat rustiger.** Het kader zette in één keer op volle snelheid aan en stond
 net zo abrupt weer stil, vaak met de spreker nog aan de rand, zodat de volgende beweging een
 moment later al begon. Nu trekt het kader langzaam op, haalt de spreker terug naar het midden en

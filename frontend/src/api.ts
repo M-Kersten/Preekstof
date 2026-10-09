@@ -436,6 +436,11 @@ export interface StationServices {
   name: string
   url: string
   services: StationService[]
+  /** Which page of ten this is, newest first, and whether an older one follows. */
+  page?: number
+  more?: boolean
+  /** How many recordings the platform keeps for this church in all. */
+  total?: number | null
 }
 
 /** An error from the API. `offline` means the app itself could not be reached. */
@@ -687,7 +692,8 @@ export const serviceApi = {
   /** Fetch the recording from where the church already publishes it. */
   link: (id: string, url: string) => request<Service>(`/services/${id}/link`, json('POST', { url })),
   /** The services standing on this church's own page at kerkdienstgemist. */
-  station: (station: string) => request<StationServices>(`/kerkdienstgemist/stations/${encodeURIComponent(station)}`),
+  station: (station: string, page = 1) =>
+    request<StationServices>(`/kerkdienstgemist/stations/${encodeURIComponent(station)}${page > 1 ? `?page=${page}` : ''}`),
   transcribe: (id: string) => request<Service>(`/services/${id}/transcribe`, { method: 'POST' }),
   setAccuracy: (id: string, accurate: boolean) =>
     request<Service>(`/services/${id}/accuracy`, json('PUT', { accurate })),

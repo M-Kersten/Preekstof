@@ -69,12 +69,26 @@ class Service:
 
 @dataclass
 class Station:
-    """A church as the platform knows it."""
+    """A church as the platform knows it, with one page of its services."""
 
     id: str
     name: str
     url: str
     services: list[Service]
+    page: int = 1
+    more: bool = False  # an older page follows
+    total: int | None = None  # how many recordings the platform keeps for this church
+
+
+def paging(answer: dict) -> tuple[bool, int | None]:
+    """Whether an older page follows, and how many there are in all, from what the API said."""
+    said = (answer.get("meta") or {}).get("pagination") or {}
+    following = said.get("next") or (answer.get("links") or {}).get("next")
+    try:
+        total = int(said["total_entries"])
+    except (KeyError, TypeError, ValueError):
+        total = None
+    return bool(following), total
 
 
 def handles(url: str) -> bool:
@@ -231,10 +245,11 @@ def services_in(answer: dict, station_id: str, site: str) -> list[Service]:
     return out
 
 
-def station(station_id: str, site: str = SITE, timeout: float = TIMEOUT) -> Station:
-    """The church behind a station number, and the services it has standing.
+def station(station_id: str, site: str = SITE, timeout: float = TIMEOUT, page: int = 1) -> Station:
+    """The church behind a station number, and one page of the services it has standing.
 
-    One call for the name and one for the list. Raises NotFound with something worth
+    One call for the name and one for the list. The platform hands the list out ten at a
+    time, newest first; `page` asks for an older ten. Raises NotFound with something worth
     reading, because this one is asked for on purpose rather than tried in passing.
     """
     station_id = str(station_id).strip()
@@ -244,7 +259,7 @@ def station(station_id: str, site: str = SITE, timeout: float = TIMEOUT) -> Stat
     base = f"{api_of(site)}/stations/{station_id}"
     try:
         about = ask(base, timeout)
-        listing = ask(f"{base}/recordings?include=media", timeout)
+        listing = ask(f"{base}/recordings?include=media" + (f"&page={page}" if page > 1 else ""), timeout)
     except urllib.error.HTTPError as exc:
         if exc.code == 404:
             raise NotFound(f"Er is geen kerk met nummer {station_id} op {site}. Controleer het "
@@ -256,11 +271,15 @@ def station(station_id: str, site: str = SITE, timeout: float = TIMEOUT) -> Stat
 
     try:
         said = (about.get("data") or {}).get("attributes") or {}
+        more, total = paging(listing)
         return Station(
             id=station_id,
             name=(said.get("name") or f"Station {station_id}").strip(),
             url=station_url(station_id, site),
             services=services_in(listing, station_id, site),
+            page=page,
+            more=more,
+            total=total,
         )
     except (AttributeError, TypeError, KeyError) as exc:  # a shape we no longer recognise
         raise NotFound("Kerkdienstgemist antwoordde in een vorm die de app niet kent. Plak het "

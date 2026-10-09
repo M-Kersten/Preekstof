@@ -882,7 +882,7 @@ POST /services                      create an empty service
 POST /services/{id}/upload          multipart upload of the full recording
 GET  /services                      services worked on before, newest first (?limit=12)
 POST /services/{id}/link            fetch the recording from a link (body: {"url"}), as a job
-GET  /kerkdienstgemist/stations/{id}  a church's recent services, ready to pick from
+GET  /kerkdienstgemist/stations/{id}  a church's recent services, ready to pick from (?page=2 for the next ten, older; the answer says page, more and total)
 POST /services/{id}/transcribe      background transcription (status: transcribing -> transcribed)
 POST /services/{id}/analyze         background LLM analysis (status: analyzing -> ready)
 GET  /services/{id}                 service + transcript + running job progress

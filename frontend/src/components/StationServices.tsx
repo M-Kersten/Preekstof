@@ -21,6 +21,22 @@ export default function StationServices({ station, disabled, onPick }: Props) {
   const [listing, setListing] = useState<Listing | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [busy, setBusy] = useState(Boolean(station))
+  const [older, setOlder] = useState(false) // fetching the next page of ten
+
+  /** The next ten, older ones, under the ones already there. */
+  const more = async () => {
+    if (!listing || older) return
+    setOlder(true)
+    try {
+      const next = await serviceApi.station(station, (listing.page ?? 1) + 1)
+      const seen = new Set(listing.services.map((s) => s.id))
+      setListing({ ...next, services: [...listing.services, ...next.services.filter((s) => !seen.has(s.id))] })
+    } catch (e) {
+      setError(e instanceof ApiError || e instanceof Error ? e.message : String(e))
+    } finally {
+      setOlder(false)
+    }
+  }
 
   // A different number is a different church, so the parent remounts this with a key and
   // the state starts empty; nothing here has to undo what the last one left behind.
@@ -99,7 +115,21 @@ export default function StationServices({ station, disabled, onPick }: Props) {
           ))}
         </ul>
       )}
-      <p className="hint">Een oudere dienst? Plak het adres ervan hieronder.</p>
+      {listing.more ? (
+        <div className="row older">
+          <button className="small" disabled={older} onClick={more}>
+            {older ? 'Oudere diensten worden opgehaald…' : 'Oudere diensten laden'}
+          </button>
+          {listing.total ? (
+            <span className="meta">{listing.services.length} van de {listing.total} die op Kerkdienstgemist staan</span>
+          ) : null}
+        </div>
+      ) : (
+        <p className="hint">
+          {(listing.page ?? 1) > 1 ? 'Dit zijn alle diensten die op Kerkdienstgemist staan. ' : ''}
+          Een oudere dienst? Plak het adres ervan hieronder.
+        </p>
+      )}
     </div>
   )
 }

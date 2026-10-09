@@ -115,6 +115,11 @@ Hetzelfde verschil in lettergrootte zat in het voorbeeld van de ondertitels. De 
 verandert daar niet, het voorbeeld wel: dat laat de ondertitels nu even groot zien als ze in de
 video komen.
 
+**Alle diensten van Kerkdienstgemist in de lijst.** De lijst met diensten van je kerk liet alleen
+de tien nieuwste zien. Kerkdienstgemist geeft ze per tien, en onderaan staat nu **Oudere diensten
+laden**, met hoeveel er in totaal staan. Zo kom je tot de oudste dienst die Kerkdienstgemist nog
+bewaart. Bij Nieuwe Kerk Utrecht zijn dat er nu 26, terug tot april.
+
 **Geen vastgelopen scherm meer na bijwerken zonder herstart.** Werk je de app bij terwijl het
 zwarte venster openstaat, dan draait de server nog de oude code terwijl het scherm al nieuw is. De
 balk die daarvoor waarschuwt keek alleen naar het versienummer, en dat verandert pas bij een nieuwe

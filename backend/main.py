@@ -1114,10 +1114,13 @@ def adopt_recording(service: Service, target: Path, title: str,
 
 
 @app.get("/kerkdienstgemist/stations/{station_id}")
-def read_station(station_id: str):
-    """The services this church has standing, so nobody has to go and look them up."""
+def read_station(station_id: str, page: int = 1):
+    """The services this church has standing, so nobody has to go and look them up.
+
+    Ten at a time, newest first, the way the platform hands them out; `page` is an older ten.
+    """
     try:
-        found = kerkdienstgemist.station(station_id)
+        found = kerkdienstgemist.station(station_id, page=max(1, page))
     except kerkdienstgemist.NotFound as exc:
         raise HTTPException(400, str(exc)) from exc
     return {
@@ -1127,6 +1130,9 @@ def read_station(station_id: str):
         "services": [{"id": s.id, "title": s.title, "when": s.when, "url": s.url,
                       "duration": s.duration, "preacher": s.preacher, "poster": s.poster}
                      for s in found.services],
+        "page": found.page,
+        "more": found.more,
+        "total": found.total,
     }
 
 

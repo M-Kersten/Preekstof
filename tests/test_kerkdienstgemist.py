@@ -319,3 +319,58 @@ def test_a_number_the_platform_will_not_talk_about_is_a_400_with_the_reason(monk
         answer = client.get("/kerkdienstgemist/stations/nope")
     assert answer.status_code == 400
     assert "cijfers" in answer.json()["detail"]
+
+
+# --- older services, a page at a time ---------------------------------------------
+
+
+@pytest.fixture
+def paged(monkeypatch):
+    """Three pages of ten, the way the platform hands them out."""
+    asked: list[str] = []
+
+    def reply(url, timeout=kdg.TIMEOUT):
+        asked.append(url)
+        if "/recordings" not in url:
+            return copy.deepcopy(ABOUT)
+        answer = copy.deepcopy(LISTING)
+        page = int(url.split("&page=")[1]) if "&page=" in url else 1
+        answer["meta"]["pagination"].update(page=str(page), next=str(page + 1) if page < 3 else None,
+                                            total_entries=26)
+        answer["links"]["next"] = None
+        return answer
+
+    monkeypatch.setattr(kdg, "ask", reply)
+    return asked
+
+
+def test_the_first_page_says_an_older_one_follows(paged):
+    found = kdg.station("1341")
+    assert found.page == 1 and found.more is True and found.total == 26
+    assert paged[-1].endswith("/recordings?include=media"), "the first page is asked for as it always was"
+
+
+def test_an_older_page_is_asked_for_by_number(paged):
+    found = kdg.station("1341", page=2)
+    assert paged[-1].endswith("/recordings?include=media&page=2")
+    assert found.page == 2 and found.more is True
+
+
+def test_the_last_page_says_there_is_nothing_older(paged):
+    assert kdg.station("1341", page=3).more is False
+
+
+def test_an_answer_without_paging_is_one_page():
+    assert kdg.paging({"data": []}) == (False, None)
+    assert kdg.paging({"links": {"next": "https://x?page=2"}}) == (True, None)
+
+
+def test_the_endpoint_passes_the_page_on(paged):
+    from fastapi.testclient import TestClient
+
+    from backend.main import app
+
+    with TestClient(app) as client:
+        said = client.get("/kerkdienstgemist/stations/1341?page=3").json()
+    assert said["page"] == 3 and said["more"] is False and said["total"] == 26
+    assert paged[-1].endswith("&page=3")

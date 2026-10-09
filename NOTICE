@@ -29,8 +29,18 @@ frontend/public/icon.svg, the Preekstof name and mark
     apart from this software.
 
 
-INSTALLED BY PIP ON FIRST START
--------------------------------
+IN THE DOWNLOADS FOR WINDOWS AND THE MAC
+----------------------------------------
+
+Preekstof-Windows.zip, Preekstof-Mac.zip and Preekstof-Mac-Intel.zip carry a Python and the
+packages below, already installed, in the folder python/. The plain zip carries neither; its
+first start installs the packages with pip, onto the church's own computer.
+
+Python 3.12
+    PSF License. Windows: the embeddable build from python.org. Mac: python-build-standalone
+    (github.com/astral-sh/python-build-standalone), which bundles a few libraries of its own
+    under their own licences (OpenSSL, SQLite, zlib and others). The licence text travels
+    with it, in python/LICENSE.txt on Windows and python/lib/python3.12/LICENSE.txt on a Mac.
 
   fastapi                 MIT
   uvicorn                 BSD 3-Clause
@@ -41,13 +51,25 @@ INSTALLED BY PIP ON FIRST START
   ctranslate2             MIT
   onnxruntime             MIT
   numpy                   BSD 3-Clause
+  tokenizers              Apache 2.0
   huggingface-hub         Apache 2.0
   anthropic               MIT
   yt-dlp                  Unlicense (public domain)
-  mlx-whisper             MIT — Apple Silicon only, optional, requirements-mac.txt
+  pip                     MIT
+  mlx-whisper             MIT, Apple Silicon only, optional, requirements-mac.txt; not in the download
 
-The exact versions resolved on a given machine are in that machine's environment; this list
-names the projects, not a lockfile.
+These are the ones the app asks for; what they need in turn (httpx, anyio, certifi, tqdm and
+the like) comes along. Each package carries its own licence text, and those of the libraries
+it bundles, in its *.dist-info folder under python/. The exact versions are in that folder
+too; this list names the projects, not a lockfile.
+
+Left out on purpose, and fetched on the church's own computer at the first start:
+
+PyAV (av)
+    BSD 3-Clause for PyAV itself, but its wheels carry an FFmpeg built with x264 and x265,
+    which are GPL. That is the same reason FFmpeg itself is never in a download (below). The
+    download names the version it was built against in bundle.json and the launcher installs
+    exactly that one with pip.
 
 
 FETCHED ON FIRST USE, ONTO THE CHURCH'S OWN COMPUTER
@@ -68,9 +90,10 @@ mlx-community/whisper-*-mlx on an Apple Silicon Mac)
 
 FFmpeg and ffprobe
     Downloaded by the launcher when the machine has none. The Windows build comes from
-    gyan.dev and the macOS build from evermeet.cx. FFmpeg is LGPL-2.1-or-later, and those
-    particular builds include GPL components; they are executed as separate programs and
-    never linked into this software. Source: ffmpeg.org.
+    gyan.dev and the macOS builds, one for each kind of chip, from ffmpeg.martin-riedl.de.
+    FFmpeg is LGPL-2.1-or-later, and those particular builds include GPL components; they are
+    executed as separate programs and never linked into this software, and none of the
+    downloads above carries them. Source: ffmpeg.org.
 
 
 SERVICES THIS APP TALKS TO

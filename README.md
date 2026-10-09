@@ -21,16 +21,32 @@ There are two entry points on the page:
 
 ## Quick start (no technical knowledge needed)
 
-1. Download the newest release: **Releases** on GitHub → `preekstof-<versie>.zip`, and unzip it
-   wherever you like. That zip holds everything the app needs to run, so no git and no Node.
-   (The green **Code** button works too, and so does a clone.)
-2. Start it:
-   - **Windows**: double-click `start.bat`. Without Python on the machine it installs one
-     and carries on in the same window. The `-windows` zip carries its own Python and needs
-     nothing at all (not yet tested on a real machine without Python; the plain zip is the
-     safe one until it has been).
-   - **macOS**: double-click `start.command`. If macOS says the file cannot be opened, right-click it, choose **Open**, and confirm once.
-3. The first start takes a few minutes: it installs Python packages and downloads FFmpeg into `tools/`. After an update, the next start installs any new packages by itself. Python itself is installed automatically on Windows (through winget) and through Homebrew on macOS when available; otherwise the window tells you where to get it.
+The page to send a church to is the install page (`site/index.html`, published by
+`.github/workflows/pages.yml` once GitHub Pages is switched on: **Settings → Pages → Source:
+GitHub Actions**). It says the same as below, in Dutch, with the warnings drawn out.
+
+1. Download the one for your computer from the newest release. The names never change, so
+   these links always give the newest:
+   - Windows: [`Preekstof-Windows.zip`](https://github.com/M-Kersten/Preekstof/releases/latest/download/Preekstof-Windows.zip)
+   - Mac with an Apple chip: [`Preekstof-Mac.zip`](https://github.com/M-Kersten/Preekstof/releases/latest/download/Preekstof-Mac.zip)
+   - Mac with an Intel processor: [`Preekstof-Mac-Intel.zip`](https://github.com/M-Kersten/Preekstof/releases/latest/download/Preekstof-Mac-Intel.zip)
+
+   Each carries its own Python with the packages already installed, so nothing else has to be
+   on the machine. `preekstof-<versie>.zip` is the plain one: the same app without a Python,
+   for any other computer or for whoever would rather use their own.
+2. Unzip it wherever you like, open the `Preekstof` folder and start it:
+   - **Windows**: double-click `start.bat`. SmartScreen does not know the app yet: **Meer info →
+     Toch uitvoeren**, once. Ticking **Blokkering opheffen** under the zip's properties before
+     unpacking avoids the warning altogether.
+   - **macOS**: double-click `start.command`. macOS 15 stops it the first time: **Gereed**, then
+     **System Settings → Privacy & Security → Open Anyway**. On macOS 14 and older, Control-click
+     it and choose **Open**. start.command then clears the quarantine flag from the rest of the
+     folder, so the Python inside is allowed to run.
+3. The first start fetches what a download is not allowed to carry (see NOTICE): FFmpeg into
+   `tools/ffmpeg/`, and PyAV, whose wheel carries an FFmpeg built with x264 and x265. The speech
+   model (about 460 MB) comes down in the background while the app opens, and the readiness
+   panel shows how far it is. With the plain zip the first start also installs the Python
+   packages, and a Python when there is none (winget on Windows, Homebrew on a Mac).
 4. The browser opens at http://localhost:8000. Close the black window to stop the app.
 
 The first time the app opens it walks through what it needs: a Claude API key, the name of
@@ -39,24 +55,73 @@ before it is written down, so a mis-pasted one says so on the spot rather than t
 into the first run, and it takes effect without a restart. Everything asked there stays
 editable under **Merk instellen**, and **Instellen opnieuw** walks through it again.
 
-Settings live in `config.env` next to `start.bat` (created on first start). The welcome writes
-the key there; `LLM_PROVIDER=ollama` keeps everything on the machine for a church that will not
-send transcript text anywhere. What goes where, in one page a church council can read, is
-`PRIVACY.md`; the short version sits in the app next to the cost estimate. The speech model (about 460 MB) is downloaded on the first
-transcription.
+### Where a church's own work lives
+
+Not in the app folder. Everything a church makes or sets up lives in a folder of its own,
+`~/Preekstof` (`C:\Users\<naam>\Preekstof` on Windows), so a new version can replace the app
+folder whole:
+
+```text
+~/Preekstof/
+  config.env      the settings and the API key (made on first start from config.example.env)
+  projects/       clips
+  services/       full services
+  logs/           what the black window said, runs.jsonl, the self-test, installatie.log
+  templates/      the church's own: brands/, logos/, music/, church.json, outro.json and the
+                  end-screen videos, woordenlijst.json, speed.json, verbeteringen.json
+  updates/        a new version while it downloads
+```
+
+Where this README names `config.env`, `projects/`, `services/`, `logs/` or a church's own file
+under `templates/`, it means the one in that folder. What ships with the app (fonts, the music
+library, the `.example.json` files) stays in the app's own `templates/`, and `/templates/...`
+serves the church's copy first and the shipped one after. `PREEKSTOF_DATA` puts the folder
+elsewhere; it is not in Documents on purpose, because OneDrive and iCloud sync that and a
+service recording is two gigabytes. The launcher moves an older install's files across once,
+without overwriting anything, and says so in the black window (`backend/places.py`). The
+tests point `PREEKSTOF_DATA` at a temporary folder, so they never touch a real one.
+
+What goes where, in one page a church council can read, is `PRIVACY.md`; the short version
+sits in the app next to the cost estimate. `LLM_PROVIDER=ollama` in config.env keeps
+everything on the machine for a church that will not send transcript text anywhere.
 
 The built web interface is committed in `frontend/dist`, so Node.js is not needed to run the app. Developers who change the frontend run `npm run build` in `frontend/` and commit the result.
 
-On every start the app asks GitHub once whether there is a newer release, and says so in the
-black window with one line about what changed and where to get it. It never installs anything
-by itself: a church rebuilding unattended at ten to ten on a Sunday morning is a worse outcome
-than a church running last month's version. No internet, or GitHub not answering, means the
-app starts without mentioning updates at all.
+### Updating
 
-Making a release, for whoever maintains this: bump `backend/version.py`, write what changed in
-`CHANGELOG.md`, commit, then `git tag v0.9.1 && git push origin v0.9.1`. The tag builds the zip
-and opens a draft release. It refuses the tag if the number does not match `version.py`, or if
-the committed `frontend/dist` is not what the code in that commit builds.
+On every start the app asks GitHub once whether there is a newer release, and says so in the
+black window. The readiness panel says it as well, with a **Bijwerken** button: it fetches the
+download for this computer (`bundle.json` in the app folder says which; the plain zip has none
+and gets the plain zip), checks it against the digest GitHub gives, and unpacks it into
+`.update/` next to the app. **Nu opnieuw starten** then stops the server with exit code 75;
+start.bat or start.command put the new files in place and start again, and the open page
+reloads itself once the new version answers. The church's folder is not touched. The bundled
+Python is swapped whole rather than merged, and the old one goes back if copying fails. On
+Windows a copy of `tools/apply-update.bat` in TEMP does the copying, because cmd reads
+start.bat while it runs; start.command keeps everything in functions for the same reason with
+bash. A git checkout is told to `git pull` instead.
+
+Nothing installs itself: somebody presses the button. A church rebuilding unattended at ten to
+ten on a Sunday morning is a worse outcome than a church running last month's version. No
+internet, or GitHub not answering, means the app starts without mentioning updates at all.
+
+### Making a release
+
+For whoever maintains this: bump `backend/version.py`, write what changed in `CHANGELOG.md`,
+commit, then `git tag v0.11.0 && git push origin v0.11.0`, or run **Actions → release → Run
+workflow** with the number. `.github/workflows/release.yml` refuses a number that does not match
+`version.py`, or a committed `frontend/dist` that is not what the code builds. It builds the
+plain zip on Linux, the Windows download on Windows (the embeddable Python from python.org)
+and the Mac downloads on an Apple-chip and an Intel runner (python-build-standalone), with
+`tools/release.py --bundle`. Each is then unpacked and started the way a church would, through
+its start script, by `tools/check_bundle.py`: a first start with `--smoke` down to a rendered
+clip, then an update put in place and a restart. Only then do they go into a draft release.
+Untick **publish** in the Actions form to build and check without making a release. The
+Intel Mac is allowed to fail, for the day its wheels stop being made; the rest is not.
+
+The launcher takes two flags for this: `--prepare` only installs the packages (what the
+release build runs), `--smoke` starts the app, checks that it answers, serves the interface
+and the fonts and can render a clip with subtitles, and stops.
 
 ## Requirements
 

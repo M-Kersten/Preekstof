@@ -278,3 +278,31 @@ def test_preparing_takes_out_what_a_church_fetches_itself(tmp_path, monkeypatch)
 def test_a_bundle_needs_a_python_to_go_in_it(tmp_path):
     with pytest.raises(SystemExit):
         release.interpreter(tmp_path)
+
+
+def test_the_changelog_has_notes_for_the_version_being_released():
+    """The release takes its text from this version's heading, and the app shows its first line."""
+    said = (Path(release.ROOT) / "CHANGELOG.md").read_text(encoding="utf-8")
+    heading = next((line for line in said.splitlines()
+                    if line.startswith(f"## {release.version.VERSION}")
+                    and not line[len(f"## {release.version.VERSION}"):][:1].isdigit()), None)
+    assert heading, f"CHANGELOG.md heeft geen kopje voor {release.version.VERSION}"
+    notes = said.split(heading, 1)[1].split("\n## ", 1)[0]
+    headline = updates.Release(version=release.version.VERSION, url="", notes=notes).headline()
+    assert headline and not headline.startswith("Per versie"), headline
+
+
+def test_a_mac_download_says_which_macos_it_needs(tmp_path):
+    made = release.build(tmp_path, "9.9.9", None, "mac-arm64", {}, "14.0")
+    with zipfile.ZipFile(made) as zip_file:
+        assert json.loads(zip_file.read("Preekstof/bundle.json"))["macos"] == "14.0"
+
+
+@pytest.mark.parametrize("said, wanted", [
+    ("Load command 1\n      cmd LC_BUILD_VERSION\n platform 1\n    minos 14.0\n      sdk 14.2\n", (14, 0)),
+    ("Load command 1\n      cmd LC_VERSION_MIN_MACOSX\n  version 10.9\n      sdk 10.15\n", (10, 9)),
+    ("Load command 1\n          cmd LC_ID_DYLIB\n current version 1.2.3\n", None),
+])
+def test_the_macos_a_binary_needs_is_read_from_its_load_commands(said, wanted):
+    """Not from a dylib's own version number, which otool prints just the same."""
+    assert release.lowest_macos(said) == wanted

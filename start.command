@@ -35,6 +35,21 @@ apply_update() {
   exec /bin/bash "$APP/start.command"
 }
 
+mac_too_old() {
+  # De download met alles erin is gebouwd voor een bepaalde macOS; bundle.json zegt welke.
+  needed="$(sed -n 's/.*"macos": *"\([0-9.]*\)".*/\1/p' bundle.json 2>/dev/null)"
+  have="$(sw_vers -productVersion 2>/dev/null)"
+  [ -n "$needed" ] && [ -n "$have" ] || return 1
+  awk -v have="$have" -v needed="$needed" 'BEGIN {
+    split(have, a, "."); split(needed, b, ".")
+    for (i = 1; i <= 3; i++) {
+      if (a[i] + 0 < b[i] + 0) exit 0
+      if (a[i] + 0 > b[i] + 0) exit 1
+    }
+    exit 1
+  }'
+}
+
 find_python() {
   for candidate in python3.13 python3.12 python3.11 python3.10 python3; do
     if command -v "$candidate" >/dev/null 2>&1 && "$candidate" -c 'import sys; sys.exit(0 if sys.version_info >= (3,10) else 1)' >/dev/null 2>&1; then
@@ -60,6 +75,13 @@ main() {
 
   if [ -x "python/bin/python3" ]; then
     # De download voor de Mac heeft zijn eigen Python, met alles erin.
+    if mac_too_old; then
+      echo "Deze download van Preekstof vraagt macOS $needed of nieuwer, en deze Mac heeft $have."
+      echo "Haal de gewone zip op, preekstof-<versie>.zip bij"
+      echo "https://github.com/M-Kersten/Preekstof/releases/latest"
+      echo "Die zet bij de eerste start de onderdelen neer die bij deze Mac passen."
+      fail
+    fi
     RUN="python/bin/python3"
   else
     PY="$(find_python)"

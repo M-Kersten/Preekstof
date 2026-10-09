@@ -265,12 +265,22 @@ jobs:
             [ -f "dist/$name" ] || { echo "::error::$name ontbreekt."; exit 1; }
           done
 
+      # Only this version's part. The app shows the first line of it next to Bijwerken, and
+      # the first line of the whole file is how to read the file.
+      - name: The notes for this version, out of CHANGELOG.md
+        run: |
+          set -eu
+          awk -v v="$VERSION" 'index($0, "## " v) == 1 && substr($0, length("## " v) + 1, 1) !~ /[0-9.]/ {f=1; next} /^## /{if (f) exit} f' \
+            CHANGELOG.md > notes.md
+          test -s notes.md || { echo "::error::CHANGELOG.md heeft geen kopje voor $VERSION."; exit 1; }
+          head -3 notes.md
+
       - name: What a church downloads
         uses: softprops/action-gh-release@v2
         with:
           tag_name: v${{ env.VERSION }}
           target_commitish: ${{ github.sha }}
           files: dist/*.zip
-          body_path: CHANGELOG.md
+          body_path: notes.md
           draft: true
           fail_on_unmatched_files: true

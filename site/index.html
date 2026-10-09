@@ -1,0 +1,380 @@
+<!doctype html>
+<html lang="nl">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Preekstof installeren</title>
+  <meta name="description" content="Preekstof maakt korte video's van de kerkdienst, op jullie eigen computer. Zo zet je het op Windows of een Mac.">
+  <link rel="icon" type="image/svg+xml" href="icon.svg">
+  <style>
+    @font-face { font-family: Poppins; font-weight: 400; font-display: swap; src: url(fonts/Poppins-Regular.ttf) format("truetype"); }
+    @font-face { font-family: Poppins; font-weight: 500; font-display: swap; src: url(fonts/Poppins-Medium.ttf) format("truetype"); }
+    @font-face { font-family: Poppins; font-weight: 600; font-display: swap; src: url(fonts/Poppins-SemiBold.ttf) format("truetype"); }
+    @font-face { font-family: Poppins; font-weight: 800; font-display: swap; src: url(fonts/Poppins-ExtraBold.ttf) format("truetype"); }
+
+    :root {
+      --purple: #4B1E78;
+      --purple-soft: #6B3A92;
+      --gold: #C9971C;
+      --paper: #FAF8FB;
+      --white: #FFFFFF;
+      --lavender: #F1ECF6;
+      --line: #E4DCEC;
+      --ink: #2E2438;
+      --muted: #6E6280;
+      --deep: #2A1140;
+      --deep-ink: #EDE6F4;
+      --mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+      font-family: Poppins, "Segoe UI", system-ui, sans-serif;
+      color: var(--ink);
+      background: var(--paper);
+      line-height: 1.6;
+    }
+    * { box-sizing: border-box; }
+    body { margin: 0; background: var(--paper); }
+    h1, h2, h3 { margin: 0; color: var(--purple); font-weight: 800; letter-spacing: -0.025em; line-height: 1.12; }
+    h1 { font-size: clamp(2rem, 5vw, 3rem); color: var(--white); }
+    h2 { font-size: clamp(1.35rem, 3vw, 1.7rem); margin-bottom: 0.9rem; }
+    h3 { font-size: 1.05rem; font-weight: 700; letter-spacing: -0.01em; }
+    p { margin: 0 0 0.8rem; }
+    a { color: var(--purple); font-weight: 600; }
+    code, kbd { font-family: var(--mono); font-size: 0.88em; background: var(--lavender); border-radius: 5px; padding: 0.05rem 0.35rem; }
+    .wrap { max-width: 60rem; margin: 0 auto; padding: 0 1rem; }
+
+    /* top */
+    header { background: var(--deep); color: var(--deep-ink); padding: 2.2rem 0 3.2rem; }
+    .brand { display: flex; align-items: center; gap: 0.6rem; font-weight: 700; color: var(--white); margin-bottom: 2.2rem; }
+    .brand img { width: 30px; height: 30px; background: var(--white); border-radius: 8px; padding: 3px; }
+    .lead { font-size: 1.08rem; max-width: 38rem; margin-top: 0.9rem; color: var(--deep-ink); }
+
+    /* downloads */
+    .downloads { display: grid; gap: 0.8rem; grid-template-columns: repeat(auto-fit, minmax(15rem, 1fr)); margin-top: 2rem; }
+    .download {
+      display: flex; flex-direction: column; gap: 0.15rem; text-decoration: none; color: var(--white);
+      border: 1px solid rgba(255, 255, 255, 0.22); border-radius: 14px; padding: 1rem 1.1rem;
+      background: rgba(255, 255, 255, 0.06); transition: background 0.12s, border-color 0.12s, transform 0.12s;
+    }
+    .download:hover { background: rgba(255, 255, 255, 0.12); border-color: rgba(255, 255, 255, 0.5); }
+    .download strong { font-size: 1.05rem; }
+    .download span { font-size: 0.82rem; font-weight: 400; color: rgba(237, 230, 244, 0.8); }
+    .download.yours { order: -1; background: var(--gold); border-color: var(--gold); color: var(--deep); box-shadow: 0 6px 22px rgba(201, 151, 28, 0.35); }
+    .download.yours span { color: rgba(42, 17, 64, 0.8); }
+    .download.yours:hover { transform: translateY(-1px); background: #D6A42A; }
+    .download.missing { opacity: 0.55; }
+    .download .tag { align-self: flex-start; font-size: 0.68rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em; background: var(--deep); color: var(--gold); border-radius: 999px; padding: 0.05rem 0.5rem; margin-bottom: 0.3rem; }
+    .download:not(.yours) .tag { display: none; }
+    .release { margin-top: 1rem; font-size: 0.85rem; color: rgba(237, 230, 244, 0.75); }
+    .release a { color: var(--white); }
+
+    main section { padding: 3rem 0 0.5rem; }
+    .muted { color: var(--muted); }
+    .small { font-size: 0.86rem; }
+
+    /* the two systems */
+    .switch { display: inline-flex; gap: 0.25rem; padding: 0.25rem; border-radius: 11px; background: var(--lavender); margin-bottom: 1.4rem; }
+    .switch button {
+      font: inherit; font-weight: 600; border: 0; border-radius: 8px; padding: 0.4rem 1rem; cursor: pointer;
+      background: transparent; color: var(--muted);
+    }
+    .switch button[aria-selected="true"] { background: var(--white); color: var(--purple); box-shadow: 0 1px 5px rgba(75, 30, 120, 0.18); }
+    .steps { list-style: none; margin: 0; padding: 0; counter-reset: step; display: grid; gap: 1.1rem; }
+    .steps > li { counter-increment: step; position: relative; background: var(--white); border: 1px solid var(--line); border-radius: 14px; padding: 1.1rem 1.2rem 1.1rem 4.3rem; }
+    .steps > li::before {
+      content: counter(step); position: absolute; left: 1.2rem; top: 1rem; width: 2.2rem; height: 2.2rem; border-radius: 50%;
+      display: grid; place-items: center; background: var(--purple); color: var(--white); font-weight: 700;
+    }
+    .steps h3 { margin-bottom: 0.3rem; }
+    .steps p:last-child { margin-bottom: 0; }
+    .tip { border-left: 3px solid var(--gold); padding: 0.4rem 0 0.4rem 0.8rem; margin: 0.6rem 0 0; font-size: 0.9rem; color: var(--muted); }
+    .tip strong { color: var(--ink); }
+
+    /* the warnings, drawn after the real thing so somebody knows where to click */
+    .shots { display: flex; flex-wrap: wrap; gap: 0.9rem; margin-top: 0.8rem; }
+    .shot { flex: 1 1 15rem; max-width: 22rem; font-family: "Segoe UI", system-ui, sans-serif; font-size: 0.78rem; line-height: 1.4; border-radius: 6px; overflow: hidden; box-shadow: 0 4px 16px rgba(42, 17, 64, 0.16); }
+    .shot figcaption { font-family: Poppins, system-ui, sans-serif; font-size: 0.78rem; color: var(--muted); padding-top: 0.4rem; }
+    figure { margin: 0; }
+    .smartscreen { background: #0067B8; color: #FFF; padding: 1rem 1rem 0.8rem; min-height: 11.5rem; display: flex; flex-direction: column; }
+    .smartscreen .big { font-size: 1.15rem; font-weight: 300; margin-bottom: 0.5rem; }
+    .smartscreen u { cursor: default; }
+    .smartscreen .buttons { margin-top: auto; display: flex; gap: 0.4rem; justify-content: flex-end; padding-top: 0.8rem; }
+    .smartscreen .btn { border: 1px solid #FFF; padding: 0.25rem 0.9rem; }
+    .click { outline: 3px solid var(--gold); outline-offset: 2px; border-radius: 3px; position: relative; }
+    .click::after {
+      content: "klik"; position: absolute; top: 50%; left: calc(100% + 0.45rem); transform: translateY(-50%);
+      font-family: Poppins, system-ui, sans-serif; font-size: 0.66rem; font-weight: 700; line-height: 1.5;
+      background: var(--gold); color: var(--deep); padding: 0 0.4rem; border-radius: 999px; white-space: nowrap;
+    }
+    /* A button at the right edge has no room beside it, so the word goes on top. */
+    .click.above::after { top: auto; bottom: calc(100% + 0.35rem); left: auto; right: -0.2rem; transform: none; }
+    /* And one as wide as the window gets it inside, at its end. */
+    .click.inside::after { left: auto; right: 0.45rem; }
+    .macdialog { background: #ECECEC; color: #1D1D1F; padding: 1.1rem 1rem 0.9rem; text-align: center; min-height: 11.5rem; display: flex; flex-direction: column; align-items: center; font-family: -apple-system, system-ui, sans-serif; }
+    .macdialog .icon { width: 34px; height: 34px; border-radius: 8px; background: var(--white); display: grid; place-items: center; margin-bottom: 0.5rem; }
+    .macdialog .icon img { width: 26px; }
+    .macdialog b { display: block; margin-bottom: 0.3rem; }
+    .macdialog .buttons { margin-top: auto; display: grid; gap: 0.35rem; width: 100%; padding-top: 0.6rem; }
+    .macdialog .btn { background: #FFF; border-radius: 6px; padding: 0.22rem; box-shadow: 0 0.5px 1.5px rgba(0, 0, 0, 0.25); }
+    .macdialog .btn.blue { background: #0A7CFF; color: #FFF; }
+    .macsettings { background: #FFF; color: #1D1D1F; font-family: -apple-system, system-ui, sans-serif; min-height: 11.5rem; display: grid; grid-template-columns: 6.5rem 1fr; }
+    .macsettings .side { background: #F2F1F6; padding: 0.7rem 0.5rem; display: grid; align-content: start; gap: 0.25rem; color: #555; }
+    .macsettings .side .on { background: #0A7CFF; color: #FFF; border-radius: 5px; padding: 0.1rem 0.35rem; }
+    .macsettings .pane { padding: 0.7rem 0.8rem; }
+    .macsettings .pane .row { border-top: 1px solid #E5E5EA; padding-top: 0.5rem; margin-top: 0.5rem; display: flex; gap: 0.6rem; align-items: center; justify-content: space-between; }
+    .macsettings .btn { background: #FFF; border-radius: 6px; padding: 0.15rem 0.55rem; box-shadow: 0 0.5px 1.5px rgba(0, 0, 0, 0.3); white-space: nowrap; }
+
+    /* what happens next */
+    .cards { display: grid; gap: 0.9rem; grid-template-columns: repeat(auto-fit, minmax(21rem, 1fr)); }
+    .card { background: var(--white); border: 1px solid var(--line); border-radius: 14px; padding: 1.1rem 1.2rem; }
+    .card h3 { margin-bottom: 0.4rem; }
+    .card p:last-child { margin-bottom: 0; }
+    .window { font-family: var(--mono); font-size: 0.74rem; background: #0C0C0C; color: #D6D6D6; border-radius: 8px; padding: 0.7rem 0.8rem; margin: 0.6rem 0 0.8rem; white-space: pre-wrap; line-height: 1.5; }
+    .window .gold { color: #F0C24B; }
+
+    footer { margin-top: 3.5rem; padding: 2rem 0 3rem; border-top: 1px solid var(--line); color: var(--muted); font-size: 0.85rem; }
+    footer p { margin-bottom: 0.4rem; }
+
+    [hidden] { display: none !important; }
+    @media (max-width: 34rem) {
+      .steps > li { padding-left: 1.2rem; }
+      .steps > li::before { position: static; margin-bottom: 0.5rem; }
+      .cards { grid-template-columns: 1fr; }
+      .smartscreen, .macdialog, .macsettings { min-height: 0; }
+      .macsettings { grid-template-columns: 1fr; }
+      .macsettings .side { display: none; }
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <div class="wrap">
+      <div class="brand"><img src="icon.svg" alt="">Preekstof</div>
+      <h1>Preekstof installeren</h1>
+      <p class="lead">Preekstof maakt van de opname van een kerkdienst korte video's met ondertitels, voor sociale media en de eigen website. Het draait op een gewone computer in de kerk of thuis. De opname blijft op die computer.</p>
+
+      <div class="downloads">
+        <a class="download" id="windows" data-asset="Preekstof-Windows.zip"
+           href="https://github.com/M-Kersten/Preekstof/releases/latest/download/Preekstof-Windows.zip">
+          <em class="tag">Voor deze computer</em>
+          <strong>Windows</strong>
+          <span>Windows 10 of 11, 64-bit</span>
+          <span class="size"></span>
+        </a>
+        <a class="download" id="mac" data-asset="Preekstof-Mac.zip"
+           href="https://github.com/M-Kersten/Preekstof/releases/latest/download/Preekstof-Mac.zip">
+          <em class="tag">Voor deze computer</em>
+          <strong>Mac met Apple-chip</strong>
+          <span>M1, M2, M3, M4 en nieuwer</span>
+          <span class="size"></span>
+        </a>
+        <a class="download" id="mac-intel" data-asset="Preekstof-Mac-Intel.zip"
+           href="https://github.com/M-Kersten/Preekstof/releases/latest/download/Preekstof-Mac-Intel.zip">
+          <em class="tag">Voor deze computer</em>
+          <strong>Mac met Intel-processor</strong>
+          <span>Macs van voor eind 2020</span>
+          <span class="size"></span>
+        </a>
+      </div>
+      <p class="release" id="release">Altijd de nieuwste versie. Alle versies en wat erin veranderde staan op <a href="https://github.com/M-Kersten/Preekstof/releases">de pagina met versies</a>.</p>
+    </div>
+  </header>
+
+  <main class="wrap">
+    <section id="stappen">
+      <h2>Zo zet je het op je computer</h2>
+      <div class="switch" role="tablist" aria-label="Kies je computer">
+        <button role="tab" id="tab-windows" aria-controls="voor-windows" aria-selected="true">Windows</button>
+        <button role="tab" id="tab-mac" aria-controls="voor-mac" aria-selected="false">Mac</button>
+      </div>
+
+      <ol class="steps" id="voor-windows" role="tabpanel" aria-labelledby="tab-windows">
+        <li>
+          <h3>Download Preekstof voor Windows</h3>
+          <p>Met de knop bovenaan. Het bestand heet <code>Preekstof-Windows.zip</code> en komt in je map Downloads.</p>
+          <p class="tip"><strong>Scheelt straks een waarschuwing:</strong> klik met de rechtermuisknop op de zip, kies <em>Eigenschappen</em>, zet onderaan een vinkje bij <em>Blokkering opheffen</em> en klik op OK.</p>
+        </li>
+        <li>
+          <h3>Pak de zip uit</h3>
+          <p>Rechtermuisknop op de zip, <em>Alles uitpakken…</em>. Kies een plek waar de map kan blijven staan, bijvoorbeeld Documenten. Er verschijnt een map <code>Preekstof</code>.</p>
+          <p class="tip">Dubbelklik je in de zip zelf op start.bat, dan zegt Preekstof dat hij eerst uitgepakt moet worden. Dat klopt: Windows laat bestanden in een zip niet bij elkaar.</p>
+        </li>
+        <li>
+          <h3>Dubbelklik op <code>start.bat</code></h3>
+          <p>Staat er een blauw venster met <em>Windows heeft uw pc beveiligd</em>? Dat komt doordat Preekstof nieuw is voor Microsoft. Klik op <em>Meer info</em> en daarna op <em>Toch uitvoeren</em>. Dit gebeurt één keer.</p>
+          <div class="shots">
+            <figure>
+              <div class="shot smartscreen" aria-hidden="true">
+                <div class="big">Windows heeft uw pc beveiligd</div>
+                <div>Microsoft Defender SmartScreen heeft voorkomen dat een niet-herkende app werd gestart. Als u deze app uitvoert, loopt uw pc mogelijk risico.</div>
+                <div style="margin-top:0.5rem"><u class="click">Meer info</u></div>
+                <div class="buttons"><span class="btn">Niet uitvoeren</span></div>
+              </div>
+              <figcaption>Eerst <em>Meer info</em></figcaption>
+            </figure>
+            <figure>
+              <div class="shot smartscreen" aria-hidden="true">
+                <div class="big">Windows heeft uw pc beveiligd</div>
+                <div>App: start.bat<br>Uitgever: Onbekende uitgever</div>
+                <div class="buttons"><span class="btn click above">Toch uitvoeren</span><span class="btn">Niet uitvoeren</span></div>
+              </div>
+              <figcaption>Dan <em>Toch uitvoeren</em></figcaption>
+            </figure>
+          </div>
+          <p class="tip">Krijg je een grijs venster <em>Open bestand, beveiligingswaarschuwing</em>, klik dan op <em>Uitvoeren</em>.</p>
+        </li>
+      </ol>
+
+      <ol class="steps" id="voor-mac" role="tabpanel" aria-labelledby="tab-mac" hidden>
+        <li>
+          <h3>Download Preekstof voor de Mac</h3>
+          <p>Welke van de twee? Klik linksboven op het appeltje en kies <em>Over deze Mac</em>. Staat daar <em>Chip Apple M1</em> (of M2, M3, M4), dan is het <em>Mac met Apple-chip</em>. Staat er <em>Processor</em> met Intel erin, dan de Intel-versie.</p>
+        </li>
+        <li>
+          <h3>Open de zip</h3>
+          <p>Safari pakt hem vanzelf uit in je map Downloads. Met Chrome of Firefox dubbelklik je zelf op <code>Preekstof-Mac.zip</code>. Er verschijnt een map <code>Preekstof</code>; zet die bijvoorbeeld in Documenten.</p>
+        </li>
+        <li>
+          <h3>Dubbelklik op <code>start.command</code></h3>
+          <p>De eerste keer houdt de Mac dat tegen, omdat Preekstof niet uit de App Store komt. Klik op <em>Gereed</em>. Open dan <em>Systeeminstellingen</em>, ga naar <em>Privacy en beveiliging</em> en scrol helemaal naar beneden. Bij de melding over start.command klik je op <em>Open toch</em> en bevestig je met je wachtwoord of vingerafdruk.</p>
+          <div class="shots">
+            <figure>
+              <div class="shot macdialog" aria-hidden="true">
+                <div class="icon"><img src="icon.svg" alt=""></div>
+                <b>“start.command” niet geopend</b>
+                <div>Apple kan niet controleren of “start.command” vrij is van malware.</div>
+                <div class="buttons"><span class="btn blue click inside">Gereed</span><span class="btn">Verplaats naar prullenmand</span></div>
+              </div>
+              <figcaption>Eerst <em>Gereed</em></figcaption>
+            </figure>
+            <figure>
+              <div class="shot macsettings" aria-hidden="true">
+                <div class="side"><span>Algemeen</span><span>Weergave</span><span class="on">Privacy en beveiliging</span><span>Bureaublad</span></div>
+                <div class="pane">
+                  <b>Beveiliging</b>
+                  <div class="row"><span>“start.command” is geblokkeerd om je Mac te beschermen.</span><span class="btn click above">Open toch</span></div>
+                </div>
+              </div>
+              <figcaption>Dan in Systeeminstellingen <em>Open toch</em></figcaption>
+            </figure>
+          </div>
+          <p class="tip">Op macOS 14 of ouder gaat het sneller: houd de Control-toets ingedrukt, klik op start.command, kies <em>Open</em> en daarna nog een keer <em>Open</em>. Vraagt de Mac of Terminal bij je map Downloads of Documenten mag, klik dan op OK.</p>
+        </li>
+      </ol>
+    </section>
+
+    <section id="eerste-keer">
+      <h2>De eerste keer</h2>
+      <div class="cards">
+        <div class="card">
+          <h3>Er gaat een zwart venster open</h3>
+          <div class="window" aria-hidden="true"><span class="gold">[Preekstof]</span> versie 0.11.0
+<span class="gold">[Preekstof]</span> FFmpeg, het programma dat de video's maakt, wordt eenmalig opgehaald (ongeveer 100 MB) …
+<span class="gold">[Preekstof]</span> Preekstof draait op http://localhost:8000
+<span class="gold">[Preekstof]</span> Laat dit venster open zolang je met Preekstof werkt.</div>
+          <p>Daarin staat wat Preekstof aan het doen is. De eerste keer haalt hij een paar onderdelen op, dat duurt bij een gewone internetverbinding een paar minuten. Daarna opent de app vanzelf in je browser.</p>
+          <p>Zolang je met Preekstof werkt, blijft dat venster open. Sluit je het, dan stopt de app.</p>
+        </div>
+        <div class="card">
+          <h3>Doe de proef</h3>
+          <p>Rechtsboven in de app staat of alles gereed is. Klik erop en kies <em>Doe de proef</em>: in een halve minuut maakt Preekstof een testclip, en dan weet je dat deze computer het kan voordat het zondag is.</p>
+          <p>De eerste dienst duurt het langst. Het spraakmodel, zo'n 460 MB, komt binnen terwijl je de app verkent.</p>
+        </div>
+        <div class="card">
+          <h3>Je eigen werk staat apart</h3>
+          <p>Diensten, clips, het logo en de huisstijl van jullie kerk staan in de map <code>Preekstof</code> in je persoonlijke map. Op Windows is dat <code>C:\Gebruikers\jouw naam\Preekstof</code>, op de Mac de thuismap.</p>
+          <p>De map met de app zelf mag je dus gerust vervangen of weggooien.</p>
+        </div>
+        <div class="card">
+          <h3>Bijwerken</h3>
+          <p>Komt er een nieuwe versie, dan staat er bovenin de app <em>nieuwe versie</em>. Klik erop, kies <em>Bijwerken</em> en daarna <em>Nu opnieuw starten</em>. Je eigen werk blijft waar het is.</p>
+        </div>
+      </div>
+    </section>
+
+    <section id="nodig">
+      <h2>Wat je nodig hebt</h2>
+      <p>Een computer met Windows 10 of 11, of een Mac met macOS 13 of nieuwer. Minstens 8 GB werkgeheugen en 5 GB vrije ruimte; de clips zelf nemen daarna weinig plek in. Een snelle computer is fijn, nodig is hij niet: een dienst van anderhalf uur uitschrijven kost op een gewone laptop een half uur tot een uur.</p>
+      <p>Voor het zoeken naar goede momenten gebruikt Preekstof Claude van Anthropic, met een eigen sleutel van jullie kerk. De app legt bij de eerste start uit hoe je die krijgt en wat het kost. Alleen de uitgeschreven tekst gaat daarheen, de opname nooit. Lees voor de kerkenraad <a href="https://github.com/M-Kersten/Preekstof/blob/HEAD/PRIVACY.md">wat er met jullie opname gebeurt</a>.</p>
+    </section>
+
+    <section id="hulp">
+      <h2>Loopt er iets vast?</h2>
+      <p>Lees eerst wat er in het zwarte venster staat. Preekstof zegt daar in gewone woorden wat er misging en wat je kunt doen.</p>
+      <p>Kom je er niet uit, open dan in de app het paneel rechtsboven en klik op <em>Melding opslaan</em>. Dat bestand vertelt wie je helpt precies wat er op jouw computer gebeurde, zonder de opnames of teksten van jullie diensten.</p>
+    </section>
+  </main>
+
+  <footer>
+    <div class="wrap">
+      <p>Preekstof is gemaakt door Merijn Kersten. De broncode en alle versies staan op <a href="https://github.com/M-Kersten/Preekstof">GitHub</a>.</p>
+      <p>FFmpeg en de modellen voor spraak en het volgen van de spreker haalt Preekstof op jullie eigen computer op; zie <a href="https://github.com/M-Kersten/Preekstof/blob/HEAD/NOTICE">NOTICE</a> voor de licenties.</p>
+    </div>
+  </footer>
+
+  <script>
+    // Which download is for this computer. A guess, and the other buttons stay right there.
+    (function () {
+      var ua = navigator.userAgent || "";
+      var platform = (navigator.userAgentData && navigator.userAgentData.platform) || navigator.platform || "";
+      var isMac = /Mac/i.test(platform) || /Macintosh/.test(ua);
+      var isWindows = /Win/i.test(platform) || /Windows/.test(ua);
+
+      // Safari says "Intel" on every Mac, so the browser cannot be asked. The graphics chip
+      // can: an Apple chip draws with an Apple GPU, an Intel Mac with Intel or AMD graphics.
+      function intelMac() {
+        try {
+          var gl = document.createElement("canvas").getContext("webgl");
+          var info = gl && gl.getExtension("WEBGL_debug_renderer_info");
+          var said = info ? gl.getParameter(info.UNMASKED_RENDERER_WEBGL) : "";
+          return /Intel|AMD|Radeon|NVIDIA/i.test(said) && !/Apple/i.test(said);
+        } catch (e) {
+          return false;
+        }
+      }
+
+      var yours = isWindows ? "windows" : isMac ? (intelMac() ? "mac-intel" : "mac") : null;
+      if (yours) document.getElementById(yours).classList.add("yours");
+
+      var tabs = { windows: document.getElementById("tab-windows"), mac: document.getElementById("tab-mac") };
+      var panels = { windows: document.getElementById("voor-windows"), mac: document.getElementById("voor-mac") };
+      function show(which) {
+        for (var key in tabs) {
+          tabs[key].setAttribute("aria-selected", String(key === which));
+          panels[key].hidden = key !== which;
+        }
+      }
+      tabs.windows.addEventListener("click", function () { show("windows"); });
+      tabs.mac.addEventListener("click", function () { show("mac"); });
+      if (isMac) show("mac");
+
+      // The version, the date and the sizes, from GitHub. Without an answer the page simply
+      // stays as it is: the buttons always point at the newest release.
+      fetch("https://api.github.com/repos/M-Kersten/Preekstof/releases/latest", { headers: { Accept: "application/vnd.github+json" } })
+        .then(function (r) { return r.ok ? r.json() : null; })
+        .then(function (release) {
+          if (!release || !release.tag_name) return;
+          var found = {};
+          (release.assets || []).forEach(function (a) { found[a.name] = a; });
+          document.querySelectorAll(".download").forEach(function (button) {
+            var asset = found[button.getAttribute("data-asset")];
+            if (asset) {
+              button.querySelector(".size").textContent = Math.round(asset.size / 1e6) + " MB";
+            } else {
+              button.classList.add("missing");
+              button.href = release.html_url;
+              button.querySelector(".size").textContent = "Bij deze versie nog niet beschikbaar";
+            }
+          });
+          var when = release.published_at ? new Date(release.published_at).toLocaleDateString("nl-NL", { day: "numeric", month: "long", year: "numeric" }) : "";
+          var line = document.getElementById("release");
+          line.innerHTML = "";
+          line.appendChild(document.createTextNode("Versie " + release.tag_name.replace(/^v/, "") + (when ? ", " + when : "") + ". "));
+          var link = document.createElement("a");
+          link.href = release.html_url;
+          link.textContent = "Wat er in deze versie veranderde";
+          line.appendChild(link);
+        })
+        .catch(function () {});
+    })();
+  </script>
+</body>
+</html>

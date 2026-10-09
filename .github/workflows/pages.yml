@@ -1,0 +1,51 @@
+# The page a church is sent to: what to download and how to get it running.
+#
+# site/index.html, with the Poppins files and the icon the app already carries, so there is
+# one copy of each. The download buttons point at releases/latest/download/<name>, so a new
+# release needs nothing here.
+#
+# Needs GitHub Pages switched on once, by hand: Settings → Pages → Build and deployment →
+# Source: GitHub Actions.
+name: pages
+
+on:
+  push:
+    paths: ["site/**", ".github/workflows/pages.yml"]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: The page, its fonts and its icon
+        run: |
+          set -eu
+          mkdir -p _site/fonts
+          cp site/index.html _site/
+          cp frontend/public/icon.svg _site/
+          for weight in Regular Medium SemiBold ExtraBold; do
+            cp "templates/fonts/Poppins-$weight.ttf" _site/fonts/
+          done
+          cp templates/fonts/OFL-Poppins.txt _site/fonts/
+          ls -R _site
+
+      - uses: actions/configure-pages@v5
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: _site
+      - id: deployment
+        uses: actions/deploy-pages@v4

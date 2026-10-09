@@ -100,3 +100,28 @@ def test_a_failed_update_gives_the_old_python_back(tmp_path):
     assert (app / "python" / "oud.txt").is_file(), "de oude Python is terug"
     assert (app / "python" / "bin" / "python3").is_file()
     assert not (app / ".update" / "ready").exists(), "en hij probeert het niet bij elke start opnieuw"
+
+
+def a_mac(tmp_path: Path, version: str) -> dict:
+    """A PATH with a sw_vers on it that says which macOS this is."""
+    bin_dir = tmp_path / "fakebin"
+    bin_dir.mkdir()
+    sw_vers = bin_dir / "sw_vers"
+    sw_vers.write_text(f"#!/bin/bash\necho {version}\n")
+    sw_vers.chmod(0o755)
+    return {**os.environ, "PATH": f"{bin_dir}{os.pathsep}{os.environ['PATH']}"}
+
+
+@pytest.mark.parametrize("have, runs", [("13.6.1", False), ("14.0", True), ("15.2", True)])
+def test_a_mac_older_than_the_download_was_built_for_is_told_so(tmp_path, have, runs):
+    """Instead of a Python that falls over on a library it cannot load."""
+    app = tmp_path / "Preekstof"
+    an_app(app, "1")
+    (app / "bundle.json").write_text('{"kind": "mac-arm64", "version": "1", "macos": "14.0"}')
+    done = subprocess.run(["bash", str(app / "start.command")], cwd=app, input="\n",
+                          capture_output=True, text=True, timeout=60,
+                          env={**a_mac(tmp_path, have), "HOME": str(app)})
+    assert (app / "runs.txt").exists() == runs, done.stdout
+    if not runs:
+        assert "vraagt macOS 14.0 of nieuwer" in done.stdout and have in done.stdout
+        assert "gewone zip" in done.stdout

@@ -127,6 +127,40 @@ release. Daardoor liep het bewerken van een clip vast op een melding over `on`. 
 scherm en server ook een vingerafdruk van de code, dus de balk verschijnt meteen, en de editor
 loopt niet meer vast op een veld dat de oude server niet meestuurt.
 
+**Een download per computer, met alles erin.** Voor Windows, voor een Mac met Apple-chip en
+voor een Mac met Intel-processor is er nu een eigen download. Python en alle onderdelen zitten
+erin, dus uitpakken en dubbelklikken is genoeg: geen Python installeren, geen tweede keer starten.
+Een paar dingen mag de download van hun licentie niet meebrengen. FFmpeg en één onderdeel voor
+het geluid haalt Preekstof bij de eerste start op, zoals het dat met FFmpeg altijd al deed. De
+installatiepagina zegt per computer welke knop het is en waar je klikt als Windows of de Mac
+waarschuwt dat ze de app nog niet kennen.
+
+Elke download is voordat hij online gaat uitgepakt en gestart op een echte Windows-computer en op
+twee echte Macs, via start.bat en start.command, tot en met een proefclip met ondertitel. Daarbij
+kwamen twee fouten boven die elke Mac geraakt zouden hebben. De server met FFmpeg voor de Mac
+weigerde de app. En na uitpakken met een dubbelklik was start.command geen programma meer maar
+een tekstbestand. Allebei opgelost.
+
+**Je eigen werk staat in een eigen map.** Diensten, clips, het merk, logo's, muziek, het
+eindscherm, de woordenlijst en de sleutel staan voortaan in de map `Preekstof` in je
+persoonlijke map, los van de app. De app zelf kan zo in zijn geheel vervangen worden zonder dat
+er iets van jullie verdwijnt. Bij de eerste start van deze versie verhuist de app wat er in de
+oude map stond, één keer, zonder iets te overschrijven, en zegt in het zwarte venster waar het
+staat. Niet in Documenten: die map wordt op veel laptops door OneDrive of iCloud bijgehouden, en
+een opname van een dienst is twee gigabyte.
+
+**Bijwerken vanuit de app.** Is er een nieuwe versie, dan staat er in de balk **nieuwe versie**.
+In het paneel daaronder staat in één regel wat er verandert, met een knop **Bijwerken**. Die
+haalt de download voor deze computer op en controleert hem. Daarna start **Nu opnieuw starten**
+de app opnieuw met de nieuwe versie, en het scherm laadt vanzelf opnieuw zodra die draait. Er
+gebeurt niets zonder dat iemand op de knop drukt.
+
+**Een rustiger eerste start.** Het zwarte venster spreekt Nederlands en toont bij het installeren
+één regel die meeloopt, in plaats van bladzijden Engels. Wat er precies gebeurde staat in een
+logbestand, en komt alleen op het scherm als het misgaat. Het spraakmodel, zo'n 460 MB, komt
+binnen terwijl je de app verkent, en het paneel rechtsboven laat zien hoe ver het is. Bij de
+eerste dienst hoef je er dan niet meer op te wachten.
+
 **Onder de motorkap.** Het eindscherm werd vlak voor het maken van een video al die tijd niet
 bijgewerkt; dat gebeurde alleen bij het opstarten en bij het opslaan van het merk. Dat klopt nu.
 Windows weigert een video te vervangen die nog openstaat in een speler. De app wacht daar nu even

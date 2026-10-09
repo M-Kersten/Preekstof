@@ -25,6 +25,7 @@ launcher fetches exactly that one on the first start (see NOTICE).
 import argparse
 import json
 import os
+import re
 import shutil
 import stat
 import subprocess
@@ -84,7 +85,7 @@ def entry(name: str, date: tuple, runnable: bool) -> zipfile.ZipInfo:
 
 
 def build(out: Path, number: str, python: Path | None = None, bundle: str | None = None,
-          fetch: dict[str, str] | None = None) -> Path:
+          fetch: dict[str, str] | None = None, macos: str | None = None) -> Path:
     """Write the zip and hand back where it landed.
 
     `python` is a prepared Python, which goes in as `python/`. start.bat and start.command
@@ -122,6 +123,8 @@ def build(out: Path, number: str, python: Path | None = None, bundle: str | None
                 zip_file.writestr(entry(name, STAMPED, True), found.read_bytes())
         if bundle:
             said = {"kind": bundle, "version": number, "fetch": dict(sorted((fetch or {}).items()))}
+            if macos:
+                said["macos"] = macos  # start.command says so on an older Mac
             zip_file.writestr(entry(f"{inside}/bundle.json", STAMPED, False),
                               json.dumps(said, indent=2) + "\n")
     return target
@@ -168,6 +171,44 @@ def prepare(python: Path) -> dict[str, str]:
     return fetch
 
 
+def lowest_macos(otool_output: str) -> tuple[int, int] | None:
+    """The macOS one binary was built for, out of what `otool -l` says about it."""
+    found = None
+    for block in otool_output.split("Load command")[1:]:
+        if "cmd LC_BUILD_VERSION" in block:
+            said = re.search(r"minos (\d+)\.(\d+)", block)
+        elif "cmd LC_VERSION_MIN_MACOSX" in block:
+            said = re.search(r"\bversion (\d+)\.(\d+)", block)
+        else:
+            continue
+        if said:
+            found = max(found or (0, 0), (int(said.group(1)), int(said.group(2))))
+    return found
+
+
+def oldest_mac(python: Path) -> str | None:
+    """The oldest macOS this bundle runs on: the newest one any of its binaries asks for.
+
+    A wheel is picked for the Mac that installs it. onnxruntime and PyAV only make theirs for
+    the Apple chip from macOS 14 on, and numpy has a separate build for 14, so a bundle
+    made on a new runner does not start on a Mac a few years older. Measured here, from the
+    binaries themselves, rather than guessed at from the wheel names.
+    """
+    if sys.platform != "darwin":
+        return None
+    newest = None
+    for found in sorted(python.rglob("*")):
+        binary = found.suffix in (".so", ".dylib") or found.parent.name == "bin"
+        if not binary or not found.is_file():
+            continue
+        said = subprocess.run(["otool", "-l", str(found)], capture_output=True, text=True)
+        built_for = lowest_macos(said.stdout) if said.returncode == 0 else None
+        if built_for and (newest is None or built_for > newest):
+            newest = built_for
+            print(f"  macOS {built_for[0]}.{built_for[1]}: {found.relative_to(python)}")
+    return f"{newest[0]}.{newest[1]}" if newest else None
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__,
                                      formatter_class=argparse.RawDescriptionHelpFormatter)
@@ -180,19 +221,23 @@ def main() -> int:
     args = parser.parse_args()
 
     fetch: dict[str, str] = {}
+    macos = None
     if args.bundle:
         if not args.python:
             raise SystemExit("--bundle heeft --python nodig: de Python die erin gaat.")
         fetch = prepare(args.python)
+        macos = oldest_mac(args.python)
     elif args.python:
         interpreter(args.python)
-    built = build(args.out, args.version, args.python, args.bundle, fetch)
+    built = build(args.out, args.version, args.python, args.bundle, fetch, macos)
     size = built.stat().st_size / 1e6
     with zipfile.ZipFile(built) as zip_file:
         count = len(zip_file.namelist())
     print(f"{built}  ({size:.1f} MB, {count} bestanden)")
     if fetch:
         print("Bij de eerste start opgehaald: " + ", ".join(f"{k} {v}" for k, v in fetch.items()))
+    if macos:
+        print(f"Draait vanaf macOS {macos}.")
     print("Uitpakken en start.bat of start.command aanklikken. Verder is er niets nodig.")
     return 0
 

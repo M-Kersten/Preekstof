@@ -333,15 +333,19 @@ def download(url: str, target: Path, tries: int = 3) -> None:
             with urllib.request.urlopen(request, timeout=120) as res, target.open("wb") as out:
                 total = int(res.headers.get("content-length") or 0)
                 done = 0
+                moving = sys.stdout.isatty()  # in a log, a hundred lines of percentages say nothing
                 while chunk := res.read(1024 * 256):
                     out.write(chunk)
                     done += len(chunk)
-                    if total:
+                    if total and moving:
                         # Of how many, not just how far: "12 MB" says nothing about how long
                         # this is going to take, and this is the first thing a new install waits on.
                         print(f"\r  {done * 100 // total:3d}%  ({done // 1_000_000} van "
                               f"{total // 1_000_000} MB)", end="", flush=True)
-                print()
+                if moving:
+                    print()
+                else:
+                    print(f"  {done // 1_000_000} MB binnen", flush=True)
             return
         except OSError as exc:
             print()

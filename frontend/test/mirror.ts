@@ -44,6 +44,7 @@ const fixture: Fixture = JSON.parse(readFileSync(path, 'utf8'))
 const style = (fontSize: number): Style => ({
   font: 'Montserrat', fontSize, fontWeight: 'bold', color: '#FFFFFF', outline: 4,
   outlineColor: '#000000', background: false, animation: 'fade', animationSpeed: 180,
+  highlight: false, highlightColor: '#C9971C',
 })
 
 const source = (width: number, height: number): VideoInfo => ({
@@ -82,7 +83,7 @@ for (const c of fixture.crop) {
 }
 
 const walk = (t: TrackCase['track']): Track => ({
-  fps: t.fps, x: t.x, jumps: t.jumps, coverage: 1, subject: 'face', cuts: [], enough: true,
+  fps: t.fps, x: t.x, jumps: t.jumps, coverage: 1, subject: 'face', cuts: [], enough: true, zoom: null, y: null,
 })
 
 let moments = 0

@@ -25,7 +25,9 @@ def settle(client: TestClient, sid: str, tries: int = 100) -> dict:
     """Wait for the fetch job to be over, whichever way it ends."""
     for _ in range(tries):
         state = client.get(f"/services/{sid}/status").json()
-        if state["status"] != "fetching":
+        # The status is written down a moment before the job itself is over; a second link
+        # sent in that moment is turned away as "still busy".
+        if state["status"] != "fetching" and state["job"] is None:
             return client.get(f"/services/{sid}").json()
         time.sleep(0.05)
     raise AssertionError("the fetch never finished")
@@ -100,7 +102,7 @@ def test_a_second_recording_does_not_keep_the_first_one_s_preacher(client, monke
     assert settle(client, sid)["preacher"] == "ds. M. Kreuk"
 
     monkeypatch.setattr(fetch, "fetch", lambda url, folder, *a, **k: came_in(folder, "Tweede"))
-    client.post(f"/services/{sid}/link", json={"url": "https://youtu.be/def"})
+    assert client.post(f"/services/{sid}/link", json={"url": "https://youtu.be/def"}).status_code == 200
     done = settle(client, sid)
     assert done["preacher"] == ""
     assert done["posterUrl"] is None

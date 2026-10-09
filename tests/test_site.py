@@ -37,6 +37,6 @@ def test_what_the_page_loads_is_put_next_to_it():
 
 def test_nothing_on_the_page_comes_from_another_server():
     """Fonts from Google would hand every visitor's address to Google; nothing else is needed."""
-    loaded = re.findall(r'(?:src|href)="(https?://[^"]+)"', PAGE)
+    loaded = re.findall(r'(?:src|href)="(https?://[^"]+)"', PAGE)  # mailto: is not loaded
     assert all(url.startswith("https://github.com/") for url in loaded), loaded
     assert "fonts.googleapis" not in PAGE

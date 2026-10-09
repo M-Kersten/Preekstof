@@ -188,6 +188,7 @@
     .why .card p { color: var(--muted); }
     .pilot { margin-top: 1.4rem; padding: 1.1rem 1.3rem; border-radius: 14px; background: var(--lavender); color: var(--ink); }
     .pilot strong { color: var(--purple); }
+    .pilot p:last-child { margin-bottom: 0; }
 
     /* the downloads, in a band of their own */
     .band { background: var(--deep); color: var(--deep-ink); margin-top: 3.5rem; padding: 3rem 0 3.2rem; }
@@ -224,14 +225,14 @@
       <div class="brand"><img src="icon.svg" alt="">Preekstof</div>
       <div class="hero-grid">
         <div>
-          <p class="kicker">Voor kerken die hun diensten uitzenden</p>
+          <p class="kicker">Van preekstof naar gespreksstof</p>
           <h1>De preek van zondag, <em>doordeweeks</em> nog een keer gehoord.</h1>
           <p class="lead">Preekstof zoekt in de opname van jullie dienst de momenten die blijven hangen en maakt er korte video's van. Met ondertitels die meelopen met wat er gezegd wordt, jullie logo erop en een tekst voor onder de post. Een vrijwilliger zet het na de dienst aan en heeft aan het eind van de middag een handvol clips.</p>
           <div class="cta">
             <a class="button gold" href="#downloaden">Download Preekstof</a>
             <a class="button ghost" href="#hoe">Zo werkt het</a>
           </div>
-          <p class="note">Voor Windows en de Mac. De opname blijft op jullie eigen computer.</p>
+          <p class="note">Gratis, voor Windows en de Mac. De opname blijft op jullie eigen computer.</p>
         </div>
         <figure class="example">
           <div class="phone">
@@ -332,15 +333,18 @@
           <p>Avondmaal, Ezechiël, Nicodemus, de Korinthiërs. Een woordenlijst met kerkwoorden helpt het spraakmodel, en jullie vullen hem aan met de namen uit eigen gemeente.</p>
         </div>
         <div class="card">
-          <h3>Een paar cent per dienst</h3>
-          <p>Het zoeken naar momenten kost op jullie eigen sleutel ongeveer drie cent per dienst. De tekst onder een post een tiende cent. De app laat vooraf zien wat het kost.</p>
+          <h3>Gratis, op een paar cent na</h3>
+          <p>Preekstof kost niets en is zonder winstoogmerk gemaakt. Wat er overblijft is het zoeken naar momenten bij Claude, op jullie eigen sleutel: ongeveer drie cent per dienst, en een tiende cent voor de tekst onder een post. De app laat vooraf zien wat het kost.</p>
         </div>
         <div class="card">
           <h3>Eén keer instellen</h3>
           <p>Letter, kleuren, logo, muziek en eindscherm stel je één keer in. Elke clip daarna draagt ze vanzelf, ook als volgende week iemand anders de clips maakt.</p>
         </div>
       </div>
-      <p class="pilot"><strong>Preekstof is nieuw.</strong> Het draait als pilot bij de eerste kerken, en elke nieuwe versie komt voort uit wat zij op zondag tegenkomen. Bijwerken doe je met één knop in de app.</p>
+      <div class="pilot">
+        <p><strong>Begonnen in de Nieuwe Kerk Utrecht.</strong> Daar wilden we kijken of de preek van zondag doordeweeks een tweede leven kan krijgen op sociale media, en daar wordt Preekstof nu getest met de eigen diensten. Wat zij op zondag tegenkomen, komt in de volgende versie terecht. Bijwerken doe je met één knop in de app.</p>
+        <p>Werkt jullie kerk er ook mee, of zou je dat willen? Een vraag, een wens of een idee is welkom op <a href="mailto:info@merijnkersten.nl">info@merijnkersten.nl</a>.</p>
+      </div>
     </section>
   </div>
 
@@ -496,14 +500,14 @@
     <section id="hulp">
       <h2>Loopt er iets vast?</h2>
       <p>Lees eerst wat er in het zwarte venster staat. Preekstof zegt daar in gewone woorden wat er misging en wat je kunt doen.</p>
-      <p>Kom je er niet uit, open dan in de app het paneel rechtsboven en klik op <em>Melding opslaan</em>. Dat bestand vertelt wie je helpt precies wat er op jouw computer gebeurde, zonder de opnames of teksten van jullie diensten.</p>
+      <p>Kom je er niet uit, open dan in de app het paneel rechtsboven en klik op <em>Melding opslaan</em>. Dat bestand vertelt wie je helpt precies wat er op jouw computer gebeurde, zonder de opnames of teksten van jullie diensten. Stuur het mee in een mail naar <a href="mailto:info@merijnkersten.nl">info@merijnkersten.nl</a>.</p>
     </section>
   </div>
   </main>
 
   <footer>
     <div class="wrap">
-      <p>Preekstof is gemaakt door Merijn Kersten. De broncode en alle versies staan op <a href="https://github.com/M-Kersten/Preekstof">GitHub</a>.</p>
+      <p>Preekstof is een gratis project zonder winstoogmerk van Merijn Kersten, begonnen in de Nieuwe Kerk Utrecht. Vragen en ideeën: <a href="mailto:info@merijnkersten.nl">info@merijnkersten.nl</a>. De broncode en alle versies staan op <a href="https://github.com/M-Kersten/Preekstof">GitHub</a>.</p>
       <p>FFmpeg en de modellen voor spraak en het volgen van de spreker haalt Preekstof op jullie eigen computer op; zie <a href="https://github.com/M-Kersten/Preekstof/blob/HEAD/NOTICE">NOTICE</a> voor de licenties.</p>
     </div>
   </footer>

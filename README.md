@@ -114,14 +114,16 @@ internet, or GitHub not answering, means the app starts without mentioning updat
 ### Making a release
 
 For whoever maintains this: bump `backend/version.py`, write what changed in `CHANGELOG.md`,
-commit, then `git tag v0.11.0 && git push origin v0.11.0`, or run **Actions → release → Run
+commit, then `git tag v0.12.0 && git push origin v0.12.0`, or run **Actions → release → Run
 workflow** with the number. `.github/workflows/release.yml` refuses a number that does not match
 `version.py`, or a committed `frontend/dist` that is not what the code builds. It builds the
 plain zip on Linux, the Windows download on Windows (the embeddable Python from python.org)
 and the Mac downloads on an Apple-chip and an Intel runner (python-build-standalone), with
 `tools/release.py --bundle`. Each is then unpacked and started the way a church would, through
 its start script, by `tools/check_bundle.py`: a first start with `--smoke` down to a rendered
-clip, then an update put in place and a restart. Only then do they go into a draft release.
+clip with the words written out by the tiny model, then an update put in place and a restart. Only
+when every one passes is the release published, at once and as the latest, so the download page
+and the update button see it straight away.
 Untick **publish** in the Actions form to build and check without making a release. The
 Intel Mac is allowed to fail, for the day its wheels stop being made; the rest is not.
 

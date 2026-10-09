@@ -12,7 +12,7 @@ words a volunteer can read, and tag the commit with the same number.
 import hashlib
 from pathlib import Path
 
-VERSION = "0.11.0"
+VERSION = "0.12.0"
 
 # What to call this stretch of the road. A pilot at churches nobody here can see is not the
 # same thing as a finished product, and the number says so before anybody has to ask.

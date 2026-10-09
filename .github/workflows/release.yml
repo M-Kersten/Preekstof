@@ -1,9 +1,9 @@
 # What a church downloads, built from a tag or from the Actions tab.
 #
-#   git tag v0.11.0 && git push origin v0.11.0
+#   git tag v0.12.0 && git push origin v0.12.0
 #
 # or Actions → release → Run workflow, with the version in the box. Both routes end in the
-# same draft release; the second one exists because a tag cannot always be pushed from
+# same published release; the second one exists because a tag cannot always be pushed from
 # where the work happens, and because cutting a release should not need a terminal. Untick
 # "publish" there to build and check the downloads without making a release of them.
 #
@@ -12,7 +12,8 @@
 # either of them being wrong, so a mismatch fails the build rather than shipping.
 #
 # Four downloads, each unpacked and started the way a church would, through start.bat or
-# start.command, before anything is published:
+# start.command, before anything is published. Only when all of them pass does the release
+# go out, straight away, as the newest one:
 #
 #   preekstof-<versie>.zip    the plain one: brings no Python, asks the computer for one
 #   Preekstof-Windows.zip     with its own Python and the packages already in it
@@ -30,11 +31,11 @@ on:
   workflow_dispatch:
     inputs:
       version:
-        description: "Version to release, without the v (e.g. 0.11.0)"
+        description: "Version to release, without the v (e.g. 0.12.0)"
         required: true
         type: string
       publish:
-        description: "Put the downloads in a draft release (untick to only build and check them)"
+        description: "Publish the release once every download passed (untick to only build and check them)"
         required: false
         type: boolean
         default: true
@@ -245,7 +246,7 @@ jobs:
           if-no-files-found: error
 
   publish:
-    name: Draft release
+    name: Release
     needs: [plain, windows, mac]
     if: >-
       always() && needs.plain.result == 'success' && needs.windows.result == 'success'
@@ -288,5 +289,8 @@ jobs:
           target_commitish: ${{ github.sha }}
           files: dist/*.zip
           body_path: notes.md
-          draft: true
+          # Published straight away and marked latest: the download page and the update
+          # button both ask for releases/latest, and a draft is invisible to both.
+          draft: false
+          make_latest: "true"
           fail_on_unmatched_files: true

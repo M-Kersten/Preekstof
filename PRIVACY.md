@@ -3,7 +3,7 @@
 Eén pagina, bedoeld om aan een kerkenraad te geven. Wie liever de korte versie leest: die
 staat in de app zelf, bij het scherm waar de kosten van het zoeken staan.
 
-Versie 0.11.0 (pilot). Als de app op iets anders draait dan wat hier staat, klopt deze pagina
+Versie 0.12.0 (pilot). Als de app op iets anders draait dan wat hier staat, klopt deze pagina
 niet meer; het versienummer staat onderin het gereedheidspaneel.
 
 ## In het kort

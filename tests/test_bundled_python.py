@@ -64,9 +64,7 @@ def test_installing_the_packages_asks_for_pip_first(tmp_path, monkeypatch):
     order = []
     monkeypatch.setattr(launcher, "ensure_pip", lambda: order.append("pip"))
     monkeypatch.setattr(launcher, "INSTALLED_STAMP", tmp_path / "nergens")
-    monkeypatch.setattr(launcher.subprocess, "run",
-                        lambda cmd, *a, **k: order.append("install") or
-                        subprocess.CompletedProcess(cmd, 0))
+    monkeypatch.setattr(launcher, "quietly", lambda cmd, doing: order.append("install") or True)
     launcher.ensure_requirements()
     assert order[:2] == ["pip", "install"]
 

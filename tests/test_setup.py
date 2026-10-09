@@ -15,7 +15,7 @@ def client(tmp_path, monkeypatch):
     """The app with its own empty config.env and templates folder, never the real ones."""
     templates = tmp_path / "templates"
     (templates / "brands").mkdir(parents=True)
-    monkeypatch.setattr(brands, "TEMPLATES_DIR", templates)
+    monkeypatch.setattr(brands, "OWN_TEMPLATES", templates)
     monkeypatch.setattr(brands, "BRANDS_DIR", templates / "brands")
     monkeypatch.setattr(brands, "ACTIVE_FILE", templates / "brands" / "actief.json")
     monkeypatch.setattr(setup, "STATE", templates / "setup.json")

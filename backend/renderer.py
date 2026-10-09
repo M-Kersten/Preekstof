@@ -15,7 +15,7 @@ from fractions import Fraction
 from pathlib import Path
 from typing import Callable
 
-from .models import (FONTS_DIR, REPLACE_TRIES, REPLACE_WAIT, TEMPLATES_DIR, CropWindow, MusicSettings, Output,
+from .models import (FONTS_DIR, OWN_TEMPLATES, REPLACE_TRIES, REPLACE_WAIT, CropWindow, MusicSettings, Output,
                      Track, VideoInfo, Watermark)
 
 ProgressCallback = Callable[[float, str], None]
@@ -362,7 +362,7 @@ def watermark_file(watermark: Watermark | None) -> Path | None:
     """The logo to put in the corner, when one is chosen and still on disk."""
     if watermark is None or not watermark.file:
         return None
-    path = TEMPLATES_DIR / "logos" / watermark.file
+    path = OWN_TEMPLATES / "logos" / watermark.file
     return path if path.is_file() else None
 
 

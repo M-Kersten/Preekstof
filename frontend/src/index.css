@@ -1180,3 +1180,18 @@ a.button.small { padding: 0.22rem 0.55rem; font-size: 0.78rem; font-weight: 500;
 .enhance-row .check { display: flex; align-items: baseline; gap: 0.5rem; font-weight: 600; cursor: pointer; }
 .enhance-row .check input { transform: translateY(2px); }
 .enhance-row .hint { margin-top: 0.3rem; }
+
+/* A newer version, in the readiness panel and as a word pinned to the pill that opens it.
+   Pinned rather than beside it: the bar has no room left for one more word at laptop width. */
+.syscheck .pill { position: relative; }
+.syscheck .pill .fresh { position: absolute; top: -0.55rem; right: -0.35rem; padding: 0 0.4rem; border-radius: 999px; background: var(--gold); color: var(--deep, #2E1240); font-size: 0.62rem; font-weight: 700; line-height: 1.5; white-space: nowrap; pointer-events: none; }
+.syscheck-list li.syscheck-update { grid-template-columns: 10px 1fr auto; border-top: 1px solid var(--line); margin-top: 0.4rem; padding-top: 0.6rem; }
+.syscheck-update .dot { background: var(--gold); }
+.syscheck-update div { display: flex; flex-direction: column; gap: 0.15rem; min-width: 0; }
+.syscheck-update .meta { font-size: 0.78rem; }
+.syscheck-update .trouble { font-size: 0.78rem; color: var(--danger); }
+.syscheck-update .small-link { font-size: 0.82rem; white-space: nowrap; }
+/* While the app starts again with a new version, over everything. */
+.restarting { position: fixed; inset: 0; z-index: 100; display: grid; place-items: center; background: rgba(46, 18, 64, 0.88); color: var(--white); text-align: center; padding: 2rem; }
+.restarting strong { display: block; font-size: 1.3rem; margin-bottom: 0.5rem; }
+.restarting p { max-width: 34rem; color: rgba(255, 255, 255, 0.8); }

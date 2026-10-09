@@ -1,10 +1,12 @@
 import { useEffect, useRef, useState } from 'react'
-import { api, type Health } from '../api'
+import { api, type Health, type UpdateState } from '../api'
 import Report from './Report'
+import UpdateRow from './UpdateRow'
 
 /** Shows whether the app has everything it needs. Opens by itself when something is wrong. */
 export default function SystemCheck({ onProve }: { onProve: () => void }) {
   const [report, setReport] = useState<Health | null>(null)
+  const [update, setUpdate] = useState<UpdateState | null>(null)
   const [open, setOpen] = useState(false)
   const box = useRef<HTMLDivElement>(null)
 
@@ -30,6 +32,7 @@ export default function SystemCheck({ onProve }: { onProve: () => void }) {
         })
         .catch(() => alive && setReport(null))
     load()
+    api.update().then((u) => alive && setUpdate(u)).catch(() => undefined)
     const handle = setInterval(load, 60000)
     return () => {
       alive = false
@@ -40,11 +43,13 @@ export default function SystemCheck({ onProve }: { onProve: () => void }) {
   if (!report) return null
 
   const failing = report.checks.filter((c) => !c.ok)
+  const fresh = Boolean(update && (update.newer || update.staged))
   return (
     <div className="syscheck" ref={box}>
       <button className={`bare pill ${report.ok ? 'ok' : 'bad'}`} onClick={() => setOpen(!open)} aria-expanded={open}>
         <span className="dot" />
         {report.ok ? 'Alles gereed' : failing.length === 1 ? '1 punt nog niet in orde' : `${failing.length} punten nog niet in orde`}
+        {fresh && <span className="fresh">nieuwe versie</span>}
       </button>
       {open && (
         <ul className="syscheck-list">
@@ -68,6 +73,7 @@ export default function SystemCheck({ onProve }: { onProve: () => void }) {
             </div>
             <button className="small" onClick={() => { setOpen(false); onProve() }}>Starten</button>
           </li>
+          {update && fresh && <UpdateRow state={update} onChange={setUpdate} />}
           <li className="syscheck-version">
             <span>Preekstof {report.version}</span>
             <Report trouble={failing.length

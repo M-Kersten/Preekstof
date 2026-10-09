@@ -9,7 +9,7 @@ from pathlib import Path
 from pydantic import BaseModel
 
 from . import discovery, mac, speed, storage, transcription, version, vision
-from .models import PROJECTS_DIR, ROOT, SERVICES_DIR, TEMPLATES_DIR
+from .models import OWN_TEMPLATES, PROJECTS_DIR, ROOT, SERVICES_DIR
 from .transcription import MODEL_SIZE
 
 
@@ -36,14 +36,14 @@ def _ffmpeg() -> Check:
 
 
 def _whisper() -> Check:
-    cache = Path(os.environ.get("HF_HOME", Path.home() / ".cache" / "huggingface")) / "hub"
     on_gpu = transcription.engine() == transcription.MLX
-    pattern = f"models--mlx-community--whisper-{MODEL_SIZE}-mlx" if on_gpu \
-        else f"models--*faster-whisper-{MODEL_SIZE}"
-    downloaded = any(cache.glob(pattern)) if cache.is_dir() else False
+    downloaded = transcription.model_present(MODEL_SIZE)
     # Worth naming: the Mac's graphics chip is several times the processor at this, and a
     # laptop that could be using it and is not is the sort of thing you want to be told.
     where = "op de grafische chip" if on_gpu else "op de processor"
+    fetching = transcription.PREFETCH
+    if not downloaded and fetching["busy"] and fetching["message"]:
+        return Check(name="Spraakmodel", ok=True, detail=f"{MODEL_SIZE} {where}. {fetching['message']}")
     if not downloaded:
         return Check(name="Spraakmodel", ok=True,
                      detail=f"{MODEL_SIZE} {where}, wordt bij de eerste keer uitschrijven gedownload")
@@ -115,7 +115,7 @@ def _disk() -> Check:
 
 def _folders() -> Check:
     problems = []
-    for directory in (PROJECTS_DIR, SERVICES_DIR, TEMPLATES_DIR):
+    for directory in (PROJECTS_DIR, SERVICES_DIR, OWN_TEMPLATES):
         try:
             directory.mkdir(parents=True, exist_ok=True)
             probe = directory / ".schrijftest"

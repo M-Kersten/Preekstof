@@ -18,9 +18,9 @@ import json
 from datetime import datetime, timezone
 from pathlib import Path
 
-from .models import ROOT
+from . import places
 
-KEPT = ROOT / "logs" / "runs.jsonl"
+KEPT = places.LOGS / "runs.jsonl"
 MAX_BYTES = 4 * 1024 * 1024  # a line is ~200 bytes; this is years of Sundays
 
 

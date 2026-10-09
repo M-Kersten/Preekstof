@@ -14,10 +14,10 @@ from pathlib import Path
 
 from pydantic import BaseModel
 
-from .models import (TEMPLATES_DIR, ChurchInfo, Enhance, MusicSettings, OutroConfig, ShareSettings, Style,
+from .models import (OWN_TEMPLATES, ChurchInfo, Enhance, MusicSettings, OutroConfig, ShareSettings, Style,
                      Vocabulary, Watermark, write_atomic)
 
-BRANDS_DIR = TEMPLATES_DIR / "brands"
+BRANDS_DIR = OWN_TEMPLATES / "brands"
 ACTIVE_FILE = BRANDS_DIR / "actief.json"
 
 
@@ -56,14 +56,14 @@ def migrate() -> None:
     if any(BRANDS_DIR.glob("*.json")) and ACTIVE_FILE.is_file():
         return
     church = ChurchInfo()
-    old_church = TEMPLATES_DIR / "church.json"
+    old_church = OWN_TEMPLATES / "church.json"
     if old_church.is_file():
         try:
             church = ChurchInfo.model_validate_json(old_church.read_text(encoding="utf-8"))
         except Exception:  # noqa: BLE001  an unreadable file is the same as not having one
             pass
     outro = OutroConfig()
-    old_outro = TEMPLATES_DIR / "outro.json"
+    old_outro = OWN_TEMPLATES / "outro.json"
     if old_outro.is_file():
         try:
             outro = OutroConfig.model_validate_json(old_outro.read_text(encoding="utf-8"))

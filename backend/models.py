@@ -19,10 +19,15 @@ from typing import Literal
 
 from pydantic import BaseModel, Field
 
-ROOT = Path(__file__).resolve().parent.parent
-PROJECTS_DIR = ROOT / "projects"
-TEMPLATES_DIR = ROOT / "templates"
+from . import places
+
+ROOT = places.ROOT
+DATA_DIR = places.DATA  # the church's own work, outside the app folder: see places.py
+PROJECTS_DIR = DATA_DIR / "projects"
+TEMPLATES_DIR = ROOT / "templates"  # what comes with the app: fonts, the music library, examples
+OWN_TEMPLATES = places.OWN_TEMPLATES  # what the church made: brands, logos, music, end screen
 FONTS_DIR = TEMPLATES_DIR / "fonts"
+places.ensure()
 
 FontWeight = Literal["regular", "medium", "semibold", "bold", "extrabold"]
 CropStrategy = Literal["static", "tracked"]  # "tracked": the crop follows the speaker
@@ -341,7 +346,7 @@ def save_transcript(project: Project, transcript: Transcript) -> None:
 
 
 def load_church_info() -> ChurchInfo:
-    path = TEMPLATES_DIR / "church.json"
+    path = OWN_TEMPLATES / "church.json"
     if path.is_file():
         return ChurchInfo.model_validate_json(path.read_text(encoding="utf-8"))
     return ChurchInfo()
@@ -401,7 +406,7 @@ class OutroConfig(BaseModel):
 # thinks this range could work); processing a candidate creates a regular
 # Project through backend/clips.py and is recorded as a ProcessedClip.
 
-SERVICES_DIR = ROOT / "services"
+SERVICES_DIR = DATA_DIR / "services"
 
 ServiceStatus = Literal[
     "created", "fetching", "uploaded", "transcribing", "transcribed", "analyzing", "ready",

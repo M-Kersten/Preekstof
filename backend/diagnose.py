@@ -27,9 +27,10 @@ from datetime import datetime
 from pathlib import Path
 
 from . import health, journal, logbook, selftest, settings, version
+from . import places
 from .models import ROOT, SERVICES_DIR
 
-CONFIG = ROOT / "config.env"
+CONFIG = places.CONFIG
 LOG_LINES = 400
 
 # Settings worth seeing in a report and safe to read out loud. Anything not on this list is

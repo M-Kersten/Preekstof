@@ -71,8 +71,8 @@ def test_render_reports_progress_that_only_moves_forward(clip, tmp_path):
 
 
 def test_render_burns_the_logo_into_the_corner(clip, tmp_path):
-    from backend.models import TEMPLATES_DIR
-    logos = TEMPLATES_DIR / "logos"
+    from backend.models import OWN_TEMPLATES
+    logos = OWN_TEMPLATES / "logos"
     logos.mkdir(parents=True, exist_ok=True)
     logo = logos / "_test_mark.png"
     subprocess.run(["ffmpeg", "-y", "-v", "error", "-f", "lavfi",

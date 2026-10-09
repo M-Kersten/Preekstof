@@ -28,7 +28,7 @@ export default defineConfig({
     proxy: Object.fromEntries(
       ['/brands', '/church', '/diagnose', '/fonts', '/health', '/kerkdienstgemist', '/logos', '/music',
        '/outro', '/privacy', '/projects', '/selftest', '/services', '/setup', '/share', '/storage',
-       '/templates', '/words'].map((path) => [path, backend]),
+       '/templates', '/update', '/words'].map((path) => [path, backend]),
     ),
   },
 })

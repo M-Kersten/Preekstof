@@ -1,7 +1,14 @@
 """Shared fixtures. Tests import the backend package, so the repo root must be importable."""
 
+import os
 import sys
+import tempfile
 from pathlib import Path
+
+# A church's own work lives outside the app (backend/places.py). The tests get a folder of
+# their own for it, set before anything imports the backend, so a test run never reads or
+# writes the data of whoever runs it.
+os.environ["PREEKSTOF_DATA"] = tempfile.mkdtemp(prefix="preekstof-tests-")
 
 ROOT = Path(__file__).resolve().parent.parent
 if str(ROOT) not in sys.path:

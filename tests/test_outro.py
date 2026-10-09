@@ -2,6 +2,7 @@
 
 import math
 import os
+import subprocess
 from pathlib import Path
 
 import pytest
@@ -22,9 +23,11 @@ def graph(command: list[str]) -> str:
 
 
 def with_logo(tmp_path: Path, **kwargs) -> tuple[OutroConfig, Path]:
-    logo = outro.TEMPLATES_DIR / "logos" / "testlogo.png"
+    logo = outro.OWN_TEMPLATES / "logos" / "testlogo.png"
     if not logo.is_file():
-        pytest.skip("templates/logos/testlogo.png is er niet")
+        logo.parent.mkdir(parents=True, exist_ok=True)
+        subprocess.run(["ffmpeg", "-y", "-v", "error", "-f", "lavfi", "-i", "color=c=white:s=200x100",
+                        "-frames:v", "1", "-update", "1", str(logo)], check=True)
     cfg = config(**kwargs)
     cfg.logo.file = logo.name
     return cfg, tmp_path

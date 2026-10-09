@@ -20,10 +20,11 @@ from pathlib import Path
 from pydantic import BaseModel
 
 from . import brands, discovery
-from .models import ROOT, TEMPLATES_DIR, write_atomic
+from . import places
+from .models import OWN_TEMPLATES, write_atomic
 
-CONFIG = ROOT / "config.env"
-STATE = TEMPLATES_DIR / "setup.json"
+CONFIG = places.CONFIG
+STATE = OWN_TEMPLATES / "setup.json"
 
 # A church that does not publish on kerkdienstgemist uploads its files by hand, which is a
 # perfectly ordinary way to use this. Saying so once is the difference between a setting

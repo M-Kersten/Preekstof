@@ -133,22 +133,22 @@ def test_a_failed_build_still_starts_the_app_with_the_interface_it_has(tmp_path,
     monkeypatch.setattr(launcher.subprocess, "run", refuse)
     launcher.ensure_frontend()  # must not raise
     said = capsys.readouterr().out
-    assert "Building the interface failed" in said
-    assert "came with the repository" in said
+    assert "bouwen van het scherm is mislukt" in said
+    assert "met de app meekwam" in said
 
 
 def test_too_old_a_node_is_named_before_the_build_is_attempted(tmp_path, monkeypatch, capsys):
     build(tmp_path, source_age=0, build_age=100)
     monkeypatch.setattr(launcher, "ROOT", tmp_path)
     monkeypatch.setattr(launcher.shutil, "which", lambda name: "/usr/local/bin/" + name)
-    monkeypatch.setattr(launcher, "node_too_old", lambda _f: "Node.js 20.11.1 is too old")
+    monkeypatch.setattr(launcher, "node_too_old", lambda _f: "Node.js 20.11.1 is te oud")
 
     def refuse(*_args, **_kwargs):
         raise AssertionError("the build must not be started with a Node that cannot run it")
 
     monkeypatch.setattr(launcher.subprocess, "run", refuse)
     launcher.ensure_frontend()
-    assert "too old" in capsys.readouterr().out
+    assert "te oud" in capsys.readouterr().out
 
 
 def test_without_any_interface_at_all_it_stops_and_says_why(tmp_path, monkeypatch):
@@ -158,7 +158,7 @@ def test_without_any_interface_at_all_it_stops_and_says_why(tmp_path, monkeypatc
     monkeypatch.setattr(launcher.shutil, "which", lambda name: None)
     with pytest.raises(SystemExit) as stopped:
         launcher.ensure_frontend()
-    assert "cannot start" in str(stopped.value)
+    assert "kan niet starten" in str(stopped.value)
 
 
 def test_what_node_reports_decides_whether_the_build_runs(tmp_path, monkeypatch):
@@ -172,7 +172,7 @@ def test_what_node_reports_decides_whether_the_build_runs(tmp_path, monkeypatch)
         return run
 
     monkeypatch.setattr(launcher.subprocess, "run", answer("v20.11.1\n"))
-    assert "too old" in (launcher.node_too_old(tmp_path) or "")
+    assert "te oud" in (launcher.node_too_old(tmp_path) or "")
     monkeypatch.setattr(launcher.subprocess, "run", answer("v22.20.0\n"))
     assert launcher.node_too_old(tmp_path) is None
 

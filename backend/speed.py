@@ -24,9 +24,9 @@ import re
 import statistics
 from dataclasses import dataclass
 
-from .models import TEMPLATES_DIR, write_atomic
+from .models import OWN_TEMPLATES, write_atomic
 
-KEPT = TEMPLATES_DIR / "speed.json"
+KEPT = OWN_TEMPLATES / "speed.json"
 REMEMBER = 8  # runs to average over; a laptop on battery is slower than the same one on mains
 SERVICE_MINUTES = 90  # what "a service" means when the panel states a number
 TOO_SHORT = 120.0  # a clip of ten seconds says nothing about an hour and a half

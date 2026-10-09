@@ -13,10 +13,10 @@ from pathlib import Path
 from typing import Callable
 
 from . import gpu, mac, settings
-from .models import TEMPLATES_DIR, Segment, Spoken, Transcript, write_atomic
+from .models import OWN_TEMPLATES, TEMPLATES_DIR, Segment, Spoken, Transcript, write_atomic
 
 LANGUAGE = "nl"
-VOCABULARY_PATH = TEMPLATES_DIR / "woordenlijst.json"
+VOCABULARY_PATH = OWN_TEMPLATES / "woordenlijst.json"
 MODEL_SIZE = settings.text("WHISPER_MODEL", "small")
 # Only a few minutes of a service ever become clips, so the clip is worth a bigger model.
 ACCURATE_MODEL_SIZE = settings.text("WHISPER_MODEL_ACCURATE", "medium")
@@ -534,6 +534,47 @@ def fetch_model(size: str, on_progress: Callable[[float, str], None] | None = No
         )
     except Exception:  # noqa: BLE001  never a reason not to transcribe
         return size
+
+
+def model_present(size: str = MODEL_SIZE) -> bool:
+    """Is this model in the Hugging Face cache already, for the engine this machine uses?"""
+    cache = Path(os.environ.get("HF_HOME", Path.home() / ".cache" / "huggingface")) / "hub"
+    pattern = (f"models--mlx-community--whisper-{size}-mlx" if engine() == MLX
+               else f"models--*faster-whisper-{size}")
+    return cache.is_dir() and any(cache.glob(pattern))
+
+
+# Where the fetch at the first start has got to, for the readiness panel.
+PREFETCH: dict = {"busy": False, "share": 0.0, "message": ""}
+
+
+def prefetch(say: Callable[[str], None]) -> None:
+    """Fetch the speech model at the first start, before anybody is waiting on it.
+
+    The first transcription used to start with 460 MB of downloading. Fetched in the
+    background while the volunteer is still looking round, it is there by the time a
+    service is picked. A quarter at a time in the window; the readiness panel has the rest.
+    The graphics chip of a Mac uses another model, which it fetches itself on first use.
+    """
+    if engine() == MLX or model_present(MODEL_SIZE):
+        return
+    PREFETCH.update(busy=True, share=0.0, message="")
+    quarters = [0]
+
+    def told(share: float, message: str) -> None:
+        PREFETCH.update(share=share, message=message)
+        if int(share * 4) > quarters[0]:
+            quarters[0] = int(share * 4)
+            say(message)
+
+    say(f"Het spraakmodel wordt alvast opgehaald (ongeveer {MODEL_MB.get(MODEL_SIZE, 0)} MB). "
+        "Je kunt de app ondertussen gewoon gebruiken.")
+    try:
+        fetch_model(MODEL_SIZE, told)
+    finally:
+        PREFETCH.update(busy=False)
+    if model_present(MODEL_SIZE):
+        say("Het spraakmodel staat klaar.")
 
 
 def compute_for(device: str) -> str:

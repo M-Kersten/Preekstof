@@ -15,14 +15,15 @@ import traceback
 from fastapi import Body, FastAPI, HTTPException, Request, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, JSONResponse, Response
+from starlette.background import BackgroundTask
 from fastapi.staticfiles import StaticFiles
 
 from contextlib import asynccontextmanager
 from datetime import datetime, timezone
 
-from . import brands, clips, diagnose, discovery, fetch, fonts, formats, health, house, look, journal, kerkdienstgemist, music, outro, polish, posts, renderer, room, selftest, settings, setup, speed, storage, tracking, transcription, version, wordlearn
+from . import brands, clips, diagnose, discovery, fetch, fonts, formats, health, house, lifecycle, look, journal, kerkdienstgemist, music, outro, polish, posts, renderer, room, selftest, settings, setup, speed, storage, tracking, transcription, updates, version, wordlearn
 from .jobs import Cancelled, Estimator, Job, JobManager
-from .models import (ROOT, SERVICES_DIR, TEMPLATES_DIR, ChurchInfo, ClipCandidate, ClipOrigin, CropWindow, Enhance, MusicSettings, ProcessedClip, Project, ShareSettings, Watermark,
+from .models import (DATA_DIR, OWN_TEMPLATES, ROOT, SERVICES_DIR, TEMPLATES_DIR, ChurchInfo, ClipCandidate, ClipOrigin, CropWindow, Enhance, MusicSettings, ProcessedClip, Project, ShareSettings, Watermark,
                      ProjectDetail, Service, ServiceDetail, Style, Track, Transcript, load_church_info, load_project,
                      load_service, load_service_transcript, load_transcript, new_project, new_service, project_dir,
                      recover_services, save_project, save_service, save_service_transcript, save_transcript, service_dir)
@@ -330,7 +331,7 @@ def end_screen(project: Project, shape: formats.Shape) -> Path | None:
 
     A shape whose own end screen cannot be made gets the upright one, with bars beside it.
     """
-    upright = ROOT / project.outro
+    upright = DATA_DIR / project.outro
     try:
         made = outro.ensure_outro(shape)
     except Exception as exc:  # noqa: BLE001  keep the end screen there is and carry on
@@ -662,7 +663,7 @@ def delete_brand(brand_id: str):
 
 # --- logos ----------------------------------------------------------------------
 
-LOGO_DIR = TEMPLATES_DIR / "logos"
+LOGO_DIR = OWN_TEMPLATES / "logos"
 ALLOWED_LOGOS = {".png", ".jpg", ".jpeg", ".webp", ".svg"}
 
 
@@ -786,6 +787,64 @@ def clean_expired():
 def read_health():
     """What the app needs to work: FFmpeg, the speech model, the analysis model, disk space, folders."""
     return health.report()
+
+
+UPDATE = "bijwerken"  # the job key of fetching a new version
+
+
+@app.get("/update")
+def read_update():
+    """Is there a newer version, can this install fetch it itself, and how far is it."""
+    release = updates.known()
+    newer = bool(release and updates.newer(release.version))
+    job = jobs.get(UPDATE)
+    return {
+        "running": version.VERSION,
+        "latest": {"version": release.version, "headline": release.headline(), "url": release.url}
+                  if release else None,
+        "newer": newer,
+        "why": updates.why_not(release) if release and newer else "",
+        "staged": updates.staged(),
+        "canRestart": lifecycle.can_restart(),
+        "job": job.to_dict() if job.status != "idle" else None,
+    }
+
+
+@app.post("/update")
+def start_update():
+    """Fetch the download for this computer and put it ready. Nothing changes until a restart."""
+    release = updates.known(max_age=0)
+    if release is None or not updates.newer(release.version):
+        raise HTTPException(409, "Er is geen nieuwere versie.")
+    reason = updates.why_not(release)
+    if reason:
+        raise HTTPException(400, reason)
+    if jobs.is_running(UPDATE):
+        return jobs.get(UPDATE).to_dict()
+
+    def work(job: Job) -> None:
+        def told(share: float, message: str) -> None:
+            job.advance(share)
+            job.message = message
+
+        try:
+            updates.stage(release, told, job.check)
+        except updates.UpdateError as exc:
+            raise RuntimeError(str(exc)) from exc
+
+    return jobs.start(UPDATE, work).to_dict()
+
+
+@app.post("/update/restart")
+def restart_for_update():
+    """Stop, so start.bat or start.command put the new version in place and start it."""
+    if not updates.staged():
+        raise HTTPException(409, "Er staat geen nieuwe versie klaar.")
+    if not lifecycle.can_restart():
+        raise HTTPException(400, "Sluit het zwarte venster en start Preekstof opnieuw; dan gaat de "
+                                 "nieuwe versie erin.")
+    # After the answer has gone out, or the page would see the connection drop instead.
+    return JSONResponse({"restarting": True}, background=BackgroundTask(lifecycle.restart))
 
 
 SELFTEST = "zelftest"  # the job key; there is only ever one of these running
@@ -914,8 +973,8 @@ def upload_outro_background(file: UploadFile):
     ext = Path(file.filename or "").suffix.lower()
     if ext not in {".jpg", ".jpeg", ".png", ".webp"}:
         raise HTTPException(400, "Gebruik een jpg-, png- of webp-afbeelding")
-    target = TEMPLATES_DIR / f"outro-achtergrond{ext}"
-    for old in TEMPLATES_DIR.glob("outro-achtergrond.*"):
+    target = OWN_TEMPLATES / f"outro-achtergrond{ext}"
+    for old in OWN_TEMPLATES.glob("outro-achtergrond.*"):
         old.unlink(missing_ok=True)
     with target.open("wb") as out:
         shutil.copyfileobj(file.file, out, length=1024 * 1024)
@@ -1659,7 +1718,18 @@ def process_selected(service_id: str):
 
 
 # Fonts and the outro template, used by the preview.
-app.mount("/templates", StaticFiles(directory=TEMPLATES_DIR), name="templates")
+@app.get("/templates/{path:path}")
+def template_file(path: str):
+    """A file of the church's own (a logo, the end screen) or else one that came with the app.
+
+    Two folders behind one address: the church's work no longer lives in the app folder
+    (places.py), and the interface should not have to know which of the two a file is in.
+    """
+    for base in (OWN_TEMPLATES, TEMPLATES_DIR):
+        target = (base / path).resolve()
+        if target.is_relative_to(base.resolve()) and target.is_file():
+            return FileResponse(target)
+    raise HTTPException(404, "Niet gevonden")
 
 # Serve the built frontend when it exists (npm run build), so one process runs the whole app.
 dist = ROOT / "frontend" / "dist"

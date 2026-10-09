@@ -151,7 +151,8 @@ def test_start_bat_uses_a_python_that_came_with_the_download():
     """And runs the launcher with it straight away: an embeddable build has no venv."""
     said = (Path(release.ROOT) / "start.bat").read_text(encoding="utf-8")
     assert 'if exist "python\\python.exe"' in said
-    assert '"python\\python.exe" launcher.py' in said
+    assert 'set "RUN=python\\python.exe"' in said
+    assert '"%RUN%" launcher.py' in said
 
 
 def test_start_bat_no_longer_asks_for_a_second_double_click_first():
@@ -160,3 +161,33 @@ def test_start_bat_no_longer_asks_for_a_second_double_click_first():
     assert "LOCALAPPDATA" in said, "er wordt gekeken waar winget het net neerzette"
     assert said.index("goto :restart") > said.index("LOCALAPPDATA"), \
         "opnieuw beginnen is de uitwijk, niet de eerste stap"
+
+
+def test_batch_files_keep_windows_line_endings():
+    """cmd can miss a goto label in a batch file with Unix line endings."""
+    for name in ("start.bat", "tools/apply-update.bat"):
+        raw = (Path(release.ROOT) / name).read_bytes()
+        assert raw.count(b"\r\n") == raw.count(b"\n"), name
+
+
+def test_start_bat_puts_a_downloaded_update_in_place_from_outside_itself():
+    said = (Path(release.ROOT) / "start.bat").read_text(encoding="utf-8")
+    assert 'if exist ".update\\ready"' in said
+    assert '"%TEMP%\\preekstof-bijwerken.bat"' in said, "cmd cannot overwrite the file it is reading"
+    assert 'if "%STATUS%"=="75" goto :again' in said
+    update = (Path(release.ROOT) / "tools" / "apply-update.bat").read_text(encoding="utf-8")
+    assert "robocopy" in update and "/MOVE" in update
+    assert 'start.bat"' in update.splitlines()[-1], "and it starts the new version when it is done"
+
+
+def test_start_bat_says_so_when_it_runs_from_inside_the_zip():
+    said = (Path(release.ROOT) / "start.bat").read_text(encoding="utf-8")
+    assert 'if not exist "%~dp0launcher.py"' in said and "Alles uitpakken" in said
+
+
+def test_start_command_is_read_whole_before_it_runs():
+    """An update replaces start.command while bash is reading it."""
+    said = (Path(release.ROOT) / "start.command").read_text(encoding="utf-8")
+    assert said.rstrip().endswith('main "$@"; exit $?')
+    assert "xattr -dr com.apple.quarantine" in said
+    assert '[ -x "python/bin/python3" ]' in said

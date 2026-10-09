@@ -29,7 +29,7 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Callable
 
-from . import renderer, subtitles, tracking, transcription, vision
+from . import places, renderer, subtitles, tracking, transcription, vision
 from .models import ROOT, Output, Style, Transcript
 
 SAMPLE = ROOT / "selftest" / "proef.opus"
@@ -37,8 +37,8 @@ SECONDS = 8.7
 
 # Beside the log, because that is where the things somebody may have to send from live, and
 # it is already swept and already out of git. Nothing in here is worth keeping.
-WORK = ROOT / "logs" / "zelftest"
-KEPT = ROOT / "logs" / "zelftest.json"
+WORK = places.LOGS / "zelftest"
+KEPT = places.LOGS / "zelftest.json"
 
 # Words out of the spoken sentence that survive a rough machine voice. Not the whole
 # sentence: whisper mishears a synthetic voice the way it mishears a bad microphone, and a

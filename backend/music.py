@@ -21,9 +21,9 @@ from urllib.parse import quote
 
 from pydantic import BaseModel
 
-from .models import TEMPLATES_DIR
+from .models import OWN_TEMPLATES, TEMPLATES_DIR
 
-OWN_DIR = TEMPLATES_DIR / "music"
+OWN_DIR = OWN_TEMPLATES / "music"
 LIBRARY_DIR = TEMPLATES_DIR / "library" / "music"
 ALLOWED = {".mp3", ".m4a", ".wav", ".aac", ".ogg"}
 

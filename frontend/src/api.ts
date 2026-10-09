@@ -235,6 +235,20 @@ export interface StorageReport {
   items: StorageItem[]
 }
 
+/** A newer version, and how far this install has got with it (backend/updates.py). */
+export interface UpdateState {
+  running: string
+  latest: { version: string; headline: string; url: string } | null
+  newer: boolean
+  /** Why the button cannot do it here; then the link is the way. Empty when it can. */
+  why: string
+  /** The version that is ready to go in at the next start. */
+  staged: string | null
+  /** False when the app runs without the launcher, and nobody would start it again. */
+  canRestart: boolean
+  job: RenderStatus | null
+}
+
 export interface HealthCheck {
   name: string
   ok: boolean
@@ -566,6 +580,9 @@ export const api = {
   saveShare: (share: ShareSettings) => request<ShareSettings>('/share', json('PUT', share)),
   stopRender: (id: string) => request<RenderStatus>(`/projects/${id}/render/stop`, { method: 'POST' }),
   health: () => request<Health>('/health'),
+  update: () => request<UpdateState>('/update'),
+  startUpdate: () => request<RenderStatus>('/update', { method: 'POST' }),
+  restartForUpdate: () => request<{ restarting: boolean }>('/update/restart', { method: 'POST' }),
   /** Ten seconds through the whole chain, so nobody finds out on a Sunday. */
   selfTest: () => request<SelfTest>('/selftest'),
   runSelfTest: () => request<RenderStatus>('/selftest', { method: 'POST' }),

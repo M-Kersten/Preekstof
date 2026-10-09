@@ -22,7 +22,7 @@ from dataclasses import dataclass
 from datetime import datetime, timezone
 from pathlib import Path
 
-from .models import ROOT, Output, Project, Transcript, project_dir, write_atomic
+from .models import DATA_DIR, Output, Project, Transcript, project_dir, write_atomic
 
 
 @dataclass(frozen=True)
@@ -109,7 +109,7 @@ def recipe(project: Project, transcript: Transcript, brand) -> str:
     }
     if not brand.outro.generate:
         # A church that made its own end screen changes it by replacing the file.
-        own = ROOT / project.outro
+        own = DATA_DIR / project.outro
         said["own"] = own.stat().st_mtime if own.is_file() else None
     text = json.dumps(said, sort_keys=True, ensure_ascii=False)
     return hashlib.sha256(text.encode("utf-8")).hexdigest()[:16]

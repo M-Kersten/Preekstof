@@ -1,15 +1,20 @@
 """One-click launcher for Preekstof.
 
-Started by start.bat (Windows) or start.command (macOS) after those scripts
-have created the Python environment. This script:
+Started by start.bat (Windows) or start.command (macOS), with the Python that came with the
+download or one they found on the machine. This script:
 
-  1. installs or updates the Python packages when backend/requirements.txt changed,
-  2. loads config.env (API key, model choices),
-  3. fetches the NVIDIA libraries when config.env asks for the graphics card,
-  4. makes sure ffmpeg/ffprobe are available (downloads a build into tools/ if not),
-  5. starts the web server and opens the browser.
+  1. moves a church's work out of the app folder into its own folder, once (places.py),
+  2. installs or updates the Python packages when backend/requirements.txt changed,
+  3. loads config.env (API key, model choices),
+  4. fetches the NVIDIA libraries when config.env asks for the graphics card,
+  5. makes sure ffmpeg/ffprobe are available (downloads a build into tools/ if not),
+  6. starts the web server, opens the browser and fetches the models in the background.
 
-It can also be run by hand:  python launcher.py
+Everything it says, it says in Dutch: the person reading the black window is a volunteer.
+
+    python launcher.py             start the app
+    python launcher.py --prepare   only install what a download needs, then stop (the release build)
+    python launcher.py --smoke     start, check that the app answers and can render, then stop
 """
 
 import asyncio
@@ -29,19 +34,36 @@ import webbrowser
 import zipfile
 from pathlib import Path
 
+from backend import places  # plain standard library, so it works before anything is installed
+
 ROOT = Path(__file__).resolve().parent
 TOOLS = ROOT / "tools" / "ffmpeg"
-CONFIG = ROOT / "config.env"
+CONFIG = places.CONFIG
 CONFIG_EXAMPLE = ROOT / "config.example.env"
+RESTART = 75  # the exit code start.bat and start.command start the app again on
+RESTARTING = places.DATA / ".herstart"  # the browser tab is still open; do not open another
 PORT = int(os.environ.get("PORT", "8000").split("#")[0].strip() or "8000")
 
 FFMPEG_DOWNLOADS = {
     "Windows": [("https://www.gyan.dev/ffmpeg/builds/ffmpeg-release-essentials.zip", ("ffmpeg.exe", "ffprobe.exe"))],
-    "Darwin": [
-        ("https://evermeet.cx/ffmpeg/getrelease/zip", ("ffmpeg",)),
-        ("https://evermeet.cx/ffmpeg/getrelease/ffprobe/zip", ("ffprobe",)),
+    # One build per kind of Mac. An Intel build on Apple Silicon only runs with Rosetta,
+    # which a Mac does not have until something asks for it.
+    "Darwin-arm64": [
+        ("https://ffmpeg.martin-riedl.de/redirect/latest/macos/arm64/release/ffmpeg.zip", ("ffmpeg",)),
+        ("https://ffmpeg.martin-riedl.de/redirect/latest/macos/arm64/release/ffprobe.zip", ("ffprobe",)),
+    ],
+    "Darwin-x86_64": [
+        ("https://ffmpeg.martin-riedl.de/redirect/latest/macos/amd64/release/ffmpeg.zip", ("ffmpeg",)),
+        ("https://ffmpeg.martin-riedl.de/redirect/latest/macos/amd64/release/ffprobe.zip", ("ffprobe",)),
     ],
 }
+
+
+def ffmpeg_downloads() -> list[tuple[str, tuple[str, ...]]] | None:
+    system = platform.system()
+    if system == "Darwin":
+        return FFMPEG_DOWNLOADS.get(f"Darwin-{platform.machine()}")
+    return FFMPEG_DOWNLOADS.get(system)
 
 
 def say(message: str) -> None:
@@ -103,18 +125,57 @@ def ensure_pip() -> None:
                          "internetverbinding en start opnieuw.")
 
 
+INSTALL_LOG = places.LOGS / "installatie.log"
+
+
+def quietly(command: list[str], doing: str) -> bool:
+    """Run pip without its pages of English, and show one line that keeps moving instead.
+
+    What pip says goes to logs/installatie.log in the church's own folder, and the last of it
+    comes onto the screen when something goes wrong, which is the only time anyone reads it.
+    """
+    INSTALL_LOG.parent.mkdir(parents=True, exist_ok=True)
+    began = time.monotonic()
+    with INSTALL_LOG.open("a", encoding="utf-8") as log:
+        log.write(f"\n--- {time.strftime('%Y-%m-%d %H:%M:%S')}  {' '.join(command)}\n")
+        log.flush()
+        try:
+            process = subprocess.Popen(command, stdout=log, stderr=subprocess.STDOUT)
+        except OSError as exc:
+            log.write(f"{exc}\n")
+            return False
+        while process.poll() is None:
+            took = int(time.monotonic() - began)
+            print(f"\r[Preekstof] {doing} · {took // 60} min {took % 60:02d} s ", end="", flush=True)
+            time.sleep(1)
+    print()
+    if process.returncode == 0:
+        return True
+    lines = INSTALL_LOG.read_text(encoding="utf-8", errors="replace").splitlines()[-15:]
+    print("\n".join(lines))
+    say(f"Wat er precies gebeurde staat in {INSTALL_LOG}.")
+    return False
+
+
 def ensure_requirements() -> None:
-    """Install the packages from requirements.txt whenever that file changed since the last install."""
+    """Install the packages from requirements.txt whenever that file changed since the last install.
+
+    A download that came with everything already installed has the stamp, and passes here
+    in a moment.
+    """
     wanted = REQUIREMENTS.read_text(encoding="utf-8")
     if INSTALLED_STAMP.exists() and INSTALLED_STAMP.read_text(encoding="utf-8") == wanted:
         return
     ensure_pip()
-    say("Onderdelen worden geïnstalleerd of bijgewerkt, dit kan een paar minuten duren …")
-    result = subprocess.run([sys.executable, "-m", "pip", "install", "-r", str(REQUIREMENTS)])
-    if result.returncode != 0:
-        raise SystemExit("Het installeren van de onderdelen is mislukt. Controleer de internetverbinding en start opnieuw.")
+    say("De onderdelen van de app worden geïnstalleerd. De eerste keer duurt dat een paar minuten.")
+    done = quietly([sys.executable, "-m", "pip", "install", "--disable-pip-version-check",
+                    "--no-warn-script-location", "--progress-bar", "off", "-r", str(REQUIREMENTS)],
+                   "Onderdelen installeren")
+    if not done:
+        raise SystemExit("Het installeren van de onderdelen is mislukt. Controleer de internetverbinding "
+                         "en start opnieuw.")
     INSTALLED_STAMP.write_text(wanted, encoding="utf-8")
-    say("Onderdelen zijn up-to-date.")
+    say("De onderdelen zijn geïnstalleerd.")
 
 
 # --- config.env ---------------------------------------------------------------
@@ -122,8 +183,9 @@ def ensure_requirements() -> None:
 
 def load_config() -> None:
     if not CONFIG.exists() and CONFIG_EXAMPLE.exists():
+        CONFIG.parent.mkdir(parents=True, exist_ok=True)
         shutil.copy(CONFIG_EXAMPLE, CONFIG)
-        say(f"Created {CONFIG.name}. Put your ANTHROPIC_API_KEY in it to enable clip suggestions.")
+        say(f"De instellingen staan in {CONFIG}. De sleutel voor Claude vul je in de app zelf in.")
     if not CONFIG.exists():
         return
     from backend import settings
@@ -215,20 +277,29 @@ def ffmpeg_ready() -> bool:
     return shutil.which("ffmpeg") is not None and shutil.which("ffprobe") is not None
 
 
-def download(url: str, target: Path) -> None:
-    say(f"Downloading {url}")
-    with urllib.request.urlopen(url, timeout=120) as res, target.open("wb") as out:
-        total = int(res.headers.get("content-length") or 0)
-        done = 0
-        while chunk := res.read(1024 * 256):
-            out.write(chunk)
-            done += len(chunk)
-            if total:
-                # Of how many, not just how far: "12 MB" says nothing about how long this is
-                # going to take, and this is the first thing a new install waits on.
-                print(f"\r  {done * 100 // total:3d}%  ({done // 1_000_000} of "
-                      f"{total // 1_000_000} MB)", end="", flush=True)
-        print()
+def download(url: str, target: Path, tries: int = 3) -> None:
+    """Fetch one file, saying how far it is, and try again when the line drops."""
+    for attempt in range(1, tries + 1):
+        try:
+            with urllib.request.urlopen(url, timeout=120) as res, target.open("wb") as out:
+                total = int(res.headers.get("content-length") or 0)
+                done = 0
+                while chunk := res.read(1024 * 256):
+                    out.write(chunk)
+                    done += len(chunk)
+                    if total:
+                        # Of how many, not just how far: "12 MB" says nothing about how long
+                        # this is going to take, and this is the first thing a new install waits on.
+                        print(f"\r  {done * 100 // total:3d}%  ({done // 1_000_000} van "
+                              f"{total // 1_000_000} MB)", end="", flush=True)
+                print()
+            return
+        except OSError as exc:
+            print()
+            if attempt == tries:
+                raise
+            say(f"Het ophalen haperde ({exc}); nog een keer …")
+            time.sleep(2 * attempt)
 
 
 def extract_binaries(archive: Path, names: tuple[str, ...]) -> None:
@@ -251,21 +322,26 @@ def ensure_ffmpeg() -> None:
         os.environ["PATH"] = str(TOOLS) + os.pathsep + os.environ.get("PATH", "")
     if ffmpeg_ready():
         return
-    downloads = FFMPEG_DOWNLOADS.get(platform.system())
+    downloads = ffmpeg_downloads()
     if not downloads:
-        raise SystemExit("ffmpeg and ffprobe are not installed. Install them with your package manager "
-                         "(for example: sudo apt install ffmpeg) and start again.")
-    say("FFmpeg was not found. Downloading it once (about 100 MB) into tools/ffmpeg …")
+        raise SystemExit("FFmpeg is niet geïnstalleerd. Installeer het met de pakketbeheerder van deze "
+                         "computer (bijvoorbeeld: sudo apt install ffmpeg) en start opnieuw.")
+    say("FFmpeg, het programma dat de video's maakt, wordt eenmalig opgehaald (ongeveer 100 MB) …")
     for url, names in downloads:
         archive = TOOLS.parent / "download.zip"
         TOOLS.parent.mkdir(parents=True, exist_ok=True)
-        download(url, archive)
+        try:
+            download(url, archive)
+        except OSError as exc:
+            raise SystemExit(f"FFmpeg kon niet opgehaald worden ({exc}). Controleer de internetverbinding "
+                             "en start opnieuw.") from exc
         extract_binaries(archive, names)
         archive.unlink()
     os.environ["PATH"] = str(TOOLS) + os.pathsep + os.environ.get("PATH", "")
     if not ffmpeg_ready():
-        raise SystemExit("FFmpeg download failed. Install FFmpeg manually (https://ffmpeg.org/download.html) and start again.")
-    say("FFmpeg is ready.")
+        raise SystemExit("FFmpeg kwam niet goed binnen. Start opnieuw; lukt het dan nog niet, installeer "
+                         "FFmpeg dan zelf via https://ffmpeg.org/download.html.")
+    say("FFmpeg staat klaar.")
 
 
 # --- frontend -----------------------------------------------------------------
@@ -364,9 +440,9 @@ def node_too_old(frontend: Path) -> str | None:
     wanted = node_wanted(frontend)
     if version is None or fits(version, wanted) is not False:
         return None
-    return (f"Node.js {'.'.join(str(n) for n in version)} at {node} is too old to build the interface; "
-            f"it asks for {wanted}. Install a newer Node.js from https://nodejs.org (22 is the safe "
-            "choice) and start again.")
+    return (f"Node.js {'.'.join(str(n) for n in version)} in {node} is te oud om het scherm te bouwen; "
+            f"er is {wanted} nodig. Installeer een nieuwere Node.js via https://nodejs.org (22 is de "
+            "veilige keus) en start opnieuw.")
 
 
 def carry_on_or_stop(built: Path, trouble: str) -> None:
@@ -378,11 +454,11 @@ def carry_on_or_stop(built: Path, trouble: str) -> None:
     """
     say(trouble)
     if not built.exists():
-        raise SystemExit("There is no built interface to fall back on (frontend/dist is missing), so the "
-                         "app cannot start. Fix the above, or ask a developer to run `npm run build` in "
-                         "frontend/.")
-    say("The interface that came with the repository is used instead. It works, but anything you have "
-        "just pulled will not be in it until the build runs.")
+        raise SystemExit("Er is geen gebouwd scherm om op terug te vallen (frontend/dist ontbreekt), dus "
+                         "de app kan niet starten. Los het bovenstaande op, of vraag een ontwikkelaar om "
+                         "`npm run build` te draaien in frontend/.")
+    say("Het scherm dat met de app meekwam wordt gebruikt. Dat werkt, maar wat je net hebt binnengehaald "
+        "zit er pas in als het bouwen lukt.")
 
 
 def ensure_frontend() -> None:
@@ -392,20 +468,21 @@ def ensure_frontend() -> None:
     built = frontend / "dist" / "index.html"
     npm = shutil.which("npm")
     if npm is None:
-        carry_on_or_stop(built, "The interface has changed but Node.js is not installed, so it cannot "
-                                "be rebuilt. Install Node.js from https://nodejs.org and start again.")
+        carry_on_or_stop(built, "Het scherm is veranderd, maar Node.js is niet geïnstalleerd, dus het kan "
+                                "niet opnieuw gebouwd worden. Installeer Node.js via https://nodejs.org en "
+                                "start opnieuw.")
         return
     old = node_too_old(frontend)
     if old:
         carry_on_or_stop(built, old)
         return
-    say("Building the web interface …")
+    say("Het scherm van de app wordt gebouwd …")
     try:
         if not (frontend / "node_modules").is_dir():
             subprocess.run([npm, "install"], cwd=frontend, check=True)
         subprocess.run([npm, "run", "build"], cwd=frontend, check=True)
     except subprocess.CalledProcessError:
-        carry_on_or_stop(built, "Building the interface failed; what went wrong is in the lines above.")
+        carry_on_or_stop(built, "Het bouwen van het scherm is mislukt; wat er misging staat hierboven.")
 
 
 # --- server -------------------------------------------------------------------
@@ -440,32 +517,118 @@ def port_in_use(port: int) -> bool:
 def open_browser_when_ready(url: str) -> None:
     for _ in range(60):
         if port_in_use(PORT):
-            say(f"Open {url} in your browser if it did not open by itself.")
+            say(f"Opent de browser niet vanzelf? Ga dan naar {url}")
             webbrowser.open(url)
             return
         time.sleep(0.5)
 
 
+def fetch_models() -> None:
+    """The speech model and the person model, fetched while nobody is waiting on them yet.
+
+    They are not in the download: the speech model is 460 MB, and the person model is
+    AGPL-licensed and only ever fetched by the computer that uses it (NOTICE). Fetched here,
+    on the first start, they are there by the time somebody picks a service.
+    """
+    def run() -> None:
+        try:
+            from backend import transcription, vision
+
+            vision.ensure_models()
+        except Exception:  # noqa: BLE001  following the speaker fetches it again when needed
+            pass
+        try:
+            transcription.prefetch(say)
+        except Exception:  # noqa: BLE001  the first transcription fetches it then
+            pass
+
+    threading.Thread(target=run, daemon=True).start()
+
+
+def smoke() -> None:
+    """Start, check that the app answers and that FFmpeg can make a video, then stop.
+
+    The release build runs this on a real Windows and a real Mac, through start.bat and
+    start.command, so a download that cannot start never reaches a church.
+    """
+    import urllib.error
+
+    def ask(path: str) -> bytes:
+        with urllib.request.urlopen(f"http://127.0.0.1:{PORT}{path}", timeout=30) as answer:
+            return answer.read()
+
+    server = threading.Thread(target=lambda: asyncio.run(serve()), daemon=True)
+    server.start()
+    for _ in range(120):
+        if port_in_use(PORT):
+            break
+        time.sleep(0.5)
+    try:
+        health = json.loads(ask("/health"))
+        page = ask("/")
+        fonts = json.loads(ask("/fonts"))
+    except (urllib.error.URLError, OSError, ValueError) as exc:
+        raise SystemExit(f"Rooktest: de app antwoordt niet ({exc}).") from exc
+    if b"<div id=\"root\">" not in page or not fonts:
+        raise SystemExit("Rooktest: het scherm of de lettertypes ontbreken.")
+    for name in ("faster_whisper", "ctranslate2", "onnxruntime", "av"):
+        if importlib.util.find_spec(name) is None:
+            raise SystemExit(f"Rooktest: het onderdeel {name} ontbreekt.")
+    import tempfile
+
+    from backend import selftest
+
+    with tempfile.TemporaryDirectory() as work:
+        video = selftest.make_video(Path(work))
+        made, _clip = selftest.step_clip(Path(work), video, "Rooktest")
+    if not made.ok:
+        raise SystemExit(f"Rooktest: een clip maken lukt niet ({made.detail}).")
+    say(f"Rooktest geslaagd: versie {health.get('version')}, {len(fonts)} lettertypes, {made.detail}.")
+
+
 def main() -> None:
     os.chdir(ROOT)
+    flags = set(sys.argv[1:])
+    moved = places.move_in()  # before anything opens a file in the church's folder
     ensure_requirements()
     keep_the_window()  # before anything else has a chance to fail
     announce()  # after the install, so the import of backend.version can succeed
+    if moved:
+        say(f"Je eigen werk staat voortaan in {places.DATA}, los van de app. Bijwerken laat het "
+            f"daar met rust. ({len(moved)} onderdelen verhuisd.)")
     load_config()
     # The speech model cache falls back to copies on Windows without developer mode; that is fine.
     os.environ.setdefault("HF_HUB_DISABLE_SYMLINKS_WARNING", "1")
     ensure_cuda()  # after load_config: WHISPER_DEVICE lives in config.env
     ensure_ffmpeg()
+    if "--prepare" in flags:
+        say("Alles wat de download nodig heeft is geïnstalleerd.")
+        return
     ensure_frontend()
+    if "--smoke" in flags:
+        smoke()
+        return
     mention_updates()
     url = f"http://localhost:{PORT}"
     if port_in_use(PORT):
-        say(f"Something is already running on port {PORT}; opening {url}.")
+        say(f"Preekstof draait al; {url} wordt geopend.")
         webbrowser.open(url)
         return
-    say(f"Starting the app at {url}  (close this window to stop it)")
-    threading.Thread(target=open_browser_when_ready, args=(url,), daemon=True).start()
+    restarted = RESTARTING.exists()
+    RESTARTING.unlink(missing_ok=True)
+    say(f"Preekstof draait op {url}")
+    say("Laat dit venster open zolang je met Preekstof werkt. Sluit je het, dan stopt de app.")
+    if not restarted:  # after an update the page that asked for it is still open, and reloads itself
+        threading.Thread(target=open_browser_when_ready, args=(url,), daemon=True).start()
+    fetch_models()
     asyncio.run(serve())
+    from backend import lifecycle
+
+    if lifecycle.wanted:
+        RESTARTING.parent.mkdir(parents=True, exist_ok=True)
+        RESTARTING.write_text("1", encoding="utf-8")
+        say("Preekstof start opnieuw …")
+        raise SystemExit(RESTART)
 
 
 def _ignore_dropped_connections(loop: asyncio.AbstractEventLoop, context: dict) -> None:
@@ -479,9 +642,13 @@ def _ignore_dropped_connections(loop: asyncio.AbstractEventLoop, context: dict) 
 async def serve() -> None:
     import uvicorn
 
+    from backend import lifecycle
+
     asyncio.get_running_loop().set_exception_handler(_ignore_dropped_connections)
     config = uvicorn.Config("backend.main:app", host=os.environ.get("HOST", "127.0.0.1"), port=PORT, log_level="warning")
-    await uvicorn.Server(config).serve()
+    server = uvicorn.Server(config)
+    lifecycle.attach(lambda: setattr(server, "should_exit", True))
+    await server.serve()
 
 
 if __name__ == "__main__":
@@ -490,8 +657,10 @@ if __name__ == "__main__":
     except KeyboardInterrupt:
         pass
     except SystemExit as exc:
+        if exc.code == RESTART:
+            raise
         if exc.code not in (None, 0):
             say(str(exc.code))
             if sys.stdin and sys.stdin.isatty():
-                input("Press Enter to close.")
+                input("Druk op Enter om dit venster te sluiten.")
             raise

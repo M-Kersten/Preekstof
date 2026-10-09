@@ -1,0 +1,6 @@
+# cmd reads a batch file with Unix line endings wrongly: goto can miss a label that
+# happens to straddle one of its 512-byte reads. Windows files keep Windows line endings.
+*.bat text eol=crlf
+# bash stops at a carriage return, so the Mac's and Linux's scripts never get one.
+*.command text eol=lf
+*.sh text eol=lf

@@ -35,12 +35,12 @@ from pydantic import BaseModel
 from difflib import SequenceMatcher
 
 from . import settings
-from .models import Segment, TEMPLATES_DIR, Transcript, write_atomic
+from .models import OWN_TEMPLATES, Segment, Transcript, write_atomic
 
 ON = settings.text("POLISH_CLIPS", "1").strip().lower() not in ("0", "false", "nee", "off")
 EFFORT = settings.choice("POLISH_EFFORT", ("low", "medium", "high", "xhigh", "max"), "low")
 
-TALLY = TEMPLATES_DIR / "verbeteringen.json"
+TALLY = OWN_TEMPLATES / "verbeteringen.json"
 LEARN_AFTER = 2  # seen this many times, it becomes a plain correction and costs nothing
 MOST_SWAPS = 12  # a clip of a minute with more than this is a model that has lost the plot
 MOST_WORDS = 4  # a swap longer than a few words is a rewrite

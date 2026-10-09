@@ -20,9 +20,9 @@ from datetime import datetime
 from pathlib import Path
 from typing import TextIO
 
-from .models import ROOT
+from . import places
 
-LOGS = ROOT / "logs"
+LOGS = places.LOGS
 CURRENT = LOGS / "preekstof.log"
 KEEP_RUNS = 5  # this run and the four before it
 MAX_BYTES = 8 * 1024 * 1024

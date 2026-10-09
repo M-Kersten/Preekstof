@@ -22,12 +22,12 @@ from pathlib import Path
 from typing import Literal
 
 from . import brands, fonts, formats
-from .models import FONTS_DIR, TEMPLATES_DIR, ChurchInfo, OutroBackground, OutroConfig
+from .models import FONTS_DIR, OWN_TEMPLATES, ROOT, TEMPLATES_DIR, ChurchInfo, OutroBackground, OutroConfig
 from .subtitles import ass_color, family_for
 
-CONFIG_PATH = TEMPLATES_DIR / "outro.json"
-CHURCH_PATH = TEMPLATES_DIR / "church.json"
-OUTRO_PATH = TEMPLATES_DIR / "outro.mp4"
+CONFIG_PATH = OWN_TEMPLATES / "outro.json"
+CHURCH_PATH = OWN_TEMPLATES / "church.json"
+OUTRO_PATH = OWN_TEMPLATES / "outro.mp4"
 WIDTH, HEIGHT, FPS = 1080, 1920, 30
 MARGIN = 60  # safe space left and right
 ZOOM = 1.12  # how far a dolly into the background travels
@@ -252,7 +252,7 @@ def filter_path(path: Path) -> str:
 
 def ffmpeg_binary() -> str:
     """ffmpeg from PATH, or the copy the launcher downloaded into tools/ffmpeg."""
-    tools = TEMPLATES_DIR.parent / "tools" / "ffmpeg"
+    tools = ROOT / "tools" / "ffmpeg"
     for candidate in (shutil.which("ffmpeg"), tools / "ffmpeg.exe", tools / "ffmpeg"):
         if candidate and Path(candidate).is_file():
             return str(candidate)
@@ -264,9 +264,9 @@ def logo_file(config: OutroConfig) -> Path | None:
     """The logo image on disk, or None when the end screen has no logo."""
     if not config.logo.file:
         return None
-    logo = TEMPLATES_DIR / "logos" / config.logo.file
+    logo = OWN_TEMPLATES / "logos" / config.logo.file
     if not logo.is_file():
-        logo = TEMPLATES_DIR / config.logo.file  # older configs pointed straight at templates/
+        logo = OWN_TEMPLATES / config.logo.file  # older configs pointed straight at templates/
     if not logo.is_file():
         raise RuntimeError(f"Het logobestand {config.logo.file} staat niet in templates/logos.")
     return logo
@@ -296,7 +296,9 @@ def background_still(config: OutroConfig, width: int, height: int, destination: 
     inputs: list[str] = []
     chain: list[str] = []
     if background.type == "image":
-        image = TEMPLATES_DIR / background.image
+        image = OWN_TEMPLATES / background.image
+        if not image.is_file():
+            image = TEMPLATES_DIR / background.image  # one that came with the app
         if not image.is_file():
             raise RuntimeError(f"De achtergrondafbeelding templates/{background.image} bestaat niet.")
         inputs += ["-i", str(image)]

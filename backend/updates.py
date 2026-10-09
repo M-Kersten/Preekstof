@@ -82,7 +82,7 @@ def latest(url: str = RELEASES, timeout: float = TIMEOUT) -> Release | None:
     try:
         request = urllib.request.Request(url, headers={
             "Accept": "application/vnd.github+json",
-            "User-Agent": f"Preekstof/{version.VERSION}",
+            "User-Agent": version.USER_AGENT,
         })
         with urllib.request.urlopen(request, timeout=timeout) as answer:
             said = json.loads(answer.read(1_000_000).decode("utf-8"))
@@ -220,7 +220,7 @@ def fetch(asset: Asset, target: Path, on_progress: Callable[[float, str], None] 
     part = target.with_suffix(target.suffix + ".part")
     digest = hashlib.sha256()
     got = 0
-    request = urllib.request.Request(asset.url, headers={"User-Agent": f"Preekstof/{version.VERSION}"})
+    request = urllib.request.Request(asset.url, headers={"User-Agent": version.USER_AGENT})
     with urllib.request.urlopen(request, timeout=60) as answer, part.open("wb") as out:
         total = asset.size or int(answer.headers.get("content-length") or 0)
         while chunk := answer.read(1024 * 512):

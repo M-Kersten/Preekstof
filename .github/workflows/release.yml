@@ -226,6 +226,10 @@ jobs:
           mark="0081;$(printf %x "$(date +%s)");Safari;"
           find "$RUNNER_TEMP/kerk/Preekstof" -type f -exec xattr -w com.apple.quarantine "$mark" {} +
           xattr -p com.apple.quarantine "$RUNNER_TEMP/kerk/Preekstof/python/bin/python3"
+          ls -l "$RUNNER_TEMP/kerk/Preekstof/start.command" "$RUNNER_TEMP/kerk/Preekstof/python/bin/python3"
+          for runnable in start.command python/bin/python3; do
+            [ -x "$RUNNER_TEMP/kerk/Preekstof/$runnable" ] || { echo "::error::$runnable kwam niet uitvoerbaar uit de zip."; exit 1; }
+          done
           python tools/check_bundle.py "$RUNNER_TEMP/kerk/Preekstof"
 
       - uses: actions/upload-artifact@v4

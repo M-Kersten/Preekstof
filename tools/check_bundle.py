@@ -49,6 +49,9 @@ def first_start(app: Path, env: dict) -> None:
     status = start(app, env, "--smoke")
     if status != 0:
         raise SystemExit(f"De eerste start met --smoke gaf {status}.")
+    if (app / "python").is_dir() and (app / ".venv").exists():
+        raise SystemExit("De start maakte een eigen .venv in plaats van de meegeleverde Python te "
+                         "gebruiken. Kwam python/ wel uitvoerbaar uit de zip?")
     bundle = app / "bundle.json"
     if bundle.is_file():
         print("bundle.json:", bundle.read_text(encoding="utf-8").strip())

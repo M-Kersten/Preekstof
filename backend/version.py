@@ -18,6 +18,11 @@ VERSION = "0.11.0"
 # same thing as a finished product, and the number says so before anybody has to ask.
 STAGE = "pilot"
 
+# How the app introduces itself when it downloads something. Some servers turn away
+# Python's own "Python-urllib/3.12" outright (the one with FFmpeg for the Mac answers it
+# with 403), and a name with an address says who is asking.
+USER_AGENT = f"Preekstof/{VERSION} (+https://github.com/M-Kersten/Preekstof)"
+
 
 # Between two releases the number stays the same while the code does not. An interface that
 # expects a field the running server has never heard of then breaks with a message nobody

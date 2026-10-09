@@ -88,7 +88,10 @@ def ensure_models(on_progress=None) -> None:
         try:
             if on_progress:
                 on_progress(0.0, "Het herkenningsmodel wordt eenmalig opgehaald (9 MB)")
-            with urllib.request.urlopen(PERSON_URL, timeout=120) as answer, part.open("wb") as out:
+            from . import version
+
+            request = urllib.request.Request(PERSON_URL, headers={"User-Agent": version.USER_AGENT})
+            with urllib.request.urlopen(request, timeout=120) as answer, part.open("wb") as out:
                 got = 0
                 while chunk := answer.read(256 * 1024):
                     out.write(chunk)

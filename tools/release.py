@@ -26,6 +26,7 @@ import argparse
 import json
 import os
 import shutil
+import stat
 import subprocess
 import sys
 import tempfile
@@ -74,7 +75,11 @@ def entry(name: str, date: tuple, runnable: bool) -> zipfile.ZipInfo:
     made = zipfile.ZipInfo(name)
     made.date_time = date
     made.compress_type = zipfile.ZIP_DEFLATED
-    made.external_attr = (0o755 if runnable else 0o644) << 16
+    # The whole Unix mode, file type included, the way Info-ZIP writes it. With the rights
+    # alone, ditto (which is what a double-click on a Mac uses) drops them, and start.command
+    # and the Python both come out unrunnable.
+    made.create_system = 3
+    made.external_attr = (stat.S_IFREG | (0o755 if runnable else 0o644)) << 16
     return made
 
 

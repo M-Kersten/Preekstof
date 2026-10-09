@@ -333,3 +333,33 @@ def test_what_is_already_in_the_environment_wins(tmp_path, monkeypatch):
 def test_a_card_asked_for_with_a_note_behind_it_is_still_asked_for(monkeypatch):
     monkeypatch.setenv("WHISPER_DEVICE", "cuda  # de kaart van de beamer-pc")
     assert launcher.wants_card() is True
+
+
+def test_downloads_say_who_is_asking(tmp_path, monkeypatch):
+    """The server with FFmpeg for the Mac answers Python's own name with 403."""
+    asked = []
+
+    class Answer:
+        headers = {"content-length": "3"}
+
+        def __init__(self):
+            self.left = [b"abc"]
+
+        def read(self, _size):
+            return self.left.pop() if self.left else b""
+
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *exc):
+            return False
+
+    def urlopen(request, timeout=None):
+        asked.append(request)
+        return Answer()
+
+    monkeypatch.setattr(launcher.urllib.request, "urlopen", urlopen)
+    launcher.download("https://example.org/ffmpeg.zip", tmp_path / "ffmpeg.zip")
+    assert (tmp_path / "ffmpeg.zip").read_bytes() == b"abc"
+    said = asked[0].get_header("User-agent")
+    assert said.startswith("Preekstof/") and "urllib" not in said

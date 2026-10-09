@@ -1,6 +1,7 @@
 """The zip a church downloads: everything it needs to run, and nothing it does not."""
 
 import json
+import stat
 import subprocess
 import zipfile
 from pathlib import Path
@@ -75,8 +76,11 @@ def test_no_church_ever_receives_another_church(built):
 def test_the_start_scripts_come_out_runnable(built):
     """A start.command without the executable bit is a file macOS opens in a text editor."""
     with zipfile.ZipFile(built) as zip_file:
-        mode = zip_file.getinfo("preekstof-9.9.9/start.command").external_attr >> 16
+        info = zip_file.getinfo("preekstof-9.9.9/start.command")
+    mode = info.external_attr >> 16
     assert mode & 0o111, "nobody can run it"
+    # ditto, behind a double-click on a Mac, ignores rights that come without a file type.
+    assert stat.S_ISREG(mode) and info.create_system == 3
 
 
 def test_the_built_interface_is_younger_than_its_source(built):

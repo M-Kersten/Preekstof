@@ -327,7 +327,10 @@ def download(url: str, target: Path, tries: int = 3) -> None:
     """Fetch one file, saying how far it is, and try again when the line drops."""
     for attempt in range(1, tries + 1):
         try:
-            with urllib.request.urlopen(url, timeout=120) as res, target.open("wb") as out:
+            from backend import version  # plain standard library
+
+            request = urllib.request.Request(url, headers={"User-Agent": version.USER_AGENT})
+            with urllib.request.urlopen(request, timeout=120) as res, target.open("wb") as out:
                 total = int(res.headers.get("content-length") or 0)
                 done = 0
                 while chunk := res.read(1024 * 256):

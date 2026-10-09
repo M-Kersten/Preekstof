@@ -306,3 +306,33 @@ def test_a_mac_download_says_which_macos_it_needs(tmp_path):
 def test_the_macos_a_binary_needs_is_read_from_its_load_commands(said, wanted):
     """Not from a dylib's own version number, which otool prints just the same."""
     assert release.lowest_macos(said) == wanted
+
+
+def test_an_intel_download_is_made_with_what_runs_on_an_older_mac(tmp_path, monkeypatch):
+    """pip picks for the runner's own macOS unless it is told which one to pick for."""
+    (tmp_path / "bin").mkdir()
+    (tmp_path / "bin" / "python3").write_text("", encoding="utf-8")
+    envs = []
+
+    def fake_run(command, *args, env=None, **kwargs):
+        envs.append(env or {})
+        said = "/x/lib/python3.12/site-packages\n" if "sysconfig" in " ".join(map(str, command)) else ""
+        return subprocess.CompletedProcess(command, 1 if "importlib.metadata" in " ".join(map(str, command)) else 0,
+                                           stdout=said)
+
+    monkeypatch.setattr(release.subprocess, "run", fake_run)
+    release.prepare(tmp_path, "mac-x64", "12.0")
+    installing = next(e for e in envs if e.get("PREEKSTOF_DATA"))
+    assert installing["PIP_PLATFORM"] == "macosx_12_0_x86_64"
+    assert installing["PIP_ONLY_BINARY"] == ":all:"
+    assert installing["PIP_TARGET"] == "/x/lib/python3.12/site-packages"
+
+
+def test_without_an_older_mac_asked_for_pip_picks_as_usual(tmp_path, monkeypatch):
+    (tmp_path / "python.exe").write_bytes(b"MZ")
+    envs = []
+    monkeypatch.setattr(release.subprocess, "run",
+                        lambda command, *a, env=None, **k: envs.append(env or {})
+                        or subprocess.CompletedProcess(command, 1, stdout=""))
+    release.prepare(tmp_path, "windows-x64", None)
+    assert not any("PIP_PLATFORM" in e for e in envs)

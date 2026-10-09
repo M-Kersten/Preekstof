@@ -138,16 +138,39 @@ def interpreter(python: Path) -> Path:
     raise SystemExit(f"{python} ziet er niet uit als een Python: geen python.exe of bin/python3.")
 
 
-def prepare(python: Path) -> dict[str, str]:
+# The chip each Mac download is for, in the words pip uses for a wheel.
+MAC_ARCH = {"mac-arm64": "arm64", "mac-x64": "x86_64"}
+
+
+def for_older_macs(program: Path, bundle: str, macos: str) -> dict[str, str]:
+    """What tells pip to take only wheels that run on `macos`, on a runner with a newer one.
+
+    pip picks the newest build a wheel offers for the Mac it runs on, and the runners run the
+    newest macOS. numpy, for one, has a build for macOS 14 next to one for 10.13; on the
+    runner it takes the first, and the download then refuses every Intel Mac from before
+    2018. --platform makes pip choose as if it ran on `macos`; pip only allows that with
+    --target, so the packages go straight into this Python's site-packages.
+    """
+    major, _, minor = macos.partition(".")
+    site = subprocess.run([str(program), "-c", "import sysconfig; print(sysconfig.get_paths()['purelib'])"],
+                          capture_output=True, text=True, check=True).stdout.strip()
+    return {"PIP_PLATFORM": f"macosx_{major}_{minor or '0'}_{MAC_ARCH[bundle]}",
+            "PIP_ONLY_BINARY": ":all:", "PIP_TARGET": site}
+
+
+def prepare(python: Path, bundle: str | None = None, macos: str | None = None) -> dict[str, str]:
     """Install everything into the Python that goes in the bundle, then take out again what
     a church fetches itself. Hands back those, with the version that was installed.
 
     The launcher does the installing, the same way it does on a church's computer, so the
     stamp it leaves in the Python folder tells the first start there is nothing left to do.
+    `macos`, for a Mac download, is the oldest macOS its packages have to run on.
     """
     program = interpreter(python)
     with tempfile.TemporaryDirectory() as data:
         env = {**os.environ, "PREEKSTOF_DATA": data}
+        if macos and bundle in MAC_ARCH:
+            env |= for_older_macs(program, bundle, macos)
         subprocess.run([str(program), str(ROOT / "launcher.py"), "--prepare"], cwd=ROOT, env=env,
                        stdin=subprocess.DEVNULL, check=True)
     fetch = {}
@@ -218,6 +241,8 @@ def main() -> int:
                         help="a Python to put in as python/ (with --bundle: installed into first)")
     parser.add_argument("--bundle", choices=sorted(BUNDLES), default=None,
                         help="build the download for this computer, with --python")
+    parser.add_argument("--macos", default="",
+                        help="for a Mac download: the oldest macOS its packages have to run on (e.g. 12.0)")
     args = parser.parse_args()
 
     fetch: dict[str, str] = {}
@@ -225,8 +250,10 @@ def main() -> int:
     if args.bundle:
         if not args.python:
             raise SystemExit("--bundle heeft --python nodig: de Python die erin gaat.")
-        fetch = prepare(args.python)
+        fetch = prepare(args.python, args.bundle, args.macos or None)
         macos = oldest_mac(args.python)
+        if args.macos and macos and tuple(map(int, macos.split("."))) > tuple(map(int, args.macos.split("."))):
+            raise SystemExit(f"Gevraagd was macOS {args.macos}, maar er zit iets in voor macOS {macos}.")
     elif args.python:
         interpreter(args.python)
     built = build(args.out, args.version, args.python, args.bundle, fetch, macos)

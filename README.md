@@ -28,8 +28,14 @@ GitHub Actions**). It says the same as below, in Dutch, with the warnings drawn 
 1. Download the one for your computer from the newest release. The names never change, so
    these links always give the newest:
    - Windows: [`Preekstof-Windows.zip`](https://github.com/M-Kersten/Preekstof/releases/latest/download/Preekstof-Windows.zip)
-   - Mac with an Apple chip: [`Preekstof-Mac.zip`](https://github.com/M-Kersten/Preekstof/releases/latest/download/Preekstof-Mac.zip)
-   - Mac with an Intel processor: [`Preekstof-Mac-Intel.zip`](https://github.com/M-Kersten/Preekstof/releases/latest/download/Preekstof-Mac-Intel.zip)
+   - Mac with an Apple chip, macOS 14 or newer: [`Preekstof-Mac.zip`](https://github.com/M-Kersten/Preekstof/releases/latest/download/Preekstof-Mac.zip)
+   - Mac with an Intel processor, macOS 12 or newer: [`Preekstof-Mac-Intel.zip`](https://github.com/M-Kersten/Preekstof/releases/latest/download/Preekstof-Mac-Intel.zip)
+
+   The macOS each needs is measured from its own binaries when it is built and written into
+   its `bundle.json`; start.command says so on an older Mac. The Intel one is built with
+   `--macos 12.0`, so pip takes the wheels that run there (numpy has a build for 14 next to
+   one for 10.13, and on the runner it would take the first). Every Mac with an Apple chip
+   runs macOS 14, so that one takes the newest.
 
    Each carries its own Python with the packages already installed, so nothing else has to be
    on the machine. `preekstof-<versie>.zip` is the plain one: the same app without a Python,

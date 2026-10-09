@@ -175,13 +175,17 @@ jobs:
       fail-fast: false
       matrix:
         include:
+          # Every Mac with an Apple chip runs macOS 14, so it takes the newest packages. An
+          # Intel Mac from 2015 to 2017 stops at macOS 12, and those are the church laptops.
           - runner: macos-14
             kind: mac-arm64
             asset: Preekstof-Mac.zip
+            macos: ""
             optional: false
           - runner: macos-15-intel
             kind: mac-x64
             asset: Preekstof-Mac-Intel.zip
+            macos: "12.0"
             optional: true
     runs-on: ${{ matrix.runner }}
     continue-on-error: ${{ matrix.optional }}
@@ -214,7 +218,9 @@ jobs:
           python/bin/python3 -c "import sys, platform; print(sys.version, platform.machine())"
 
       - name: Everything installed into it, and zipped
-        run: python -m tools.release --out dist --version "$VERSION" --bundle ${{ matrix.kind }} --python python
+        run: >-
+          python -m tools.release --out dist --version "$VERSION" --bundle ${{ matrix.kind }}
+          --python python --macos "${{ matrix.macos }}"
 
       # Unpacked with ditto, which is what Archive Utility does on a double-click, and
       # marked as downloaded the way Safari marks it. start.command has to clear that.

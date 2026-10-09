@@ -3,14 +3,15 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Preekstof installeren</title>
-  <meta name="description" content="Preekstof maakt korte video's van de kerkdienst, op jullie eigen computer. Zo zet je het op Windows of een Mac.">
+  <title>Preekstof</title>
+  <meta name="description" content="Preekstof haalt uit de opname van jullie kerkdienst de momenten die blijven hangen en maakt er korte video's van, met ondertitels. Op jullie eigen computer.">
   <link rel="icon" type="image/svg+xml" href="icon.svg">
   <style>
     @font-face { font-family: Poppins; font-weight: 400; font-display: swap; src: url(fonts/Poppins-Regular.ttf) format("truetype"); }
     @font-face { font-family: Poppins; font-weight: 500; font-display: swap; src: url(fonts/Poppins-Medium.ttf) format("truetype"); }
     @font-face { font-family: Poppins; font-weight: 600; font-display: swap; src: url(fonts/Poppins-SemiBold.ttf) format("truetype"); }
     @font-face { font-family: Poppins; font-weight: 800; font-display: swap; src: url(fonts/Poppins-ExtraBold.ttf) format("truetype"); }
+    @font-face { font-family: Montserrat; font-weight: 800; font-display: swap; src: url(fonts/Montserrat-ExtraBold.ttf) format("truetype"); }
 
     :root {
       --purple: #4B1E78;
@@ -133,6 +134,79 @@
     footer { margin-top: 3.5rem; padding: 2rem 0 3rem; border-top: 1px solid var(--line); color: var(--muted); font-size: 0.85rem; }
     footer p { margin-bottom: 0.4rem; }
 
+
+    /* the top: what it is, and a clip playing beside it */
+    header.hero { padding-bottom: 4rem; overflow: hidden; }
+    .hero-grid { display: grid; grid-template-columns: minmax(0, 1.25fr) minmax(0, 0.9fr); gap: 3rem; align-items: center; }
+    .kicker { color: var(--gold); font-weight: 700; font-size: 0.82rem; letter-spacing: 0.08em; text-transform: uppercase; margin-bottom: 0.9rem; }
+    .hero h1 { font-size: clamp(2.1rem, 5vw, 3.4rem); }
+    .hero h1 em { font-style: normal; color: var(--gold); }
+    .cta { display: flex; flex-wrap: wrap; gap: 0.7rem; margin-top: 1.8rem; }
+    .button { display: inline-flex; align-items: center; gap: 0.5rem; text-decoration: none; font-weight: 700; border-radius: 12px; padding: 0.8rem 1.3rem; transition: transform 0.12s, background 0.12s, border-color 0.12s; }
+    .button.gold { background: var(--gold); color: var(--deep); box-shadow: 0 6px 22px rgba(201, 151, 28, 0.35); }
+    .button.gold:hover { background: #D6A42A; transform: translateY(-1px); }
+    .button.ghost { color: var(--white); border: 1px solid rgba(255, 255, 255, 0.3); }
+    .button.ghost:hover { border-color: rgba(255, 255, 255, 0.7); }
+    .note { margin-top: 1rem; font-size: 0.85rem; color: rgba(237, 230, 244, 0.7); }
+
+    .example { margin: 0; justify-self: center; }
+    .phone { width: min(17rem, 72vw); aspect-ratio: 9 / 16; border-radius: 2.2rem; padding: 0.55rem; background: #111; box-shadow: 0 30px 60px rgba(0, 0, 0, 0.45), 0 0 0 1px rgba(255, 255, 255, 0.12) inset; transform: rotate(2deg); }
+    .screen { position: relative; width: 100%; height: 100%; border-radius: 1.7rem; overflow: hidden; background: #1B0B2A; }
+    .screen svg { position: absolute; inset: 0; width: 100%; height: 100%; }
+    .screen .logo-spot { position: absolute; top: 1.1rem; left: 0.9rem; font-size: 0.6rem; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; color: rgba(255, 255, 255, 0.85); border: 1px solid rgba(255, 255, 255, 0.45); border-radius: 999px; padding: 0.1rem 0.5rem; }
+    .caption {
+      position: absolute; left: 0.8rem; right: 0.8rem; top: 64%; margin: 0; text-align: center;
+      font-family: Montserrat, Poppins, sans-serif; font-weight: 800; font-size: 1.15rem; line-height: 1.2; color: #FFF;
+      text-shadow: 0 0 2px #000, 0 0 2px #000, 0 0 3px #000, 0 2px 6px rgba(0, 0, 0, 0.6);
+    }
+    .caption span { transition: color 0.12s; }
+    .caption .now { color: var(--gold); }
+    .bar { position: absolute; left: 0.9rem; right: 0.9rem; bottom: 1rem; height: 3px; border-radius: 2px; background: rgba(255, 255, 255, 0.25); overflow: hidden; }
+    .bar span { display: block; height: 100%; width: 0; background: var(--white); }
+    .example figcaption { max-width: 17rem; margin: 1.3rem auto 0; text-align: center; font-size: 0.8rem; color: rgba(237, 230, 244, 0.7); }
+
+    /* one moment, every shape, and the words under the post */
+    .gets { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 1.2rem; align-items: stretch; }
+    .panel { background: var(--white); border: 1px solid var(--line); border-radius: 16px; padding: 1.3rem 1.4rem; }
+    .panel h3 { margin-bottom: 0.4rem; }
+    .shapes { display: flex; align-items: flex-end; gap: 1rem; margin-top: 1.1rem; }
+    .shape { display: grid; gap: 0.4rem; justify-items: center; text-align: center; font-size: 0.78rem; color: var(--muted); }
+    .shape i { display: block; width: 4.4rem; border-radius: 8px; background: linear-gradient(160deg, #3A1658, #8A5A2B); box-shadow: inset 0 -1.1rem 0 rgba(0, 0, 0, 0.18); }
+    .shape b { color: var(--ink); font-weight: 600; }
+    .post { margin-top: 1rem; border: 1px solid var(--line); border-radius: 12px; padding: 0.9rem 1rem; font-size: 0.9rem; background: var(--paper); }
+    .post .who { display: flex; align-items: center; gap: 0.5rem; font-weight: 600; font-size: 0.82rem; margin-bottom: 0.5rem; }
+    .post .who i { width: 1.6rem; height: 1.6rem; border-radius: 50%; background: var(--purple); }
+    .post .tags { color: var(--purple-soft); }
+
+    .flow { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 1rem; counter-reset: flow; }
+    .flow li { counter-increment: flow; position: relative; padding-top: 3rem; }
+    .flow li::before { content: counter(flow); position: absolute; top: 0; left: 0; width: 2.2rem; height: 2.2rem; border-radius: 50%; display: grid; place-items: center; background: var(--lavender); color: var(--purple); font-weight: 800; }
+    .flow h3 { margin-bottom: 0.35rem; }
+    .flow p { font-size: 0.92rem; color: var(--muted); }
+
+    .why { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0.9rem; }
+    .why .card p { color: var(--muted); }
+    .pilot { margin-top: 1.4rem; padding: 1.1rem 1.3rem; border-radius: 14px; background: var(--lavender); color: var(--ink); }
+    .pilot strong { color: var(--purple); }
+
+    /* the downloads, in a band of their own */
+    .band { background: var(--deep); color: var(--deep-ink); margin-top: 3.5rem; padding: 3rem 0 3.2rem; }
+    .band h2 { color: var(--white); }
+    .band .lead { margin-top: 0; }
+    .band .downloads { margin-top: 1.5rem; }
+
+    @media (max-width: 52rem) {
+      .hero-grid, .gets { grid-template-columns: 1fr; }
+      .flow { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    }
+    @media (max-width: 34rem) {
+      .flow, .why { grid-template-columns: 1fr; }
+      .phone { transform: none; }
+    }
+    @media (prefers-reduced-motion: reduce) {
+      .bar span { width: 40% !important; transition: none !important; }
+    }
+
     [hidden] { display: none !important; }
     @media (max-width: 34rem) {
       .steps > li { padding-left: 1.2rem; }
@@ -145,12 +219,135 @@
   </style>
 </head>
 <body>
-  <header>
+  <header class="hero">
     <div class="wrap">
       <div class="brand"><img src="icon.svg" alt="">Preekstof</div>
-      <h1>Preekstof installeren</h1>
-      <p class="lead">Preekstof maakt van de opname van een kerkdienst korte video's met ondertitels, voor sociale media en de eigen website. Het draait op een gewone computer in de kerk of thuis. De opname blijft op die computer.</p>
+      <div class="hero-grid">
+        <div>
+          <p class="kicker">Voor kerken die hun diensten uitzenden</p>
+          <h1>De preek van zondag, <em>doordeweeks</em> nog een keer gehoord.</h1>
+          <p class="lead">Preekstof zoekt in de opname van jullie dienst de momenten die blijven hangen en maakt er korte video's van. Met ondertitels die meelopen met wat er gezegd wordt, jullie logo erop en een tekst voor onder de post. Een vrijwilliger zet het na de dienst aan en heeft aan het eind van de middag een handvol clips.</p>
+          <div class="cta">
+            <a class="button gold" href="#downloaden">Download Preekstof</a>
+            <a class="button ghost" href="#hoe">Zo werkt het</a>
+          </div>
+          <p class="note">Voor Windows en de Mac. De opname blijft op jullie eigen computer.</p>
+        </div>
+        <figure class="example">
+          <div class="phone">
+            <div class="screen">
+              <svg viewBox="0 0 90 160" preserveAspectRatio="xMidYMid slice" aria-hidden="true">
+                <defs>
+                  <linearGradient id="zaal" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="0" stop-color="#2A1140"/><stop offset="0.55" stop-color="#4B1E78"/><stop offset="1" stop-color="#7A4A22"/>
+                  </linearGradient>
+                  <radialGradient id="licht" cx="0.5" cy="0.35" r="0.6">
+                    <stop offset="0" stop-color="#F3D27A" stop-opacity="0.55"/><stop offset="1" stop-color="#F3D27A" stop-opacity="0"/>
+                  </radialGradient>
+                  <linearGradient id="raam" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="0" stop-color="#F6E3B0" stop-opacity="0.75"/><stop offset="1" stop-color="#C9971C" stop-opacity="0.15"/>
+                  </linearGradient>
+                  <filter id="zacht"><feGaussianBlur stdDeviation="0.7"/></filter>
+                </defs>
+                <rect width="90" height="160" fill="url(#zaal)"/>
+                <g filter="url(#zacht)">
+                  <path d="M10 70 V30 a9 9 0 0 1 18 0 V70 Z" fill="url(#raam)"/>
+                  <path d="M62 70 V30 a9 9 0 0 1 18 0 V70 Z" fill="url(#raam)"/>
+                  <rect width="90" height="160" fill="url(#licht)"/>
+                  <circle cx="45" cy="56" r="9" fill="#1A0A26"/>
+                  <path d="M24 112 C26 82 36 72 45 72 C54 72 64 82 66 112 Z" fill="#1A0A26"/>
+                  <path d="M37 50 a9 9 0 0 1 16 2" stroke="#F3D27A" stroke-opacity="0.5" stroke-width="1" fill="none"/>
+                  <path d="M28 100 H62 L58 160 H32 Z" fill="#3B1A12"/>
+                  <rect x="27" y="98" width="36" height="5" rx="1" fill="#5A2C1A"/>
+                </g>
+              </svg>
+              <span class="logo-spot">jullie logo</span>
+              <p class="caption" id="caption"><span>Je</span> <span>hoeft</span> <span>niet</span> <span>eerst</span></p>
+              <div class="bar"><span id="bar"></span></div>
+            </div>
+          </div>
+          <figcaption>Zo ziet een clip eruit. De spreker staat in beeld, en elk woord licht op terwijl het gezegd wordt.</figcaption>
+        </figure>
+      </div>
+    </div>
+  </header>
 
+  <main>
+  <div class="wrap">
+    <section id="krijgen">
+      <h2>Eén moment, klaar voor elke plek</h2>
+      <div class="gets">
+        <div class="panel">
+          <h3>Staand, tijdlijn en vierkant</h3>
+          <p class="muted">Dezelfde clip in de vorm die elke plek wil. De ondertitels, het volgen van de spreker, het logo en de muziek gaan mee.</p>
+          <div class="shapes" aria-hidden="true">
+            <div class="shape"><i style="aspect-ratio: 9 / 16"></i><b>9:16</b>Reels, Shorts en de status</div>
+            <div class="shape"><i style="aspect-ratio: 4 / 5"></i><b>4:5</b>De tijdlijn</div>
+            <div class="shape"><i style="aspect-ratio: 1 / 1"></i><b>1:1</b>Website en nieuwsbrief</div>
+          </div>
+        </div>
+        <div class="panel">
+          <h3>De tekst eronder staat klaar</h3>
+          <p class="muted">Een tekst per plek, van een korte voor Instagram tot een zin om door te sturen. De link naar de hele dienst en jullie vaste hashtags zet de app er zelf onder.</p>
+          <div class="post">
+            <div class="who"><i></i>jullie kerk</div>
+            “Je hoeft niet eerst alles op orde te hebben voordat je mag komen. De deur staat al open.” Uit de preek van zondag over Lukas 15. De hele dienst kijk je terug via de link in onze bio.
+            <div class="tags">#kerkdienst #zondag #lukas15</div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section id="hoe">
+      <h2>Zo werkt het</h2>
+      <ol class="flow">
+        <li>
+          <h3>Plak de link naar de dienst</h3>
+          <p>Van Kerkdienstgemist, of waar jullie de dienst al online zetten. Een bestand van de computer kan ook.</p>
+        </li>
+        <li>
+          <h3>De computer luistert mee</h3>
+          <p>Preekstof schrijft de hele dienst uit. Op een gewone laptop duurt dat een half uur tot een uur, en je hoeft er niet bij te blijven.</p>
+        </li>
+        <li>
+          <h3>Jij kiest de momenten</h3>
+          <p>Preekstof stelt passages voor die op zichzelf staan. Je luistert ze terug, kiest er een paar uit en schuift begin en einde op het gehoor bij.</p>
+        </li>
+        <li>
+          <h3>Downloaden en delen</h3>
+          <p>Elke clip komt in jullie eigen stijl, met het eindscherm van de kerk erachter. Kopieer de tekst en plaats hem.</p>
+        </li>
+      </ol>
+    </section>
+
+    <section id="waarom">
+      <h2>Gemaakt voor de vrijwilliger van zondagmiddag</h2>
+      <div class="why">
+        <div class="card">
+          <h3>Op jullie eigen computer</h3>
+          <p>De opname gaat nergens heen. Alleen de uitgeschreven tekst gaat naar Claude om de momenten te zoeken, en een kerk die ook dat liever binnenshuis houdt, kan het zoeken op de eigen computer laten doen.</p>
+        </div>
+        <div class="card">
+          <h3>Het verstaat de kerk</h3>
+          <p>Avondmaal, Ezechiël, Nicodemus, de Korinthiërs. Een woordenlijst met kerkwoorden helpt het spraakmodel, en jullie vullen hem aan met de namen uit eigen gemeente.</p>
+        </div>
+        <div class="card">
+          <h3>Een paar cent per dienst</h3>
+          <p>Het zoeken naar momenten kost op jullie eigen sleutel ongeveer drie cent per dienst. De tekst onder een post een tiende cent. De app laat vooraf zien wat het kost.</p>
+        </div>
+        <div class="card">
+          <h3>Eén keer instellen</h3>
+          <p>Letter, kleuren, logo, muziek en eindscherm stel je één keer in. Elke clip daarna draagt ze vanzelf, ook als volgende week iemand anders de clips maakt.</p>
+        </div>
+      </div>
+      <p class="pilot"><strong>Preekstof is nieuw.</strong> Het draait als pilot bij de eerste kerken, en elke nieuwe versie komt voort uit wat zij op zondag tegenkomen. Bijwerken doe je met één knop in de app.</p>
+    </section>
+  </div>
+
+  <section class="band" id="downloaden">
+    <div class="wrap">
+      <h2>Preekstof downloaden</h2>
+      <p class="lead">Kies je computer. Alles wat Preekstof nodig heeft zit in de download; uitpakken en dubbelklikken is genoeg.</p>
       <div class="downloads">
         <a class="download" id="windows" data-asset="Preekstof-Windows.zip"
            href="https://github.com/M-Kersten/Preekstof/releases/latest/download/Preekstof-Windows.zip">
@@ -176,9 +373,9 @@
       </div>
       <p class="release" id="release">Altijd de nieuwste versie. Alle versies en wat erin veranderde staan op <a href="https://github.com/M-Kersten/Preekstof/releases">de pagina met versies</a>.</p>
     </div>
-  </header>
+  </section>
 
-  <main class="wrap">
+  <div class="wrap">
     <section id="stappen">
       <h2>Zo zet je het op je computer</h2>
       <div class="switch" role="tablist" aria-label="Kies je computer">
@@ -189,7 +386,7 @@
       <ol class="steps" id="voor-windows" role="tabpanel" aria-labelledby="tab-windows">
         <li>
           <h3>Download Preekstof voor Windows</h3>
-          <p>Met de knop bovenaan. Het bestand heet <code>Preekstof-Windows.zip</code> en komt in je map Downloads.</p>
+          <p>Met de knop hierboven. Het bestand heet <code>Preekstof-Windows.zip</code> en komt in je map Downloads.</p>
           <p class="tip"><strong>Scheelt straks een waarschuwing:</strong> klik met de rechtermuisknop op de zip, kies <em>Eigenschappen</em>, zet onderaan een vinkje bij <em>Blokkering opheffen</em> en klik op OK.</p>
         </li>
         <li>
@@ -301,6 +498,7 @@
       <p>Lees eerst wat er in het zwarte venster staat. Preekstof zegt daar in gewone woorden wat er misging en wat je kunt doen.</p>
       <p>Kom je er niet uit, open dan in de app het paneel rechtsboven en klik op <em>Melding opslaan</em>. Dat bestand vertelt wie je helpt precies wat er op jouw computer gebeurde, zonder de opnames of teksten van jullie diensten.</p>
     </section>
+  </div>
   </main>
 
   <footer>
@@ -345,6 +543,38 @@
       tabs.windows.addEventListener("click", function () { show("windows"); });
       tabs.mac.addEventListener("click", function () { show("mac"); });
       if (isMac) show("mac");
+
+      // The clip in the phone: one line at a time, each word lit while it is "said".
+      var lines = [["Je", "hoeft", "niet", "eerst"], ["alles", "op", "orde", "te", "hebben"],
+                   ["voordat", "je", "mag", "komen."], ["De", "deur", "staat", "al", "open."]];
+      var caption = document.getElementById("caption");
+      var bar = document.getElementById("bar");
+      var still = window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+      function draw(line, word) {
+        caption.innerHTML = "";
+        lines[line].forEach(function (text, i) {
+          var span = document.createElement("span");
+          span.textContent = text;
+          if (i === word) span.className = "now";
+          caption.appendChild(span);
+          caption.appendChild(document.createTextNode(" "));
+        });
+      }
+      if (still) {
+        draw(0, 1);
+      } else {
+        var total = lines.reduce(function (n, l) { return n + l.length; }, 0);
+        var line = 0, word = 0, said = 0;
+        draw(0, 0);
+        setInterval(function () {
+          word += 1;
+          if (word >= lines[line].length) { word = 0; line = (line + 1) % lines.length; }
+          said = line === 0 && word === 0 ? 0 : said + 1;
+          draw(line, word);
+          bar.style.transition = said === 0 ? "none" : "width 0.38s linear";
+          bar.style.width = (100 * said / (total - 1)) + "%";
+        }, 380);
+      }
 
       // The version, the date and the sizes, from GitHub. Without an answer the page simply
       // stays as it is: the buttons always point at the newest release.

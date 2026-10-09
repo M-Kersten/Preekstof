@@ -30,6 +30,9 @@ def test_what_the_page_loads_is_put_next_to_it():
     for weight in re.findall(r"fonts/Poppins-(\w+)\.ttf", PAGE):
         assert weight in WORKFLOW.split("for weight in", 1)[1].splitlines()[0], weight
         assert (ROOT / "templates" / "fonts" / f"Poppins-{weight}.ttf").is_file()
+    for other in re.findall(r"fonts/((?!Poppins)\w+-\w+\.ttf)", PAGE):
+        assert f"templates/fonts/{other}" in WORKFLOW, other
+        assert (ROOT / "templates" / "fonts" / other).is_file()
 
 
 def test_nothing_on_the_page_comes_from_another_server():

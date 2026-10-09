@@ -41,6 +41,8 @@ jobs:
             cp "templates/fonts/Poppins-$weight.ttf" _site/fonts/
           done
           cp templates/fonts/OFL-Poppins.txt _site/fonts/
+          # The captions in the example clip, in the letter the app uses for them.
+          cp templates/fonts/Montserrat-ExtraBold.ttf templates/fonts/OFL-Montserrat.txt _site/fonts/
           ls -R _site
 
       - uses: actions/configure-pages@v5

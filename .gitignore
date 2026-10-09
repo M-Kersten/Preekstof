@@ -74,3 +74,12 @@ evaluation/*.json
 !templates/library/
 !templates/library/music/
 !templates/library/music/**
+
+# What the release build puts in a download and the download puts next to the app: the
+# Python it carries, the note saying which computer it is for, a new version waiting to go
+# in, and the zips themselves.
+/python/
+/python.old/
+/bundle.json
+/.update/
+/dist/

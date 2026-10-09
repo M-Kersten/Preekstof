@@ -16,10 +16,20 @@ apply_update() {
   # Een versie die de app zelf heeft opgehaald, gaat op zijn plek voordat er iets start.
   # Je eigen werk staat in ~/Preekstof en wordt hier niet aangeraakt.
   echo "De nieuwe versie van Preekstof wordt neergezet ..."
+  # De Python die met de download meekwam wordt in zijn geheel vervangen, nooit
+  # samengevoegd: de pakketten van twee versies door elkaar is een Python waar niemand op
+  # kan rekenen. De oude wacht ernaast tot de nieuwe erin staat, en gaat terug als dat mislukt.
+  swapped=""
+  if [ -d .update/new/python ] && [ -d python ]; then
+    rm -rf python.old
+    mv python python.old && swapped=1
+  fi
   if cp -R .update/new/. ./ ; then
     rm -rf .update
+    if [ -n "$swapped" ]; then rm -rf python.old; fi
   else
     echo "Bijwerken is niet gelukt. De vorige versie start gewoon."
+    if [ -n "$swapped" ]; then rm -rf python; mv python.old python; fi
     rm -f .update/ready
   fi
   exec /bin/bash "$APP/start.command"

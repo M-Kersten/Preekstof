@@ -13,7 +13,7 @@ download or one they found on the machine. This script:
 Everything it says, it says in Dutch: the person reading the black window is a volunteer.
 
     python launcher.py             start the app
-    python launcher.py --prepare   only install what a download needs, then stop (the release build)
+    python launcher.py --prepare   only install the packages, then stop (the release build)
     python launcher.py --smoke     start, check that the app answers and can render, then stop
 """
 
@@ -93,7 +93,8 @@ def announce() -> None:
     """
     from backend.version import full
 
-    print(f"\33]0;Preekstof {full()}\a", end="", flush=True)
+    if sys.stdout.isatty():  # the window's title; in a log it is only noise
+        print(f"\33]0;Preekstof {full()}\a", end="", flush=True)
     say(f"versie {full()}")
 
 
@@ -106,9 +107,9 @@ INSTALLED_STAMP = Path(sys.prefix) / "requirements.installed"
 def ensure_pip() -> None:
     """Make sure this interpreter can install things, which an embeddable Python cannot.
 
-    The Windows release brings its own Python so a church needs none of its own. That build
-    ships without pip on purpose, and everything after this point installs with pip, so the
-    first thing it has to do is give itself one. `get-pip.py` travels next to it in the zip.
+    The embeddable Python from python.org, which the Windows download is built on, ships
+    without pip. The release build gives it one before zipping, so the download has it; this
+    is for an embeddable Python somebody put together by hand, with `get-pip.py` beside it.
 
     An ordinary Python has pip already and never comes in here.
     """
@@ -144,11 +145,18 @@ def quietly(command: list[str], doing: str) -> bool:
         except OSError as exc:
             log.write(f"{exc}\n")
             return False
+        # A line that keeps moving in a window; in a log (CI, a pipe) it would be one line
+        # of a thousand, so there it is said once.
+        moving = sys.stdout.isatty()
+        if not moving:
+            print(f"[Preekstof] {doing} …", flush=True)
         while process.poll() is None:
             took = int(time.monotonic() - began)
-            print(f"\r[Preekstof] {doing} · {took // 60} min {took % 60:02d} s ", end="", flush=True)
+            if moving:
+                print(f"\r[Preekstof] {doing} · {took // 60} min {took % 60:02d} s ", end="", flush=True)
             time.sleep(1)
-    print()
+    if moving:
+        print()
     if process.returncode == 0:
         return True
     lines = INSTALL_LOG.read_text(encoding="utf-8", errors="replace").splitlines()[-15:]
@@ -161,10 +169,11 @@ def ensure_requirements() -> None:
     """Install the packages from requirements.txt whenever that file changed since the last install.
 
     A download that came with everything already installed has the stamp, and passes here
-    in a moment.
+    in a moment, apart from what it left out on purpose (fetch_left_out).
     """
     wanted = REQUIREMENTS.read_text(encoding="utf-8")
     if INSTALLED_STAMP.exists() and INSTALLED_STAMP.read_text(encoding="utf-8") == wanted:
+        fetch_left_out()
         return
     ensure_pip()
     say("De onderdelen van de app worden geïnstalleerd. De eerste keer duurt dat een paar minuten.")
@@ -176,6 +185,43 @@ def ensure_requirements() -> None:
                          "en start opnieuw.")
     INSTALLED_STAMP.write_text(wanted, encoding="utf-8")
     say("De onderdelen zijn geïnstalleerd.")
+
+
+BUNDLE = ROOT / "bundle.json"
+
+
+def left_out() -> dict[str, str]:
+    """What the download for this computer left out on purpose, with the version to fetch.
+
+    PyAV, for now: its wheel carries an FFmpeg built with x264 and x265, and that is the
+    kind of thing this app has a church fetch for itself rather than hand on (see NOTICE).
+    The release build wrote down the version it took out, so the one fetched here is the
+    one the rest was installed against.
+    """
+    try:
+        said = json.loads(BUNDLE.read_text(encoding="utf-8")).get("fetch")
+    except (OSError, ValueError, AttributeError):
+        return {}
+    if not isinstance(said, dict):
+        return {}
+    return {str(name): str(number) for name, number in said.items()
+            if importlib.util.find_spec(str(name)) is None}
+
+
+def fetch_left_out() -> None:
+    missing = left_out()
+    if not missing:
+        return
+    ensure_pip()
+    say("Eén onderdeel wordt eenmalig opgehaald; dat mag de download zelf niet meebrengen.")
+    pinned = [f"{name}=={number}" if number else name for name, number in sorted(missing.items())]
+    done = quietly([sys.executable, "-m", "pip", "install", "--disable-pip-version-check",
+                    "--no-warn-script-location", "--progress-bar", "off", "--no-deps", *pinned],
+                   "Onderdeel ophalen")
+    if not done:
+        raise SystemExit("Een onderdeel kon niet opgehaald worden. Controleer de internetverbinding "
+                         "en start opnieuw.")
+    importlib.invalidate_caches()
 
 
 # --- config.env ---------------------------------------------------------------
@@ -596,14 +642,16 @@ def main() -> None:
     if moved:
         say(f"Je eigen werk staat voortaan in {places.DATA}, los van de app. Bijwerken laat het "
             f"daar met rust. ({len(moved)} onderdelen verhuisd.)")
+    if "--prepare" in flags:
+        # The release build stops here. FFmpeg never goes into a download (see NOTICE), and
+        # the configuration belongs to whoever runs it.
+        say("De onderdelen voor de download zijn geïnstalleerd.")
+        return
     load_config()
     # The speech model cache falls back to copies on Windows without developer mode; that is fine.
     os.environ.setdefault("HF_HUB_DISABLE_SYMLINKS_WARNING", "1")
     ensure_cuda()  # after load_config: WHISPER_DEVICE lives in config.env
     ensure_ffmpeg()
-    if "--prepare" in flags:
-        say("Alles wat de download nodig heeft is geïnstalleerd.")
-        return
     ensure_frontend()
     if "--smoke" in flags:
         smoke()

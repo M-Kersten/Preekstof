@@ -1,10 +1,13 @@
 """The zip a church downloads: everything it needs to run, and nothing it does not."""
 
+import json
+import subprocess
 import zipfile
 from pathlib import Path
 
 import pytest
 
+from backend import updates
 from tools import release
 
 # What a volunteer who has never seen a terminal has to be able to double-click, and what
@@ -177,6 +180,8 @@ def test_start_bat_puts_a_downloaded_update_in_place_from_outside_itself():
     assert 'if "%STATUS%"=="75" goto :again' in said
     update = (Path(release.ROOT) / "tools" / "apply-update.bat").read_text(encoding="utf-8")
     assert "robocopy" in update and "/MOVE" in update
+    assert 'move "%APP%\\python" "%APP%\\python.old"' in update, "de Python gaat er in zijn geheel uit"
+    assert 'move "%APP%\\python.old" "%APP%\\python"' in update, "en komt terug als het mislukt"
     assert 'start.bat"' in update.splitlines()[-1], "and it starts the new version when it is done"
 
 
@@ -191,3 +196,81 @@ def test_start_command_is_read_whole_before_it_runs():
     assert said.rstrip().endswith('main "$@"; exit $?')
     assert "xattr -dr com.apple.quarantine" in said
     assert '[ -x "python/bin/python3" ]' in said
+
+
+# --- the downloads per computer, with a Python and the packages in it ---------------------
+
+
+@pytest.fixture(scope="module")
+def bundled(tmp_path_factory) -> Path:
+    """A stand-in for a prepared Mac Python; CI installs into a real one."""
+    fake = tmp_path_factory.mktemp("macpython")
+    (fake / "bin").mkdir()
+    (fake / "bin" / "python3").write_text("#!/bin/sh\n", encoding="utf-8")
+    packages = fake / "lib" / "python3.12" / "site-packages"
+    packages.mkdir(parents=True)
+    (packages / "marker.txt").write_text("x", encoding="utf-8")
+    return release.build(tmp_path_factory.mktemp("dist-mac"), "9.9.9", fake, "mac-arm64",
+                         {"av": "18.1.0"})
+
+
+def test_a_download_per_computer_keeps_its_name_from_version_to_version(bundled):
+    """The download page links to releases/latest/download/<name>, and so does the update."""
+    assert bundled.name == "Preekstof-Mac.zip"
+
+
+def test_every_kind_of_computer_has_a_download_name():
+    assert set(updates.BUNDLES.values()) == {"Preekstof-Windows.zip", "Preekstof-Mac.zip",
+                                             "Preekstof-Mac-Intel.zip"}
+
+
+def test_it_unpacks_into_a_folder_called_preekstof(bundled):
+    with zipfile.ZipFile(bundled) as zip_file:
+        assert {name.partition("/")[0] for name in zip_file.namelist()} == {"Preekstof"}
+
+
+def test_it_says_what_it_is_and_what_it_left_out(bundled):
+    with zipfile.ZipFile(bundled) as zip_file:
+        said = json.loads(zip_file.read("Preekstof/bundle.json"))
+    assert said == {"kind": "mac-arm64", "version": "9.9.9", "fetch": {"av": "18.1.0"}}
+
+
+def test_the_update_button_recognises_it_once_unpacked(bundled, tmp_path):
+    updates.unpack(bundled, tmp_path / "app")
+    assert updates.kind(tmp_path / "app") == "mac-arm64"
+    assert (tmp_path / "app" / "python" / "bin" / "python3").stat().st_mode & 0o111
+    assert (tmp_path / "app" / "python" / "lib" / "python3.12" / "site-packages" / "marker.txt").is_file()
+
+
+def test_the_checks_and_the_install_page_stay_out_of_every_download(built, bundled):
+    for made in (built, bundled):
+        names = inside(made)
+        assert "tools/check_bundle.py" not in names
+        assert not any(name.startswith("site/") for name in names)
+
+
+def test_preparing_takes_out_what_a_church_fetches_itself(tmp_path, monkeypatch):
+    """PyAV carries an FFmpeg built with x264 and x265: fetched there, never handed on."""
+    (tmp_path / "bin").mkdir()
+    (tmp_path / "bin" / "python3").write_text("", encoding="utf-8")
+    (tmp_path / "get-pip.py").write_text("", encoding="utf-8")
+    (tmp_path / "Scripts").mkdir()
+    (tmp_path / "Scripts" / "uvicorn.exe").write_bytes(b"MZ")
+    ran = []
+
+    def fake_run(command, *args, **kwargs):
+        ran.append([str(c) for c in command])
+        return subprocess.CompletedProcess(command, 0, stdout="18.1.0\n" if "-c" in command else "")
+
+    monkeypatch.setattr(release.subprocess, "run", fake_run)
+    assert release.prepare(tmp_path) == {"av": "18.1.0"}
+    assert any("--prepare" in c for c in ran), "de launcher installeert, zoals bij een kerk"
+    assert any("uninstall" in c and c[-1] == "av" for c in ran)
+    assert any("unchecked-hash" in c for c in ran), "anders wordt bij de eerste start alles opnieuw vertaald"
+    assert not (tmp_path / "get-pip.py").exists()
+    assert not (tmp_path / "Scripts").exists()
+
+
+def test_a_bundle_needs_a_python_to_go_in_it(tmp_path):
+    with pytest.raises(SystemExit):
+        release.interpreter(tmp_path)

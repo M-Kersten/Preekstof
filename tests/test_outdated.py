@@ -22,3 +22,12 @@ def test_a_windows_checkout_has_the_same_fingerprint(tmp_path):
 
 def test_the_running_code_is_reported():
     assert health.report()["build"] == version.BUILD != ""
+
+
+def test_the_built_interface_carries_this_version():
+    """Bumping version.py without building gives a release the workflow refuses to make."""
+    from backend import version
+
+    built = Path(__file__).resolve().parent.parent / "frontend" / "dist" / "assets"
+    assert any(version.VERSION in js.read_text(encoding="utf-8") for js in built.glob("*.js")), \
+        "bouw de interface opnieuw: cd frontend && npm run build"

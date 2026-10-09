@@ -631,12 +631,24 @@ def smoke() -> None:
 
     from backend import selftest
 
+    from backend import transcription
+
     with tempfile.TemporaryDirectory() as work:
         video = selftest.make_video(Path(work))
         made, _clip = selftest.step_clip(Path(work), video, "Rooktest")
+        # The whole way through the speech library, with the smallest model (75 MB): a
+        # package that installs and imports can still break on the first word, which is
+        # how PyAV 19 got past a smoke test that never wrote anything out.
+        try:
+            heard = transcription.transcribe(video, Path(work) / "tekst", duration=selftest.SECONDS,
+                                             how=transcription.Listening("tiny", 1, "scan"))
+        except Exception as exc:  # noqa: BLE001
+            raise SystemExit(f"Rooktest: uitschrijven lukt niet ({type(exc).__name__}: {exc}).") from exc
     if not made.ok:
         raise SystemExit(f"Rooktest: een clip maken lukt niet ({made.detail}).")
-    say(f"Rooktest geslaagd: versie {health.get('version')}, {len(fonts)} lettertypes, {made.detail}.")
+    said = " ".join(s.text for s in heard.segments).strip()
+    say(f"Rooktest geslaagd: versie {health.get('version')}, {len(fonts)} lettertypes, {made.detail}, "
+        f"uitgeschreven: “{said[:60]}”.")
 
 
 def main() -> None:

@@ -161,6 +161,11 @@ logbestand, en komt alleen op het scherm als het misgaat. Het spraakmodel, zo'n 
 binnen terwijl je de app verkent, en het paneel rechtsboven laat zien hoe ver het is. Bij de
 eerste dienst hoef je er dan niet meer op te wachten.
 
+**Uitschrijven liep vast op de Mac.** De download voor de Mac haalde bij de eerste start de
+nieuwste versie van een onderdeel voor het geluid op, en die kende een instelling niet meer die het
+spraakmodel meegeeft. Elk uitschrijven stopte daardoor met een foutmelding voordat er een woord
+gehoord was. De app leest het geluid nu zelf in, en dat onderdeel blijft op een versie die werkt.
+
 **Onder de motorkap.** Het eindscherm werd vlak voor het maken van een video al die tijd niet
 bijgewerkt; dat gebeurde alleen bij het opstarten en bij het opslaan van het merk. Dat klopt nu.
 Windows weigert een video te vervangen die nog openstaat in een speler. De app wacht daar nu even

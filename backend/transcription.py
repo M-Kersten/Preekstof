@@ -634,6 +634,25 @@ def get_model(size: str | None = None, on_progress: Callable[[float, str], None]
         return _models[size]
 
 
+def read_wav(wav_path: Path):
+    """The wav extract_audio wrote, as the float samples faster-whisper listens to.
+
+    faster-whisper can open a file itself, but it does that through PyAV, and PyAV 19 dropped
+    an argument faster-whisper 1.2 still passes: every transcription then ends in a TypeError
+    before a word is heard. The file is already 16 kHz mono 16-bit, so reading it needs
+    nothing more than the standard library and numpy, whatever PyAV version a church has.
+    """
+    import wave
+
+    import numpy as np
+
+    with wave.open(str(wav_path), "rb") as audio:
+        if (audio.getnchannels(), audio.getsampwidth(), audio.getframerate()) != (1, 2, 16000):
+            raise RuntimeError("Het geluid kwam niet in de vorm die het spraakmodel verwacht.")
+        raw = audio.readframes(audio.getnframes())
+    return np.frombuffer(raw, dtype="<i2").astype(np.float32) / 32768.0
+
+
 def extract_audio(source: Path, wav_path: Path, should_stop: Callable[[], None] | None = None,
                   on_progress: Callable[[float], None] | None = None, duration: float | None = None,
                   start: float = 0.0) -> None:
@@ -761,7 +780,7 @@ def transcribe(source: Path, work_dir: Path, on_progress: Callable[[float, str],
             should_stop()
         report(base + (1 - base) * (done_to / duration) if duration else base, TEXT)
         whisper_segments, _info = BatchedInferencePipeline(model=model).transcribe(
-            str(wav_path),
+            read_wav(wav_path),
             language=LANGUAGE,
             beam_size=how.beam,
             vad_filter=True,

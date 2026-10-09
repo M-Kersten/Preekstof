@@ -2,5 +2,8 @@ fastapi>=0.110
 uvicorn[standard]>=0.29
 python-multipart>=0.0.9
 faster-whisper>=1.0
+# PyAV 19 dropped an argument faster-whisper 1.2 passes to it. The app no longer lets
+# faster-whisper open files, but a church's computer should not hold a version that breaks it.
+av>=11,<19
 anthropic>=1.0
 yt-dlp>=2024.1

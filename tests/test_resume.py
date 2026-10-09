@@ -211,7 +211,13 @@ def fake_whisper(monkeypatch):
     def fake_extract(source, wav, should_stop=None, on_progress=None, duration=None, start=0.0):
         asked.append({"start": start, "duration": duration})
         wav.parent.mkdir(parents=True, exist_ok=True)
-        wav.write_bytes(b"audio")
+        import wave
+
+        with wave.open(str(wav), "wb") as out:  # a tenth of a second of silence, read like the real thing
+            out.setnchannels(1)
+            out.setsampwidth(2)
+            out.setframerate(16000)
+            out.writeframes(b"\x00\x00" * 1600)
 
     monkeypatch.setattr(transcription, "extract_audio", fake_extract)
     return asked

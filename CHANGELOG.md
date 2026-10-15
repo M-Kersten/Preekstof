@@ -3,7 +3,7 @@
 Per versie, in gewone taal. Welke versie jij draait staat onderin het paneel dat opengaat
 als je in de balk op **Alles gereed** klikt.
 
-## Volgende versie
+## 0.13.1 — pilot
 
 **Minder verbeteren in de ondertitels.** Preekstof leest de ondertitels van een fragment nu na
 met een stukje van de dienst eromheen: wat er vlak ervoor en erna gezegd werd, en de namen die

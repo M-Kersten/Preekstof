@@ -253,8 +253,16 @@ def tracked_crop_filter(info: VideoInfo, output: Output, crop: CropWindow | None
 
 
 def _ffpath(path: Path) -> str:
-    """Escape a path for use inside a filter option value."""
-    return str(path).replace("\\", "/").replace(":", "\\:").replace("'", "\\'")
+    """Escape a path for use inside a quoted filter option value: '...{here}...'.
+
+    FFmpeg reads a filter twice, and unescapes each time. The option level wants `\\:` and
+    `\\'`. The quotes around the value belong to the graph level, and inside them nothing
+    can be escaped, a quote included: an apostrophe in a path (C:\\Users\\O'Brien, a folder
+    called Programma's) has to step out of the quotes, as '\\'', or every clip and end screen
+    on that computer fails with "Error parsing filterchain".
+    """
+    said = str(path).replace("\\", "/").replace(":", "\\:").replace("'", "\\'")
+    return said.replace("'", "'\\''")
 
 
 def build_command(

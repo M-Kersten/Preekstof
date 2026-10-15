@@ -246,8 +246,11 @@ def gradient_source(background: OutroBackground, width: int, height: int) -> str
 
 
 def filter_path(path: Path) -> str:
-    """Escape a path for use inside an FFmpeg filter option (drive letters, quotes)."""
-    return path.as_posix().replace("\\", "/").replace(":", "\\:").replace("'", "\\'")
+    """Escape a path for use inside an FFmpeg filter option (drive letters, quotes).
+    The same as renderer._ffpath, which says why an apostrophe needs more than a backslash."""
+    from .renderer import _ffpath
+
+    return _ffpath(path)
 
 
 def ffmpeg_binary() -> str:

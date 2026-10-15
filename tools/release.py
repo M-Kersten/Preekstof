@@ -43,7 +43,7 @@ from backend.updates import BUNDLES  # noqa: E402
 
 # Kept out of the zip even though git tracks them: nothing a church runs needs them, and
 # every megabyte is a download somebody is waiting on.
-LEAVE_OUT = ("docs/", "evaluation/", "tests/", ".github/", "site/", "tools/evaluate.py",
+LEAVE_OUT = ("docs/", "evaluation/", "tests/", ".github/", "site/", "desktop/", "tools/evaluate.py",
              "tools/speechbench.py", "tools/release.py", "tools/check_bundle.py",
              ".gitignore", ".gitattributes")
 

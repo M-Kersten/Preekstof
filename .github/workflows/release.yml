@@ -245,11 +245,99 @@ jobs:
           path: dist/${{ matrix.asset }}
           if-no-files-found: error
 
+  # The desktop apps (desktop/): Preekstof.app in a disk image for a Mac with an Apple chip,
+  # and an installer for Windows. Built with PyInstaller around the same backend and
+  # interface, FFmpeg inside, and started here the way a church would start them.
+  app-mac:
+    name: Desktop-app voor de Mac
+    needs: plain
+    runs-on: macos-14
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: What building it needs
+        run: |
+          set -eu
+          python -m pip install --quiet -r backend/requirements.txt -r desktop/requirements.txt
+          python -m pip uninstall --yes --quiet av
+      # Builds, checks there is no PyAV inside, runs the packed app's smoke test with a real
+      # window, and makes the disk image.
+      - run: python desktop/build.py
+      - name: The app as a church gets it, out of the disk image
+        run: |
+          set -eu
+          mount="$(hdiutil attach -nobrowse -readonly desktop/out/Preekstof.dmg | tail -1 | cut -f3-)"
+          mkdir -p "$RUNNER_TEMP/Programma's"
+          ditto "$mount/Preekstof.app" "$RUNNER_TEMP/Programma's/Preekstof.app"
+          hdiutil detach "$mount"
+          app="$RUNNER_TEMP/Programma's/Preekstof.app"
+          codesign --verify --deep --strict "$app" && echo "handtekening (ad hoc) klopt"
+          # Downloaded, everything inside carries the quarantine flag; FFmpeg is the part the
+          # app starts as a program of its own, and the app has to clear it there.
+          for f in "$app"/Contents/Frameworks/ffmpeg/ff*; do
+            xattr -w com.apple.quarantine "0081;$(printf %x "$(date +%s)");Safari;" "$f"
+          done
+          PREEKSTOF_DATA="$RUNNER_TEMP/kerk" "$app/Contents/MacOS/Preekstof" --smoke --no-window --report "$RUNNER_TEMP/rooktest.json" || true
+          cat "$RUNNER_TEMP/rooktest.json"
+          python -c "import json,sys; d=json.load(open(sys.argv[1])); sys.exit(0 if d.get('ok') else 1)" "$RUNNER_TEMP/rooktest.json"
+          if xattr -p com.apple.quarantine "$app"/Contents/Frameworks/ffmpeg/ffmpeg 2>/dev/null; then
+            echo "::error::FFmpeg draagt nog de quarantainevlag."; exit 1
+          fi
+      - uses: actions/upload-artifact@v4
+        with:
+          name: zip-app-mac
+          path: desktop/out/Preekstof.dmg
+          if-no-files-found: error
+
+  app-windows:
+    name: Desktop-app voor Windows
+    needs: plain
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: What building it needs
+        shell: pwsh
+        run: |
+          python -m pip install --quiet -r backend/requirements.txt -r desktop/requirements.txt
+          python -m pip uninstall --yes --quiet av
+          if (-not (Test-Path "C:\Program Files (x86)\Inno Setup 6\ISCC.exe")) {
+            choco install innosetup --yes --no-progress
+          }
+      # Builds, checks there is no PyAV inside, runs the packed app's smoke test with a real
+      # window, and makes Preekstof-Setup.exe.
+      - run: python desktop/build.py
+      - name: Installed the way a church installs it, started, and removed again
+        shell: pwsh
+        run: |
+          $dir = Join-Path $env:RUNNER_TEMP "Preekstof"
+          $setup = Start-Process -FilePath "desktop\out\Preekstof-Setup.exe" -ArgumentList "/VERYSILENT","/SUPPRESSMSGBOXES","/NORESTART","/DIR=`"$dir`"" -Wait -PassThru
+          if ($setup.ExitCode -ne 0) { throw "De installatie gaf $($setup.ExitCode)." }
+          $report = Join-Path $env:RUNNER_TEMP "rooktest.json"
+          $env:PREEKSTOF_DATA = Join-Path $env:RUNNER_TEMP "kerk"
+          $app = Start-Process -FilePath (Join-Path $dir "Preekstof.exe") -ArgumentList "--smoke","--no-window","--report","`"$report`"" -Wait -PassThru
+          Get-Content $report
+          if ($app.ExitCode -ne 0) { throw "De geïnstalleerde app gaf $($app.ExitCode)." }
+          $gone = Start-Process -FilePath (Join-Path $dir "unins000.exe") -ArgumentList "/VERYSILENT","/SUPPRESSMSGBOXES" -Wait -PassThru
+          Start-Sleep -Seconds 3
+          if (Test-Path (Join-Path $dir "Preekstof.exe")) { throw "Verwijderen liet Preekstof.exe staan." }
+          if (-not (Test-Path (Join-Path $env:PREEKSTOF_DATA "config.env"))) { throw "Verwijderen nam het eigen werk mee." }
+      - uses: actions/upload-artifact@v4
+        with:
+          name: zip-app-windows
+          path: desktop/out/Preekstof-Setup.exe
+          if-no-files-found: error
+
   publish:
     name: Release
-    needs: [plain, windows, mac]
+    needs: [plain, windows, mac, app-mac, app-windows]
     if: >-
       always() && needs.plain.result == 'success' && needs.windows.result == 'success'
+      && needs.app-mac.result == 'success' && needs.app-windows.result == 'success'
       && (github.event_name == 'push' || inputs.publish)
     runs-on: ubuntu-latest
     env:
@@ -268,7 +356,7 @@ jobs:
         run: |
           set -eu
           ls -l dist
-          for name in "preekstof-$VERSION.zip" Preekstof-Windows.zip Preekstof-Mac.zip; do
+          for name in "preekstof-$VERSION.zip" Preekstof-Windows.zip Preekstof-Mac.zip Preekstof.dmg Preekstof-Setup.exe; do
             [ -f "dist/$name" ] || { echo "::error::$name ontbreekt."; exit 1; }
           done
 
@@ -287,7 +375,7 @@ jobs:
         with:
           tag_name: v${{ env.VERSION }}
           target_commitish: ${{ github.sha }}
-          files: dist/*.zip
+          files: dist/*
           body_path: notes.md
           # Published straight away and marked latest: the download page and the update
           # button both ask for releases/latest, and a draft is invisible to both.

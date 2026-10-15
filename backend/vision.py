@@ -23,11 +23,13 @@ from typing import Iterator
 
 import numpy as np
 
+from . import places
 from .models import ROOT
 
 VISION_DIR = ROOT / "vision"
-FACE_MODEL = VISION_DIR / "face.onnx"
-PERSON_MODEL = VISION_DIR / "person.onnx"
+FACE_MODEL = VISION_DIR / "face.onnx"  # ships with the app
+# Fetched on first use. In the desktop app the app folder is not ours to write in.
+PERSON_MODEL = (places.DATA / "vision" if places.FROZEN else VISION_DIR) / "person.onnx"
 PERSON_URL = "https://huggingface.co/onnx-community/yolov10n/resolve/main/onnx/model.onnx"
 PERSON_BYTES = 9_386_116  # what a complete download weighs, so half a one is not kept
 
@@ -83,7 +85,7 @@ def ensure_models(on_progress=None) -> None:
     with _lock:
         if PERSON_MODEL.is_file() and PERSON_MODEL.stat().st_size == PERSON_BYTES:
             return
-        VISION_DIR.mkdir(parents=True, exist_ok=True)
+        PERSON_MODEL.parent.mkdir(parents=True, exist_ok=True)
         part = PERSON_MODEL.with_suffix(".part")
         try:
             if on_progress:

@@ -604,18 +604,27 @@ def smoke() -> None:
     The release build runs this on a real Windows and a real Mac, through start.bat and
     start.command, so a download that cannot start never reaches a church.
     """
-    import urllib.error
-
-    def ask(path: str) -> bytes:
-        with urllib.request.urlopen(f"http://127.0.0.1:{PORT}{path}", timeout=30) as answer:
-            return answer.read()
-
     server = threading.Thread(target=lambda: asyncio.run(serve()), daemon=True)
     server.start()
     for _ in range(120):
         if port_in_use(PORT):
             break
         time.sleep(0.5)
+    say(smoke_checks(PORT))
+
+
+def smoke_checks(port: int) -> str:
+    """What --smoke checks, against a server that is already running on `port`.
+
+    Shared with the desktop app (desktop/app.py), which starts its server differently and
+    has to pass the very same checks. Hands back the line to say when everything passed.
+    """
+    import urllib.error
+
+    def ask(path: str) -> bytes:
+        with urllib.request.urlopen(f"http://127.0.0.1:{port}{path}", timeout=30) as answer:
+            return answer.read()
+
     try:
         health = json.loads(ask("/health"))
         page = ask("/")
@@ -629,13 +638,13 @@ def smoke() -> None:
             raise SystemExit(f"Rooktest: het onderdeel {name} ontbreekt.")
     import tempfile
 
-    from backend import selftest
-
-    from backend import transcription
+    from backend import selftest, transcription
 
     with tempfile.TemporaryDirectory() as work:
         video = selftest.make_video(Path(work))
         made, _clip = selftest.step_clip(Path(work), video, "Rooktest")
+        # Following the speaker: onnxruntime and both models, over every frame.
+        followed = selftest.step_volgen(Path(work), video)
         # The whole way through the speech library, with the smallest model (75 MB): a
         # package that installs and imports can still break on the first word, which is
         # how PyAV 19 got past a smoke test that never wrote anything out.
@@ -646,9 +655,11 @@ def smoke() -> None:
             raise SystemExit(f"Rooktest: uitschrijven lukt niet ({type(exc).__name__}: {exc}).") from exc
     if not made.ok:
         raise SystemExit(f"Rooktest: een clip maken lukt niet ({made.detail}).")
+    if not followed.ok:
+        raise SystemExit(f"Rooktest: de spreker volgen lukt niet ({followed.detail}).")
     said = " ".join(s.text for s in heard.segments).strip()
-    say(f"Rooktest geslaagd: versie {health.get('version')}, {len(fonts)} lettertypes, {made.detail}, "
-        f"uitgeschreven: “{said[:60]}”.")
+    return (f"Rooktest geslaagd: versie {health.get('version')}, {len(fonts)} lettertypes, {made.detail}, "
+            f"uitgeschreven: “{said[:60]}”.")
 
 
 def main() -> None:

@@ -83,3 +83,8 @@ evaluation/*.json
 /bundle.json
 /.update/
 /dist/
+
+# The desktop app while it is built (desktop/build.py)
+/desktop/build/
+/desktop/out/
+/desktop/.venv/

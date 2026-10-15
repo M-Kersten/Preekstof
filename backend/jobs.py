@@ -97,6 +97,19 @@ class JobManager:
         job.message = "Bezig met stoppen…"
         return True
 
+    def running(self) -> list[str]:
+        """The keys of the work in progress, for whoever is about to close the app."""
+        with self._lock:
+            return [key for key, job in self._jobs.items() if job.status == "running"]
+
+    def cancel_all(self) -> list[str]:
+        """Ask everything that runs to stop, as when the window of the desktop app closes.
+
+        Each job ends at its next checkpoint and stops the FFmpeg it started, so nothing
+        is left working on its own after the app has gone.
+        """
+        return [key for key in self.running() if self.cancel(key)]
+
     def start(self, key: str, work: Callable[[Job], None]) -> Job:
         """Run `work(job)` in a daemon thread. `work` updates job.progress/message."""
         with self._lock:

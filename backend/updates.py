@@ -139,8 +139,11 @@ class UpdateError(RuntimeError):
 
 
 def kind(root: Path | None = None) -> str:
-    """What this install is: one of the downloads, the plain zip, or a git checkout."""
+    """What this install is: one of the downloads, the plain zip, a git checkout, or the
+    desktop app, which is replaced whole by its installer and never by this button."""
     root = root or ROOT
+    if places.FROZEN and root == ROOT:
+        return "desktop"
     if (root / ".git").exists():
         return "git"
     try:
@@ -152,7 +155,7 @@ def kind(root: Path | None = None) -> str:
 
 def asset_for(release: Release, how: str | None = None) -> Asset | None:
     how = how or kind()
-    if how == "git":
+    if how in ("git", "desktop"):
         return None
     wanted = BUNDLES.get(how) or f"preekstof-{release.version}.zip"
     return next((a for a in release.assets if a.name == wanted), None)
@@ -163,6 +166,9 @@ def why_not(release: Release, root: Path | None = None) -> str:
     root = root or ROOT
     if kind(root) == "git":
         return "Deze app komt uit git. Werk hem bij met git pull en start opnieuw."
+    if kind(root) == "desktop":
+        return ("Haal de nieuwe versie op via de link en installeer hem over deze heen. "
+                "Je eigen werk blijft staan.")
     if asset_for(release, kind(root)) is None:
         return "Bij die versie staat geen download voor deze computer. Haal hem op via de link."
     if not os.access(root, os.W_OK):

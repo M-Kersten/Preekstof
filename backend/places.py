@@ -16,9 +16,15 @@ developer's checkout must not be emptied into it.
 
 import os
 import shutil
+import sys
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent  # the app: code, fonts, the music library
+
+# The desktop app (desktop/app.py, packed by PyInstaller). Its ROOT is inside Preekstof.app
+# or next to Preekstof.exe: read-only in practice, and on a Mac writing into it would break
+# the app's signature. Anything the app fetches for itself then goes into DATA instead.
+FROZEN = bool(getattr(sys, "frozen", False))
 
 
 def data_home() -> Path:

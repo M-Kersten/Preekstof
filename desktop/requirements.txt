@@ -1,0 +1,4 @@
+# What building the desktop app needs on top of backend/requirements.txt (desktop/README.md).
+# Not needed to run Preekstof from a checkout or a zip.
+pywebview>=6.2,<7
+pyinstaller>=6.20,<7

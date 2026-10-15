@@ -4,3 +4,5 @@
 # bash stops at a carriage return, so the Mac's and Linux's scripts never get one.
 *.command text eol=lf
 *.sh text eol=lf
+*.ps1 text eol=crlf
+*.iss text eol=crlf

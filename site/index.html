@@ -351,17 +351,17 @@
   <section class="band" id="downloaden">
     <div class="wrap">
       <h2>Preekstof downloaden</h2>
-      <p class="lead">Kies je computer. Alles wat Preekstof nodig heeft zit in de download; uitpakken en dubbelklikken is genoeg.</p>
+      <p class="lead">Kies je computer. Alles wat Preekstof nodig heeft zit erin; installeren en dubbelklikken is genoeg.</p>
       <div class="downloads">
-        <a class="download" id="windows" data-asset="Preekstof-Windows.zip"
-           href="https://github.com/M-Kersten/Preekstof/releases/latest/download/Preekstof-Windows.zip">
+        <a class="download" id="windows" data-asset="Preekstof-Setup.exe"
+           href="https://github.com/M-Kersten/Preekstof/releases/latest/download/Preekstof-Setup.exe">
           <em class="tag">Voor deze computer</em>
           <strong>Windows</strong>
           <span>Windows 10 of 11, 64-bit</span>
           <span class="size"></span>
         </a>
-        <a class="download" id="mac" data-asset="Preekstof-Mac.zip"
-           href="https://github.com/M-Kersten/Preekstof/releases/latest/download/Preekstof-Mac.zip">
+        <a class="download" id="mac" data-asset="Preekstof.dmg"
+           href="https://github.com/M-Kersten/Preekstof/releases/latest/download/Preekstof.dmg">
           <em class="tag">Voor deze computer</em>
           <strong>Mac met Apple-chip</strong>
           <span>M1 en nieuwer, macOS 14 of nieuwer</span>
@@ -375,6 +375,7 @@
           <span class="size"></span>
         </a>
       </div>
+      <p class="release">Liever zonder installeren? De zip voor <a href="https://github.com/M-Kersten/Preekstof/releases/latest/download/Preekstof-Windows.zip">Windows</a> of de <a href="https://github.com/M-Kersten/Preekstof/releases/latest/download/Preekstof-Mac.zip">Mac</a> pak je uit en start je met start.bat of start.command; Preekstof opent dan in je browser.</p>
       <p class="release" id="release">Altijd de nieuwste versie. Alle versies en wat erin veranderde staan op <a href="https://github.com/M-Kersten/Preekstof/releases">de pagina met versies</a>.</p>
     </div>
   </section>
@@ -390,16 +391,10 @@
       <ol class="steps" id="voor-windows" role="tabpanel" aria-labelledby="tab-windows">
         <li>
           <h3>Download Preekstof voor Windows</h3>
-          <p>Met de knop hierboven. Het bestand heet <code>Preekstof-Windows.zip</code> en komt in je map Downloads.</p>
-          <p class="tip"><strong>Scheelt straks een waarschuwing:</strong> klik met de rechtermuisknop op de zip, kies <em>Eigenschappen</em>, zet onderaan een vinkje bij <em>Blokkering opheffen</em> en klik op OK.</p>
+          <p>Met de knop hierboven. Het bestand heet <code>Preekstof-Setup.exe</code> en komt in je map Downloads.</p>
         </li>
         <li>
-          <h3>Pak de zip uit</h3>
-          <p>Rechtermuisknop op de zip, <em>Alles uitpakken…</em>. Kies een plek waar de map kan blijven staan, bijvoorbeeld Documenten. Er verschijnt een map <code>Preekstof</code>.</p>
-          <p class="tip">Dubbelklik je in de zip zelf op start.bat, dan zegt Preekstof dat hij eerst uitgepakt moet worden. Dat klopt: Windows laat bestanden in een zip niet bij elkaar.</p>
-        </li>
-        <li>
-          <h3>Dubbelklik op <code>start.bat</code></h3>
+          <h3>Dubbelklik op <code>Preekstof-Setup.exe</code></h3>
           <p>Staat er een blauw venster met <em>Windows heeft uw pc beveiligd</em>? Dat komt doordat Preekstof nieuw is voor Microsoft. Klik op <em>Meer info</em> en daarna op <em>Toch uitvoeren</em>. Dit gebeurt één keer.</p>
           <div class="shots">
             <figure>
@@ -414,7 +409,7 @@
             <figure>
               <div class="shot smartscreen" aria-hidden="true">
                 <div class="big">Windows heeft uw pc beveiligd</div>
-                <div>App: start.bat<br>Uitgever: Onbekende uitgever</div>
+                <div>App: Preekstof-Setup.exe<br>Uitgever: Onbekende uitgever</div>
                 <div class="buttons"><span class="btn click above">Toch uitvoeren</span><span class="btn">Niet uitvoeren</span></div>
               </div>
               <figcaption>Dan <em>Toch uitvoeren</em></figcaption>
@@ -422,26 +417,31 @@
           </div>
           <p class="tip">Krijg je een grijs venster <em>Open bestand, beveiligingswaarschuwing</em>, klik dan op <em>Uitvoeren</em>.</p>
         </li>
+        <li>
+          <h3>Volg de installatie</h3>
+          <p>Een paar keer <em>Volgende</em>, en Preekstof staat in het Startmenu. Een wachtwoord van de beheerder is niet nodig: Preekstof installeert alleen voor jou. Aan het eind start je hem meteen.</p>
+        </li>
       </ol>
 
       <ol class="steps" id="voor-mac" role="tabpanel" aria-labelledby="tab-mac" hidden>
         <li>
           <h3>Download Preekstof voor de Mac</h3>
           <p>Welke van de twee? Klik linksboven op het appeltje en kies <em>Over deze Mac</em>. Staat daar <em>Chip Apple M1</em> (of M2, M3, M4), dan is het <em>Mac met Apple-chip</em>. Staat er <em>Processor</em> met Intel erin, dan de Intel-versie.</p>
+          <p class="tip">De Intel-versie is een zip. Pak hem uit, zet de map <code>Preekstof</code> bijvoorbeeld in Documenten en dubbelklik op <code>start.command</code>; de stap hieronder gaat dan over start.command.</p>
         </li>
         <li>
-          <h3>Open de zip</h3>
-          <p>Safari pakt hem vanzelf uit in je map Downloads. Met Chrome of Firefox dubbelklik je zelf op <code>Preekstof-Mac.zip</code>. Er verschijnt een map <code>Preekstof</code>; zet die bijvoorbeeld in Documenten.</p>
+          <h3>Sleep Preekstof naar Programma's</h3>
+          <p>Dubbelklik op <code>Preekstof.dmg</code>. Er gaat een venster open met Preekstof en de map Programma's; sleep Preekstof erheen. Daarna mag het venster dicht.</p>
         </li>
         <li>
-          <h3>Dubbelklik op <code>start.command</code></h3>
-          <p>De eerste keer houdt de Mac dat tegen, omdat Preekstof niet uit de App Store komt. Klik op <em>Gereed</em>. Open dan <em>Systeeminstellingen</em>, ga naar <em>Privacy en beveiliging</em> en scrol helemaal naar beneden. Bij de melding over start.command klik je op <em>Open toch</em> en bevestig je met je wachtwoord of vingerafdruk.</p>
+          <h3>Open Preekstof</h3>
+          <p>De eerste keer houdt de Mac dat tegen, omdat Preekstof niet uit de App Store komt. Klik op <em>Gereed</em>. Open dan <em>Systeeminstellingen</em>, ga naar <em>Privacy en beveiliging</em> en scrol helemaal naar beneden. Bij de melding over Preekstof klik je op <em>Open toch</em> en bevestig je met je wachtwoord of vingerafdruk.</p>
           <div class="shots">
             <figure>
               <div class="shot macdialog" aria-hidden="true">
                 <div class="icon"><img src="icon.svg" alt=""></div>
-                <b>“start.command” niet geopend</b>
-                <div>Apple kan niet controleren of “start.command” vrij is van malware.</div>
+                <b>“Preekstof” niet geopend</b>
+                <div>Apple kan niet controleren of “Preekstof” vrij is van malware.</div>
                 <div class="buttons"><span class="btn blue click inside">Gereed</span><span class="btn">Verplaats naar prullenmand</span></div>
               </div>
               <figcaption>Eerst <em>Gereed</em></figcaption>
@@ -451,13 +451,13 @@
                 <div class="side"><span>Algemeen</span><span>Weergave</span><span class="on">Privacy en beveiliging</span><span>Bureaublad</span></div>
                 <div class="pane">
                   <b>Beveiliging</b>
-                  <div class="row"><span>“start.command” is geblokkeerd om je Mac te beschermen.</span><span class="btn click above">Open toch</span></div>
+                  <div class="row"><span>“Preekstof” is geblokkeerd om je Mac te beschermen.</span><span class="btn click above">Open toch</span></div>
                 </div>
               </div>
               <figcaption>Dan in Systeeminstellingen <em>Open toch</em></figcaption>
             </figure>
           </div>
-          <p class="tip">Op macOS 14 of ouder gaat het sneller: houd de Control-toets ingedrukt, klik op start.command, kies <em>Open</em> en daarna nog een keer <em>Open</em>. Vraagt de Mac of Terminal bij je map Downloads of Documenten mag, klik dan op OK.</p>
+          <p class="tip">Op macOS 14 gaat het sneller: houd de Control-toets ingedrukt, klik op Preekstof, kies <em>Open</em> en daarna nog een keer <em>Open</em>. Daarna opent Preekstof gewoon, uit Programma's of het Dock.</p>
         </li>
       </ol>
     </section>
@@ -466,13 +466,10 @@
       <h2>De eerste keer</h2>
       <div class="cards">
         <div class="card">
-          <h3>Er gaat een zwart venster open</h3>
-          <div class="window" aria-hidden="true"><span class="gold">[Preekstof]</span> versie 0.11.0
-<span class="gold">[Preekstof]</span> FFmpeg, het programma dat de video's maakt, wordt eenmalig opgehaald (ongeveer 100 MB) …
-<span class="gold">[Preekstof]</span> Preekstof draait op http://localhost:8000
-<span class="gold">[Preekstof]</span> Laat dit venster open zolang je met Preekstof werkt.</div>
-          <p>Daarin staat wat Preekstof aan het doen is. De eerste keer haalt hij een paar onderdelen op, dat duurt bij een gewone internetverbinding een paar minuten. Daarna opent de app vanzelf in je browser.</p>
-          <p>Zolang je met Preekstof werkt, blijft dat venster open. Sluit je het, dan stopt de app.</p>
+          <h3>Preekstof opent in een eigen venster</h3>
+          <p>Na een paar tellen staat de app er. Bij de eerste start loopt Preekstof met je door wat hij nodig heeft: de naam van de kerk en de sleutel voor Claude.</p>
+          <p>Op de achtergrond komt intussen het spraakmodel binnen, zo'n 460 MB. Daarna werkt het uitschrijven ook zonder internet. Sluit je het venster, dan stopt Preekstof, en werk dat nog liep gaat de volgende keer verder.</p>
+          <p class="tip">Met de zip opent Preekstof in je browser, met een zwart venster ernaast dat open moet blijven zolang je werkt.</p>
         </div>
         <div class="card">
           <h3>Doe de proef</h3>
@@ -482,18 +479,18 @@
         <div class="card">
           <h3>Je eigen werk staat apart</h3>
           <p>Diensten, clips, het logo en de huisstijl van jullie kerk staan in de map <code>Preekstof</code> in je persoonlijke map. Op Windows is dat <code>C:\Gebruikers\jouw naam\Preekstof</code>, op de Mac de thuismap.</p>
-          <p>De map met de app zelf mag je dus gerust vervangen of weggooien.</p>
+          <p>De app zelf mag je dus gerust opnieuw installeren of verwijderen; je werk blijft staan.</p>
         </div>
         <div class="card">
           <h3>Bijwerken</h3>
-          <p>Komt er een nieuwe versie, dan staat er bovenin de app <em>nieuwe versie</em>. Klik erop, kies <em>Bijwerken</em> en daarna <em>Nu opnieuw starten</em>. Je eigen werk blijft waar het is.</p>
+          <p>Komt er een nieuwe versie, dan staat er bovenin de app <em>nieuwe versie</em>. Klik erop en haal hem op; installeer hem over de oude heen, zoals de eerste keer. Met de zip gaat het in één keer: <em>Bijwerken</em> en daarna <em>Nu opnieuw starten</em>. Je eigen werk blijft waar het is.</p>
         </div>
       </div>
     </section>
 
     <section id="nodig">
       <h2>Wat je nodig hebt</h2>
-      <p>Een computer met Windows 10 of 11, of een Mac. Op een Mac met Apple-chip moet macOS 14 (Sonoma) of nieuwer staan, op een Mac met Intel-processor macOS 12 (Monterey) of nieuwer. Staat er iets ouders op, dan zegt Preekstof dat bij het starten. Minstens 8 GB werkgeheugen en 5 GB vrije ruimte; de clips zelf nemen daarna weinig plek in. Een snelle computer is fijn, nodig is hij niet: een dienst van anderhalf uur uitschrijven kost op een gewone laptop een half uur tot een uur.</p>
+      <p>Een computer met Windows 10 of 11, of een Mac. Op een Mac met Apple-chip moet macOS 14 (Sonoma) of nieuwer staan. Een Mac met Intel-processor gebruikt de zip, vanaf macOS 12 (Monterey). Minstens 8 GB werkgeheugen en 5 GB vrije ruimte; de clips zelf nemen daarna weinig plek in. Een snelle computer is fijn, nodig is hij niet: een dienst van anderhalf uur uitschrijven kost op een gewone laptop een half uur tot een uur.</p>
       <p>Voor het zoeken naar goede momenten gebruikt Preekstof Claude van Anthropic, met een eigen sleutel van jullie kerk. De app legt bij de eerste start uit hoe je die krijgt en wat het kost. Alleen de uitgeschreven tekst gaat daarheen, de opname nooit. Lees voor de kerkenraad <a href="https://github.com/M-Kersten/Preekstof/blob/HEAD/PRIVACY.md">wat er met jullie opname gebeurt</a>.</p>
     </section>
 

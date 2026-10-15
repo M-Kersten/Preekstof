@@ -13,11 +13,21 @@ WORKFLOW = (ROOT / ".github" / "workflows" / "pages.yml").read_text(encoding="ut
 REPO = re.search(r"repos/([^/]+/[^/]+)/releases", updates.RELEASES).group(1)
 
 
-@pytest.mark.parametrize("name", sorted(updates.BUNDLES.values()))
-def test_every_download_has_a_button_that_finds_it(name):
-    """Renaming a zip in the release without the page means a button that gives a 404."""
+@pytest.mark.parametrize("name", sorted(updates.BUNDLES.values()) + ["Preekstof.dmg", "Preekstof-Setup.exe"])
+def test_every_download_has_a_link_that_finds_it(name):
+    """Renaming a download in the release without the page means a link that gives a 404."""
     assert f"https://github.com/{REPO}/releases/latest/download/{name}" in PAGE
+
+
+@pytest.mark.parametrize("name", ["Preekstof-Setup.exe", "Preekstof.dmg", "Preekstof-Mac-Intel.zip"])
+def test_the_big_buttons_are_the_desktop_apps_and_the_intel_zip(name):
     assert f'data-asset="{name}"' in PAGE
+
+
+def test_the_release_builds_what_the_buttons_ask_for():
+    workflow = (ROOT / ".github" / "workflows" / "release.yml").read_text(encoding="utf-8")
+    for name in ("Preekstof.dmg", "Preekstof-Setup.exe"):
+        assert name in workflow, name
 
 
 def test_the_page_asks_the_same_repository_the_update_button_asks():

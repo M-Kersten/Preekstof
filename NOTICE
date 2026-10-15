@@ -72,6 +72,30 @@ PyAV (av)
     exactly that one with pip.
 
 
+IN THE DESKTOP APPS (Preekstof.dmg, Preekstof-Setup.exe)
+------------------------------------------------------
+
+The same Python and packages as the downloads above, packed by PyInstaller (GPL with an
+exception that allows packing applications under any licence), with pywebview (BSD
+3-Clause) for the window and, on Windows, Microsoft's WebView2, which is part of Windows and
+not shipped with the app.
+
+FFmpeg and ffprobe
+    Inside the desktop apps, in the folder ffmpeg/, unlike the zips. Windows: the
+    "essentials" build from gyan.dev. Mac: the build for the Apple chip from
+    ffmpeg.martin-riedl.de. Both are FFmpeg under the GPL (version 3 or later, with x264 and
+    libass). Preekstof starts them as a separate program and is not linked with them. The
+    file FFMPEG-LEESMIJ.txt beside them gives the exact version and configuration; the
+    source of FFmpeg is at https://ffmpeg.org/download.html and
+    https://github.com/FFmpeg/FFmpeg, and the builders publish what they build from.
+
+PyAV
+    Not in the desktop apps at all. faster-whisper imports it, and a stand-in of a few lines
+    (desktop/stubs/av) takes its place, because the real wheel carries FFmpeg libraries with
+    x264 and x265 that would be loaded into the app's own process. Preekstof reads the audio
+    itself and never needs it.
+
+
 FETCHED ON FIRST USE, ONTO THE CHURCH'S OWN COMPUTER
 ----------------------------------------------------
 
@@ -92,8 +116,8 @@ FFmpeg and ffprobe
     Downloaded by the launcher when the machine has none. The Windows build comes from
     gyan.dev and the macOS builds, one for each kind of chip, from ffmpeg.martin-riedl.de.
     FFmpeg is LGPL-2.1-or-later, and those particular builds include GPL components; they are
-    executed as separate programs and never linked into this software, and none of the
-    downloads above carries them. Source: ffmpeg.org.
+    executed as separate programs and never linked into this software. The zips do not
+    carry them; the desktop apps do (above). Source: ffmpeg.org.
 
 
 SERVICES THIS APP TALKS TO

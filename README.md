@@ -21,6 +21,16 @@ There are two entry points on the page:
 
 ## Quick start (no technical knowledge needed)
 
+The simplest is the desktop app: install it and double-click, and Preekstof opens in a
+window of its own, with everything inside, FFmpeg included.
+
+- Mac with an Apple chip, macOS 14 or newer: [`Preekstof.dmg`](https://github.com/M-Kersten/Preekstof/releases/latest/download/Preekstof.dmg)
+- Windows 10 or 11, 64-bit: [`Preekstof-Setup.exe`](https://github.com/M-Kersten/Preekstof/releases/latest/download/Preekstof-Setup.exe)
+
+How it is built and what to click the first time is in [desktop/README.md](desktop/README.md).
+The zips below remain: the same app in the browser, started with start.bat or
+start.command, and the only way on an Intel Mac.
+
 The page to send a church to is the install page (`site/index.html`, published by
 `.github/workflows/pages.yml` once GitHub Pages is switched on: **Settings → Pages → Source:
 GitHub Actions**). It says the same as below, in Dutch, with the warnings drawn out.

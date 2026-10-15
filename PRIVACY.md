@@ -22,6 +22,8 @@ jullie leert. De instellingen. De logbestanden.
 **Naar Anthropic (api.anthropic.com).** De uitgeschreven tekst van het preekgedeelte, in één
 aanvraag per dienst, met jullie eigen API-sleutel. En per fragment dat je klaarzet nog één
 kleine aanvraag: de ondertitels van dat fragment, om verkeerd verstane woorden eruit te halen.
+Om die te kunnen lezen gaan er ongeveer twee minuten tekst van vlak ervoor en vlak erna mee, de
+namen die in de dienst vaker vallen en wat jullie over de dienst hebben ingevuld.
 De eerste keer dat je van een fragment een video maakt volgt er nog een, om de tekst onder de
 post te schrijven. Daarin gaan dezelfde ondertitels mee, de titel van het fragment, de naam van
 de kerk en wat jullie over de dienst hebben ingevuld. Dat is dus ook tekst uit de preek, van de

@@ -3,6 +3,18 @@
 Per versie, in gewone taal. Welke versie jij draait staat onderin het paneel dat opengaat
 als je in de balk op **Alles gereed** klikt.
 
+## Volgende versie
+
+**Minder verbeteren in de ondertitels.** Preekstof leest de ondertitels van een fragment nu na
+met een stukje van de dienst eromheen: wat er vlak ervoor en erna gezegd werd, en de namen die
+in de dienst vaker vallen. Daardoor gaan ook gewone woorden goed die in de zin geen betekenis
+hadden, en verdwijnen vreemde namen waar de spreker iets heel anders zei. Een naam verzint hij
+niet: die moet in de woordenlijst staan, in de dienst vallen of uit de Bijbel komen. Je ziet
+in de editor gewoon de goede tekst.
+
+**Geen melding meer over het zwarte venster.** De app op Windows meldde bij elke start dat het
+zwarte venster nog oude code draaide, terwijl er geen zwart venster was.
+
 ## 0.13.0 — pilot
 
 Preekstof is nu ook een gewone app. Op een Mac met Apple-chip installeer je hem uit

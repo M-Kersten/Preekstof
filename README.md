@@ -217,23 +217,30 @@ so that path keeps only what fits in the prompt.
 **And a third place, where there is no budget at all.** Both of the above bias a model that hears
 sounds. Neither of them knows that only one word can follow "de brief aan de", which is why "de
 brief aan de eveneers" survives every amount of biasing. So after a clip has been heard properly,
-its subtitles are read back once against the whole vocabulary by a language model, which has the
-sentence in front of it and no size limit.
+its subtitles are read back once by a language model, which has the sentence in front of it and no
+size limit. It reads them in a little of the service: about two minutes before and after the clip
+from the quick scan, the names that come back at least twice in the whole service (picked out
+locally, so the hour itself is not sent), what the church wrote about the service, and the word
+list. Around 2,000 to 3,000 tokens per clip.
 
-That pass may swap a word and do nothing else. A swap happens only when the replacement is already
-on a list somebody wrote down, what it replaces really stands in that line, the two are the same
-number of words, and they look enough alike to be a mishearing rather than a different word
-(`backend/polish.py`). It cannot introduce vocabulary nobody listed, cannot rewrite a sentence and
-cannot tidy the grammar of a preacher who changed direction halfway, because subtitles sit under
-the face of a real person and have to say what was said.
+That pass may swap a word and do nothing else. A swap happens only when what it replaces really
+stands in that line, the two are the same number of words, they look enough alike to be a
+mishearing rather than a different word, and any name it brings in is on the word list, said in the
+service, written on the service page or in the Bible (`backend/bijbelnamen.py`, checked against but
+never sent). An ordinary word needs no list: "het zout de aarde" may become "het zout der aarde".
+It cannot invent a name, cannot rewrite a sentence and cannot tidy the grammar of a preacher who
+changed direction halfway, because subtitles sit under the face of a real person and have to say
+what was said (`backend/polish.py`). What it changed is not marked in the editor; the text before
+it is kept in the clip's `work/nagelezen.json`.
 
 One word for one word is also what keeps the karaoke caption honest: `subtitles.word_times` uses
 whisper's own per-word timings while the count still matches the text. The one exception is a word
 whisper split or joined ("kerk en raad" is "kerkenraad" with the spaces in the wrong place); that
 caption falls back to spreading words by length, exactly as a line corrected by hand does.
 
-What it fixes twice becomes an ordinary entry in the church's `corrections`, after which the plain
-string replacement handles it and the model is not asked again. Costs about a tenth of a cent per
+A swap to a word on the list that it makes twice becomes an ordinary entry in the church's
+`corrections`, after which the plain string replacement handles it. A fix read from the sentence
+never does: "de" was "der" in that line and is "de" in the next. Costs about a tenth of a cent per
 clip. `POLISH_CLIPS=0` in `config.env` turns it off and leaves the words exactly as heard.
 
 So the file holds `words` in groups, ordered from droppable to precious inside each group and

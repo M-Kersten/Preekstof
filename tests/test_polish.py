@@ -1,8 +1,9 @@
-"""Reading a clip back against the word list, and everything the model is not allowed to do.
+"""Reading a clip back in its sentence, and everything the model is not allowed to do.
 
-Subtitles sit under the face of a real person. The pass may swap a misheard word for one
-somebody wrote down, and it may do nothing else; every test below that says "geweigerd" is
-a way of getting that wrong.
+Subtitles sit under the face of a real person. The pass may swap a misheard word for what
+was said, it may only bring in a name somebody wrote down or the service kept saying, and
+it may do nothing else; every test below that says "geweigerd" is a way of getting that
+wrong.
 """
 
 import json
@@ -85,9 +86,9 @@ def test_the_original_is_not_changed_underneath(known):
 
 
 def test_a_word_nobody_listed_is_refused(known):
-    """It cannot introduce vocabulary. Everything it reaches for is on a list."""
-    said = lines("We lezen uit Habakuk.")
-    out, pairs = swapped(said, Swap(line=0, wrong="Habakuk", right="Zefanja"))
+    """It cannot introduce a name. Every name it reaches for is on a list."""
+    said = lines("We lezen uit Wiebenga.")
+    out, pairs = swapped(said, Swap(line=0, wrong="Wiebenga", right="Wiegersma"))
     assert out[0].text == said[0].text and pairs == {}
 
 
@@ -217,12 +218,16 @@ def test_an_empty_clip_asks_nothing(known, monkeypatch):
     assert pairs == {}
 
 
-def test_with_no_word_list_there_is_nothing_to_swap_to(monkeypatch):
+def test_with_no_word_list_the_sentence_is_still_read(kept, monkeypatch):
+    """A word that makes no sense where it stands needs no list to be put right."""
     monkeypatch.setattr(polish, "known_words", lambda: [])
-    monkeypatch.setattr("backend.discovery.check_provider",
-                        lambda: pytest.fail("er hoort niets gevraagd te worden"))
-    said = Transcript(language="nl", segments=lines("de eveneers"))
-    assert polish.polish(said)[1] == {}
+    monkeypatch.setattr("backend.discovery.check_provider", lambda: None)
+    monkeypatch.setattr("backend.discovery.ask", lambda *a, **k: polish.LlmSwaps(swaps=[
+        Swap(line=0, wrong="zout de aarde", right="zout der aarde")]))
+    said = Transcript(language="nl", segments=lines("Jullie zijn het zout de aarde."))
+    out, pairs = polish.polish(said)
+    assert out.segments[0].text == "Jullie zijn het zout der aarde."
+    assert pairs == {"zout de aarde": "zout der aarde"}
 
 
 def test_the_whole_thing_through_a_stubbed_model(known, kept, monkeypatch):
@@ -312,3 +317,147 @@ def test_a_whole_clip_of_real_output(known, kept, monkeypatch):
     assert out.segments[0].text == "De schriftlezing komt uit Ezechiël."
     assert out.segments[1].text == "De kerkenraad vraagt uw voorbede vanavond."
     assert pairs == {"ezechiëel": "Ezechiël", "kerk en raad": "kerkenraad"}
+
+
+# --- read in the service around it --------------------------------------------------------
+
+AROUND = polish.Context(before="We lazen uit het boek Ruth, over Naomi en haar schoondochter.",
+                        after="Naomi ging terug naar Bethlehem.",
+                        names=["Ruth", "Naomi", "Bethlehem", "Hendriks"],
+                        about=["preek: De weg terug", "voorganger: ds. Pieter Visser"])
+
+
+def test_an_ordinary_word_is_put_right_from_the_sentence(known):
+    said = lines("Wij zijn geroepen om het zout de aarde te zijn.")
+    out, pairs = swapped(said, Swap(line=0, wrong="zout de aarde", right="zout der aarde"))
+    assert out[0].text == "Wij zijn geroepen om het zout der aarde te zijn."
+
+
+def test_an_odd_name_where_ordinary_words_were_said_is_put_right(known):
+    said = lines("Daarom Kees ik vandaag voor het leven.")
+    out, _ = swapped(said, Swap(line=0, wrong="Kees", right="kies"))
+    assert out[0].text == "Daarom kies ik vandaag voor het leven."
+
+
+def test_a_name_the_service_keeps_saying_may_be_brought_in(known):
+    said = lines("We bidden voor zuster Hendrix in het ziekenhuis.")
+    out, _ = polish.apply(said, [Swap(line=0, wrong="Hendrix", right="Hendriks")], AROUND)
+    assert out[0].text == "We bidden voor zuster Hendriks in het ziekenhuis."
+
+
+def test_the_preacher_from_the_service_page_may_be_brought_in(known):
+    said = lines("Dominee Fisser gaat voor.")
+    out, _ = polish.apply(said, [Swap(line=0, wrong="Fisser", right="Visser")], AROUND)
+    assert out[0].text == "Dominee Visser gaat voor."
+
+
+def test_a_made_up_name_is_refused(known):
+    """Sounds alike, and nobody ever said it: exactly what it must not invent."""
+    said = lines("En toen zei Ruth tegen Nomi dat ze bleef.")
+    out, pairs = polish.apply(said, [Swap(line=0, wrong="Nomi", right="Noemi")], AROUND)
+    assert out[0].text == said[0].text and pairs == {}
+
+
+def test_without_the_service_its_names_are_not_allowed_either(known):
+    said = lines("We bidden voor zuster Hendrix in het ziekenhuis.")
+    out, pairs = swapped(said, Swap(line=0, wrong="Hendrix", right="Hendriks"))
+    assert out[0].text == said[0].text and pairs == {}
+
+
+def test_a_capital_where_a_sentence_starts_is_only_grammar(known):
+    said = lines("Hij bleef. Kees voor het leven, zei hij.")
+    out, _ = swapped(said, Swap(line=0, wrong="Kees", right="Kies"))
+    assert out[0].text == "Hij bleef. Kies voor het leven, zei hij."
+
+
+def test_a_name_in_the_middle_of_a_fix_still_needs_a_list(known):
+    said = lines("Daarom kies ik voor het Lefen.")
+    out, pairs = swapped(said, Swap(line=0, wrong="het Lefen", right="het Leven"))
+    assert out[0].text == said[0].text and pairs == {}
+
+
+def test_a_fix_read_from_the_sentence_is_not_learned(known, kept, monkeypatch):
+    """"de" was "der" in that line; in the next one it is "de" again."""
+    monkeypatch.setattr("backend.discovery.check_provider", lambda: None)
+    monkeypatch.setattr("backend.discovery.ask", lambda *a, **k: polish.LlmSwaps(swaps=[
+        Swap(line=0, wrong="zout de aarde", right="zout der aarde"),
+        Swap(line=0, wrong="eveneers", right="Efeziërs")]))
+    said = Transcript(language="nl", segments=lines("Het zout de aarde, zegt de eveneers."))
+    polish.polish(said)
+    counted = json.loads(kept.read_text(encoding="utf-8"))
+    assert list(counted) == ["eveneers"]
+
+
+def test_what_it_asks_carries_the_service_around_it(known):
+    asked = polish.question(lines("de regel zelf"), known, AROUND)
+    assert "boek Ruth" in asked and "terug naar Bethlehem" in asked
+    assert "Naomi" in asked and "ds. Pieter Visser" in asked
+    assert asked.index("boek Ruth") < asked.index("0: de regel zelf") < asked.index("terug naar Bethlehem")
+
+
+def test_the_names_are_those_the_service_keeps_saying():
+    said = lines("Ruth bleef bij Naomi.", "En Naomi zei tegen Ruth: ga.", "Toen kwam Boaz.",
+                 "Want Naomi wist het.", "De velden van Boaz.")
+    names = polish.service_names(said)
+    assert names[0] == "Naomi"
+    assert "Boaz" in names and "Ruth" not in names  # Ruth once mid-sentence, once at the start
+    assert "Want" not in names and "De" not in names and "Toen" not in names
+
+
+def test_the_service_around_a_clip_is_a_few_minutes_and_not_the_hour(monkeypatch):
+    from backend.models import ClipOrigin, Service
+
+    hour = Transcript(language="nl", segments=[
+        Segment(start=t, end=t + 9.0, text=f"zin op {t:.0f}") for t in range(0, 3600, 10)])
+    monkeypatch.setattr(polish, "load_service", lambda _id: Service(
+        id="s", createdAt="nu", title="Zondag", preacher="ds. Visser", transcript="t.json"))
+    monkeypatch.setattr(polish, "load_service_transcript", lambda _s: hour)
+    project = polish.Project.model_construct(origin=ClipOrigin(serviceId="s", start=1800.0, end=1860.0))
+    found = polish.context_for(project)
+    assert "zin op 1690" in found.before and "zin op 1790" in found.before
+    assert "zin op 1660" not in found.before and "zin op 1810" not in found.before
+    assert "zin op 1860" in found.after and "zin op 1970" in found.after
+    assert "zin op 1990" not in found.after and "zin op 1840" not in found.after
+    assert "voorganger: ds. Visser" in found.about
+
+
+def test_a_clip_on_its_own_has_no_service_around_it():
+    project = polish.Project.model_construct(origin=None)
+    assert polish.context_for(project) is None
+
+
+def test_a_service_that_is_gone_is_not_a_crash(monkeypatch):
+    from backend.models import ClipOrigin
+
+    monkeypatch.setattr(polish, "load_service", lambda _id: None)
+    project = polish.Project.model_construct(origin=ClipOrigin(serviceId="weg", start=0, end=30))
+    assert polish.context_for(project) is None
+
+
+def test_a_very_fast_talker_does_not_double_the_question():
+    many = [Segment(start=t, end=t + 1, text="woord " * 40) for t in range(0, 300)]
+    said = polish.text_between(many, 0, 300, keep_end=True)
+    assert len(said) <= polish.AROUND_CHARS + 2
+
+
+def test_what_was_there_before_is_kept_out_of_sight(tmp_path):
+    before = Transcript(language="nl", segments=lines("de eveneers"))
+    polish.note(tmp_path / "work", before, {"eveneers": "Efeziërs"})
+    kept = json.loads((tmp_path / "work" / "nagelezen.json").read_text(encoding="utf-8"))
+    assert kept == {"swaps": {"eveneers": "Efeziërs"}, "before": ["de eveneers"]}
+
+
+def test_nothing_changed_leaves_no_note(tmp_path):
+    polish.note(tmp_path / "work", Transcript(language="nl", segments=lines("x")), {})
+    assert not (tmp_path / "work").exists()
+
+
+def test_a_name_from_the_bible_needs_no_list():
+    """Whisper wrote this on a real sermon, next to Gideon and Jacob."""
+    said = lines("dat lezen we over Jeremia, over Gideon, over Simpson, over Jacob")
+    out, _ = polish.apply(said, [Swap(line=0, wrong="Simpson", right="Simson")])
+    assert "over Simson, over Jacob" in out[0].text
+
+
+def test_the_bible_names_are_not_sent_along(known):
+    assert "Methusalem" not in polish.question(lines("een regel"), known, AROUND)

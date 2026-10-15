@@ -1552,10 +1552,13 @@ def write_out(project: Project, accurate: bool = False, on_progress=None, should
             how=transcription.writing(accurate),
         )
         if heard.segments:
-            # And read back against the word list, in the sentence. A speech model hears
-            # sounds; only something reading the line knows that one word can follow "de
-            # brief aan de". It may swap words for listed ones and nothing else.
-            heard, _swapped = polish.polish(heard)
+            # And read back in its sentence, with a little of the service around it. A
+            # speech model hears sounds; only something reading the line knows that one word
+            # can follow "de brief aan de". It may swap misheard words and nothing else, and
+            # what it swapped is not marked: the text just reads as it was said.
+            first = heard
+            heard, swapped = polish.polish(heard, polish.context_for(project))
+            polish.note(project_dir(project.id) / "work", first, swapped)
             save_transcript(project, heard)
     except Cancelled:
         raise

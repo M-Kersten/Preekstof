@@ -3,6 +3,26 @@
 Per versie, in gewone taal. Welke versie jij draait staat onderin het paneel dat opengaat
 als je in de balk op **Alles gereed** klikt.
 
+## 0.13.0 — pilot
+
+Preekstof is nu ook een gewone app. Op een Mac met Apple-chip installeer je hem uit
+`Preekstof.dmg`, op Windows met `Preekstof-Setup.exe`, en daarna opent hij in een eigen venster.
+Geen zwart venster ernaast, geen browser, en niets anders dat je eerst moet installeren:
+FFmpeg zit erin.
+
+Installeren gaat zoals bij elke app. Op de Mac sleep je Preekstof naar Programma's, op Windows
+klik je een paar keer op Volgende, zonder wachtwoord van de beheerder. De eerste keer vragen de
+Mac en Windows of je de app vertrouwt, omdat hij niet uit een winkel komt; de downloadpagina
+laat zien waar je klikt. Je eigen werk blijft in de map `Preekstof` in je persoonlijke map,
+ook als je de app verwijdert of opnieuw installeert. Bijwerken is de nieuwe versie over de
+oude heen installeren; de app zegt wanneer er een is.
+
+De zips blijven: met Preekstof in de browser, en als enige manier op een Mac met Intel-processor.
+
+**Een apostrof in een mapnaam brak elke clip.** Staat je werk in een map met een apostrof,
+zoals bij een gebruikersnaam als O'Brien, dan mislukte elke clip en elk eindscherm met een
+foutmelding over het filter. Dat werkt nu, in de app en in de browser.
+
 ## 0.12.0 — pilot
 
 Uitschrijven werkt weer op de Mac. Wie 0.11.0 op een Mac installeerde, kreeg bij elke dienst een

@@ -441,16 +441,22 @@ def smoke(report: Path | None, window: bool) -> int:
 
         threading.Thread(target=watch, daemon=True).start()
 
-    give_up_after(1500)
+    give_up_after(780)
     server = lock = None
     try:
         server, lock, ffmpeg = start_up(places.DATA, models=False)
         said["ffmpeg"] = str(ffmpeg) if ffmpeg else None
         said["ffmpegFound"] = shutil.which("ffmpeg")
+        launcher.say("Rooktest: de app draait; nu het werk.")
         said["checks"] = launcher.smoke_checks(server.port)
+        launcher.say("Rooktest: " + said["checks"])
         said["modules"] = packed_modules()
+        launcher.say(f"Rooktest: onderdelen {said['modules']}")
         if window:
+            write()
+            launcher.say("Rooktest: het venster gaat open.")
             said["window"] = window_check(server.url)
+            launcher.say(f"Rooktest: venster {said['window']}")
             if not said["window"].get("root"):
                 raise RuntimeError(f"Het venster liet de app niet zien: {said['window']}")
         said["ok"] = True
@@ -492,6 +498,7 @@ def window_check(url: str) -> dict:
     window = webview.create_window(TITLE, url, width=1200, height=800)
 
     def look() -> None:
+        print("[Preekstof] Rooktest: het venster is er; wachten op het scherm.", flush=True)
         began = time.monotonic()
         while time.monotonic() - began < 60:
             try:
@@ -504,6 +511,7 @@ def window_check(url: str) -> dict:
             except Exception as exc:  # noqa: BLE001  not loaded yet
                 seen["last"] = str(exc)
             time.sleep(0.5)
+        print(f"[Preekstof] Rooktest: gezien {seen}; het venster gaat dicht.", flush=True)
         window.destroy()
 
     webview.start(look, private_mode=True, localization=localization())
@@ -519,5 +527,23 @@ def main(argv: list[str]) -> int:
     return run()
 
 
+def leave(code: int) -> None:
+    """Go, now. Everything that matters has been stopped and written by then; what is left
+    are the window toolkit's own threads, which on a Mac can keep a closed app alive in the
+    background, holding on to nothing but still there."""
+    for stream in (sys.stdout, sys.stderr):
+        try:
+            stream.flush()
+        except Exception:  # noqa: BLE001
+            pass
+    os._exit(code)
+
+
 if __name__ == "__main__":
-    sys.exit(main(sys.argv[1:]))
+    # First, before anything: a helper process a library starts (on a Mac, tqdm's lock
+    # starts one) is this same program with other arguments. Without this it would start
+    # a whole second Preekstof instead of doing its small job.
+    import multiprocessing
+
+    multiprocessing.freeze_support()
+    leave(main(sys.argv[1:]))

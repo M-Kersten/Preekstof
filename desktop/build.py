@@ -156,9 +156,12 @@ def check(window: bool) -> None:
         env = {**os.environ, "PREEKSTOF_DATA": str(Path(data) / "Preekstof")}
         command = [str(program()), "--smoke", "--report", str(report)] + ([] if window else ["--no-window"])
         say("Rooktest: " + " ".join(command))
-        status = subprocess.run(command, env=env, timeout=1800).returncode
-        said = json.loads(report.read_text(encoding="utf-8")) if report.is_file() else {}
         log = Path(env["PREEKSTOF_DATA"]) / "logs" / "preekstof.log"
+        try:
+            status = subprocess.run(command, env=env, timeout=900).returncode
+        except subprocess.TimeoutExpired:
+            status = "te lang"
+        said = json.loads(report.read_text(encoding="utf-8")) if report.is_file() else {}
         if status != 0 or not said.get("ok"):
             if log.is_file():
                 print(log.read_text(encoding="utf-8", errors="replace")[-6000:])

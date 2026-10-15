@@ -285,6 +285,12 @@ jobs:
           if xattr -p com.apple.quarantine "$app"/Contents/Frameworks/ffmpeg/ffmpeg 2>/dev/null; then
             echo "::error::FFmpeg draagt nog de quarantainevlag."; exit 1
           fi
+          # Closed means gone: no Preekstof left running, and no second one started by a
+          # helper process (multiprocessing.freeze_support in desktop/app.py).
+          sleep 3
+          if pgrep -fl "Preekstof.app/Contents/MacOS/Preekstof"; then
+            echo "::error::Er draait nog een Preekstof nadat de app klaar was."; exit 1
+          fi
       - uses: actions/upload-artifact@v4
         with:
           name: zip-app-mac
@@ -322,6 +328,8 @@ jobs:
           $app = Start-Process -FilePath (Join-Path $dir "Preekstof.exe") -ArgumentList "--smoke","--no-window","--report","`"$report`"" -Wait -PassThru
           Get-Content $report
           if ($app.ExitCode -ne 0) { throw "De geïnstalleerde app gaf $($app.ExitCode)." }
+          Start-Sleep -Seconds 3
+          if (Get-Process -Name Preekstof -ErrorAction SilentlyContinue) { throw "Er draait nog een Preekstof nadat de app klaar was." }
           $gone = Start-Process -FilePath (Join-Path $dir "unins000.exe") -ArgumentList "/VERYSILENT","/SUPPRESSMSGBOXES" -Wait -PassThru
           Start-Sleep -Seconds 3
           if (Test-Path (Join-Path $dir "Preekstof.exe")) { throw "Verwijderen liet Preekstof.exe staan." }

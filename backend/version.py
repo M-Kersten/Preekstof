@@ -32,13 +32,22 @@ USER_AGENT = f"Preekstof/{VERSION} (+https://github.com/M-Kersten/Preekstof)"
 API_FILES = ("models.py", "main.py")
 
 
+# The packed desktop app carries no source files to read, only the compiled modules. Its
+# build writes the fingerprint down beside them instead (desktop/preekstof.spec); without it
+# the server would say "" and the interface would think it belonged to other code.
+WRITTEN_DOWN = "BUILD"
+
+
 def fingerprint(folder: Path = Path(__file__).parent) -> str:
     digest = hashlib.sha256()
     try:
         for name in API_FILES:
             digest.update((folder / name).read_bytes().replace(b"\r\n", b"\n"))
     except OSError:
-        return ""
+        try:
+            return (folder / WRITTEN_DOWN).read_text(encoding="utf-8").strip()
+        except OSError:
+            return ""
     return digest.hexdigest()[:12]
 
 

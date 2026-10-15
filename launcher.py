@@ -633,6 +633,12 @@ def smoke_checks(port: int) -> str:
         raise SystemExit(f"Rooktest: de app antwoordt niet ({exc}).") from exc
     if b"<div id=\"root\">" not in page or not fonts:
         raise SystemExit("Rooktest: het scherm of de lettertypes ontbreken.")
+    # The interface and the server must agree they are the same code, or every start shows
+    # "het zwarte venster draait nog de code van daarvoor" (Outdated.tsx).
+    built = [js.read_text(encoding="utf-8", errors="replace")
+             for js in (ROOT / "frontend" / "dist" / "assets").glob("*.js")]
+    if not health.get("build") or not any(health["build"] in js for js in built):
+        raise SystemExit(f"Rooktest: het scherm hoort bij andere code dan de server ({health.get('build')!r}).")
     for name in ("faster_whisper", "ctranslate2", "onnxruntime", "av"):
         if importlib.util.find_spec(name) is None:
             raise SystemExit(f"Rooktest: het onderdeel {name} ontbreekt.")

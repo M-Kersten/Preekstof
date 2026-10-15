@@ -30,6 +30,13 @@ for name in release.wanted(release.tracked()):
         if source.is_file():
             datas.append((str(source), str(Path(name).parent)))
 
+# The fingerprint of the code the interface was built against, which the packed app cannot
+# work out itself: it has no source files to read (backend/version.py).
+written = DESKTOP / "build" / version.WRITTEN_DOWN
+written.parent.mkdir(parents=True, exist_ok=True)
+written.write_text(version.fingerprint(ROOT / "backend"), encoding="utf-8")
+datas.append((str(written), "backend"))
+
 # FFmpeg and ffprobe, run as programs of their own, with the licence they come under.
 binaries = []
 ffmpeg = Path(os.environ.get("PREEKSTOF_FFMPEG_DIR", DESKTOP / "build" / "ffmpeg"))

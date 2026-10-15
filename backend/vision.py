@@ -16,6 +16,7 @@ on alone, which is the whole reason for having both.
 import math
 import subprocess
 import threading
+import time
 import urllib.request
 from dataclasses import dataclass
 from pathlib import Path
@@ -86,31 +87,48 @@ def ensure_models(on_progress=None) -> None:
         if PERSON_MODEL.is_file() and PERSON_MODEL.stat().st_size == PERSON_BYTES:
             return
         PERSON_MODEL.parent.mkdir(parents=True, exist_ok=True)
-        part = PERSON_MODEL.with_suffix(".part")
-        try:
-            if on_progress:
-                on_progress(0.0, "Het herkenningsmodel wordt eenmalig opgehaald (9 MB)")
-            from . import version
+        if on_progress:
+            on_progress(0.0, "Het herkenningsmodel wordt eenmalig opgehaald (9 MB)")
+        # A connection that drops halfway is the usual way this fails, on church Wi-Fi as
+        # much as anywhere, so it is simply asked again before anyone is bothered.
+        for attempt in range(1, TRIES + 1):
+            try:
+                _fetch_person(on_progress)
+                return
+            except NoModel:
+                if attempt == TRIES:
+                    raise
+                time.sleep(RETRY_PAUSE * attempt)
 
-            request = urllib.request.Request(PERSON_URL, headers={"User-Agent": version.USER_AGENT})
-            with urllib.request.urlopen(request, timeout=120) as answer, part.open("wb") as out:
-                got = 0
-                while chunk := answer.read(256 * 1024):
-                    out.write(chunk)
-                    got += len(chunk)
-                    if on_progress:
-                        on_progress(min(0.99, got / PERSON_BYTES),
-                                    f"Het herkenningsmodel wordt opgehaald · {got // 1_000_000} van 9 MB")
-            if part.stat().st_size != PERSON_BYTES:
-                raise NoModel("Het herkenningsmodel kwam maar half binnen. Probeer het opnieuw.")
-            part.replace(PERSON_MODEL)
-        except NoModel:
-            part.unlink(missing_ok=True)
-            raise
-        except Exception as exc:  # noqa: BLE001  no connection, a proxy, a moved file
-            part.unlink(missing_ok=True)
-            raise NoModel("Het herkenningsmodel kon niet opgehaald worden, dus de spreker "
-                          f"volgen lukt nu niet. Kader het beeld zelf. ({exc})") from exc
+
+TRIES = 3
+RETRY_PAUSE = 2.0  # seconds, and longer each time
+
+
+def _fetch_person(on_progress=None) -> None:
+    part = PERSON_MODEL.with_suffix(".part")
+    try:
+        from . import version
+
+        request = urllib.request.Request(PERSON_URL, headers={"User-Agent": version.USER_AGENT})
+        with urllib.request.urlopen(request, timeout=120) as answer, part.open("wb") as out:
+            got = 0
+            while chunk := answer.read(256 * 1024):
+                out.write(chunk)
+                got += len(chunk)
+                if on_progress:
+                    on_progress(min(0.99, got / PERSON_BYTES),
+                                f"Het herkenningsmodel wordt opgehaald · {got // 1_000_000} van 9 MB")
+        if part.stat().st_size != PERSON_BYTES:
+            raise NoModel("Het herkenningsmodel kwam maar half binnen. Probeer het opnieuw.")
+        part.replace(PERSON_MODEL)
+    except NoModel:
+        part.unlink(missing_ok=True)
+        raise
+    except Exception as exc:  # noqa: BLE001  no connection, a proxy, a moved file
+        part.unlink(missing_ok=True)
+        raise NoModel("Het herkenningsmodel kon niet opgehaald worden, dus de spreker "
+                      f"volgen lukt nu niet. Kader het beeld zelf. ({exc})") from exc
 
 
 # --- frames ---------------------------------------------------------------------

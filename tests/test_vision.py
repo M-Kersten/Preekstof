@@ -146,9 +146,12 @@ def test_a_person_model_that_arrived_half_way_is_not_kept(tmp_path, monkeypatch)
             self.done = True
             return b"x" * 1000
 
-    monkeypatch.setattr(vision.urllib.request, "urlopen", lambda *a, **k: Half())
+    asked = []
+    monkeypatch.setattr(vision.urllib.request, "urlopen", lambda *a, **k: asked.append(1) or Half())
+    monkeypatch.setattr(vision, "RETRY_PAUSE", 0)
     with pytest.raises(vision.NoModel):
         vision.ensure_models()
+    assert len(asked) == vision.TRIES, "a dropped connection is asked again before giving up"
     assert not (tmp_path / "person.onnx").exists()
     assert not list(tmp_path.glob("*.part")), "the half download is cleaned up"
 

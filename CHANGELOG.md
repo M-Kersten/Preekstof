@@ -3,7 +3,7 @@
 Per versie, in gewone taal. Welke versie jij draait staat onderin het paneel dat opengaat
 als je in de balk op **Alles gereed** klikt.
 
-## Volgende versie
+## 0.13.2 — pilot
 
 **Kerkdienstgemist werkt weer in de Mac-app.** De app kon niet nagaan dat hij echt met
 kerkdienstgemist.nl praatte en meldde daarom "geen verbinding", terwijl de site gewoon online

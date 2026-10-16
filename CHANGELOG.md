@@ -3,7 +3,7 @@
 Per versie, in gewone taal. Welke versie jij draait staat onderin het paneel dat opengaat
 als je in de balk op **Alles gereed** klikt.
 
-## Volgende versie
+## 0.13.4 — pilot
 
 **Kerkdienstgemist en het volgen van de spreker werken nu ook in de Mac-app.** De zip deed
 het al, de app niet. De app vroeg bij het opstarten eerst aan zichzelf of er nog een eerdere

@@ -613,6 +613,37 @@ def smoke() -> None:
     say(smoke_checks(PORT))
 
 
+HTTPS_PROBE = "api.kerkdienstgemist.nl"
+
+
+def https_refused(host: str, timeout: float = 20) -> str | None:
+    """One https request through urllib.request.urlopen, as kerkdienstgemist and the person
+    model are fetched. None when the certificate checked out, else why not.
+
+    A separate connection with settings of its own passed while the app's requests failed,
+    so it goes the same way theirs do. Any answer means the certificate was accepted. No
+    network at all is not what this is for: None, with a word said.
+    """
+    import ssl
+    import urllib.error
+
+    try:
+        with urllib.request.urlopen(f"https://{host}/", timeout=timeout):
+            return None
+    except urllib.error.HTTPError:
+        return None  # it answered, so the certificate was accepted
+    except urllib.error.URLError as exc:
+        if isinstance(exc.reason, ssl.SSLError):
+            return f"{type(exc.reason).__name__}: {exc.reason}"
+        say(f"Rooktest: {host} niet bereikt, de https-controle is overgeslagen ({exc.reason})")
+        return None
+    except ssl.SSLError as exc:
+        return f"{type(exc).__name__}: {exc}"
+    except OSError as exc:
+        say(f"Rooktest: {host} niet bereikt, de https-controle is overgeslagen ({exc})")
+        return None
+
+
 def smoke_checks(port: int) -> str:
     """What --smoke checks, against a server that is already running on `port`.
 
@@ -646,12 +677,13 @@ def smoke_checks(port: int) -> str:
 
     from backend import certificates, selftest, transcription
 
-    # One real https connection to the address that failed on a church's Mac, twice: the
-    # app said "geen verbinding" while the site was up (backend/certificates.py).
+    # One real https request, the way the app makes them, to the address that failed on a
+    # church's Mac three times: the app said "geen verbinding" while the site was up
+    # (backend/certificates.py). Only here, in the release check; the app itself does not.
     checker = certificates.make_sure() or "OpenSSL"
-    refused = certificates.check()
+    refused = https_refused(HTTPS_PROBE)
     if refused:
-        raise SystemExit(f"Rooktest: het certificaat van {certificates.PROBE} wordt niet "
+        raise SystemExit(f"Rooktest: het certificaat van {HTTPS_PROBE} wordt niet "
                          f"vertrouwd ({checker}): {refused}")
 
     with tempfile.TemporaryDirectory() as work:

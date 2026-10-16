@@ -17,18 +17,22 @@ network puts in between, which no list that ships with an app can.
     elsewhere  OpenSSL with the system's list, or certifi's when there is none
 
 Windows reads the Windows certificate store and has always worked; it is left alone.
+
+And then it still failed in the Mac app (0.13.3), while the zip on the same Mac worked.
+urllib builds its handlers once, on the first request, and keeps the security settings of
+that moment for every request after it. The app's first request was to itself, asking
+whether an earlier Preekstof still answered on the port in an old lock file, and it came
+before anything here had run. So this runs first thing in the app, and it throws away
+handlers built before it, in case anything ever comes earlier again.
 """
 
 import os
-import socket
 import ssl
 import sys
+import urllib.request
 from pathlib import Path
 
 from . import places
-
-# Asked over https in the release check, because this is the address that failed.
-PROBE = "api.kerkdienstgemist.nl"
 
 done: str | None = None
 
@@ -73,6 +77,8 @@ def make_sure() -> str | None:
     if done is not None:
         return done or None
     done = ""
+    # Whatever urllib built before this keeps the old settings; the next request builds anew.
+    urllib.request.install_opener(None)
     if sys.platform == "win32":
         return None
     if os.environ.get("SSL_CERT_FILE") or os.environ.get("SSL_CERT_DIR"):
@@ -87,21 +93,3 @@ def make_sure() -> str | None:
         os.environ["SSL_CERT_FILE"] = where
         done = where
     return where
-
-
-def check(host: str = PROBE, timeout: float = 15) -> str | None:
-    """Open one https connection. None when the certificate checked out, else why not.
-
-    Only a failed check counts as failing. No network at all is something else, and not
-    what this is for, so that comes back as None with a word in the log.
-    """
-    context = ssl.create_default_context()
-    try:
-        with socket.create_connection((host, 443), timeout=timeout) as raw:
-            with context.wrap_socket(raw, server_hostname=host):
-                return None
-    except ssl.SSLError as exc:
-        return f"{type(exc).__name__}: {exc}"
-    except OSError as exc:
-        print(f"[certificaten] {host} niet bereikt, de controle is overgeslagen ({exc})")
-        return None

@@ -467,6 +467,11 @@ def smoke(report: Path | None, window: bool) -> int:
     give_up_after(780)
     server = lock = None
     try:
+        # What run() does first when an earlier start left its lock behind: ask that port
+        # whether a Preekstof answers. On a church's Mac that first request came before
+        # the certificates were set up, and every https request after it failed. The
+        # build machine never had an old lock, so this check never saw it.
+        answers(pick_port())
         server, lock, ffmpeg = start_up(places.DATA, models=False)
         said["ffmpeg"] = str(ffmpeg) if ffmpeg else None
         said["ffmpegFound"] = shutil.which("ffmpeg")
@@ -544,6 +549,11 @@ def window_check(url: str) -> dict:
 def main(argv: list[str]) -> int:
     give_output_somewhere()
     no_console_windows()
+    # Before the first web request of any kind, the local check on an old lock included:
+    # urllib keeps the settings of its first request for every one after it.
+    from backend import certificates
+
+    certificates.make_sure()
     if "--smoke" in argv:
         report = Path(argv[argv.index("--report") + 1]) if "--report" in argv else None
         return smoke(report, window="--no-window" not in argv)

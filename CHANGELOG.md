@@ -3,6 +3,13 @@
 Per versie, in gewone taal. Welke versie jij draait staat onderin het paneel dat opengaat
 als je in de balk op **Alles gereed** klikt.
 
+## Volgende versie
+
+**Kerkdienstgemist en het volgen van de spreker werken nu ook in de Mac-app.** De zip deed
+het al, de app niet. De app vroeg bij het opstarten eerst aan zichzelf of er nog een eerdere
+Preekstof draaide, en die eerste vraag legde vast hoe alle latere verbindingen gecontroleerd
+werden, nog voordat de goede controle klaarstond. Nu staat die controle als allereerste klaar.
+
 ## 0.13.3 — pilot
 
 **Kerkdienstgemist en het volgen van de spreker werken nu echt op de Mac.** De vorige

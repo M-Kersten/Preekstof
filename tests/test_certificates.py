@@ -3,6 +3,7 @@ could not check the certificate. On a Mac, macOS does that check now."""
 
 import ssl
 import urllib.error
+import urllib.request
 
 import pytest
 
@@ -71,15 +72,30 @@ def test_windows_keeps_its_own_store(clean, monkeypatch):
 
 def test_the_check_tells_a_refused_certificate_from_no_network(monkeypatch):
     def refused(*_a, **_k):
-        raise ssl.SSLCertVerificationError(1, "unable to get local issuer certificate")
+        raise urllib.error.URLError(ssl.SSLCertVerificationError(1, "unable to get local issuer certificate"))
 
     def offline(*_a, **_k):
-        raise OSError("geen netwerk")
+        raise urllib.error.URLError(OSError("geen netwerk"))
 
-    monkeypatch.setattr(certificates.socket, "create_connection", refused)
-    assert "local issuer" in certificates.check()
-    monkeypatch.setattr(certificates.socket, "create_connection", offline)
-    assert certificates.check() is None
+    def answered(*_a, **_k):
+        raise urllib.error.HTTPError("https://x/", 404, "niet hier", {}, None)
+
+    import launcher
+
+    monkeypatch.setattr(launcher.urllib.request, "urlopen", refused)
+    assert "local issuer" in launcher.https_refused("x")
+    monkeypatch.setattr(launcher.urllib.request, "urlopen", offline)
+    assert launcher.https_refused("x") is None
+    monkeypatch.setattr(launcher.urllib.request, "urlopen", answered)
+    assert launcher.https_refused("x") is None
+
+
+def test_what_urllib_built_before_is_thrown_away(clean):
+    """The Mac app's first request, to itself, fixed the security settings for every
+    https request after it, before the certificates were set up."""
+    urllib.request.install_opener(urllib.request.build_opener())
+    certificates.make_sure()
+    assert urllib.request._opener is None
 
 
 def test_a_certificate_failure_is_not_called_a_dead_internet():

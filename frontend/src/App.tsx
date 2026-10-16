@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { setupApi, type SetupState } from './api'
-import { remember, remembered } from './remember'
+import { heldForNow, holdForNow } from './remember'
 import { useChurch } from './church'
 import BrandPanel, { type BrandTab } from './components/BrandPanel'
 import ClipEditor from './components/ClipEditor'
@@ -56,7 +56,7 @@ const named = (name: string | undefined) =>
 
 
 export default function App() {
-  const [mode, setMode] = useState<Mode>(() => (remembered(MODE_KEY) === 'clip' ? 'clip' : 'service'))
+  const [mode, setMode] = useState<Mode>(() => (heldForNow(MODE_KEY) === 'clip' ? 'clip' : 'service'))
   const [projectId, setProjectId] = useState<string | null>(null)
   const [tidying, setTidying] = useState(false)
   const [proving, setProving] = useState(false)
@@ -89,7 +89,7 @@ export default function App() {
 
   const switchMode = (next: Mode) => {
     setMode(next)
-    remember(MODE_KEY, next)
+    holdForNow(MODE_KEY, next)
   }
 
   const openClip = (id: string) => {

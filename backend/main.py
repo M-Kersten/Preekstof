@@ -23,8 +23,8 @@ from datetime import datetime, timezone
 
 from . import certificates
 
-# Before anything opens an https address: the Mac app's OpenSSL looks for its trusted
-# authorities on the computer it was built on (certificates.py).
+# Before anything opens an https address: on a Mac, macOS checks certificates, as it does
+# for Safari (certificates.py).
 certificates.make_sure()
 
 from . import brands, clips, diagnose, discovery, fetch, fonts, formats, health, house, lifecycle, look, journal, kerkdienstgemist, music, outro, polish, posts, renderer, room, selftest, settings, setup, speed, storage, tracking, transcription, updates, version, wordlearn

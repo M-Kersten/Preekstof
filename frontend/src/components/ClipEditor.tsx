@@ -2,7 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import { ApiError, api, type CropWindow, type LookPart, type MusicSettings, type Project, type RenderStatus, type Segment, type ShapeKey, type ShareSettings, type Style, type Watermark } from '../api'
 import { useChurch } from '../church'
 import { cssFilter } from '../look'
-import { forget, remember, remembered } from '../remember'
+import { heldForNow, holdForNow, letGo } from '../remember'
 import DeliveryPanel from './DeliveryPanel'
 import FramingPanel from './FramingPanel'
 import LogoPanel from './LogoPanel'
@@ -77,13 +77,13 @@ export default function ClipEditor({ projectId, onProjectChange }: Props) {
     setMusic(p.music)
     setWatermark(p.watermark)
     setSegments(p.transcriptData?.segments ?? [])
-    remember(STORAGE_KEY, p.id)
+    holdForNow(STORAGE_KEY, p.id)
     onProjectChange(p.id)
   }, [onProjectChange])
 
   // Open the requested project (or the last one after a page reload).
   useEffect(() => {
-    const wanted = projectId ?? remembered(STORAGE_KEY)
+    const wanted = projectId ?? heldForNow(STORAGE_KEY)
     if (!wanted || wanted === project?.id) return
     api
       .getProject(wanted)
@@ -98,7 +98,7 @@ export default function ClipEditor({ projectId, onProjectChange }: Props) {
         // A transcription that is still running survives a page reload.
         if (transcribe.status === 'running') setTranscribeStatus(transcribe)
       })
-      .catch(() => forget(STORAGE_KEY))
+      .catch(() => letGo(STORAGE_KEY))
   }, [projectId, project?.id, adopt])
 
   // The brand lives in its own menu now; when it is saved the end screen is made again, and

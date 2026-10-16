@@ -3,6 +3,18 @@
 Per versie, in gewone taal. Welke versie jij draait staat onderin het paneel dat opengaat
 als je in de balk op **Alles gereed** klikt.
 
+## Volgende versie
+
+**Kerkdienstgemist en het volgen van de spreker werken nu echt op de Mac.** De vorige
+versie loste het maar half op. De Mac controleert de beveiliging van een website nu zelf,
+net als Safari. Lukte het in Safari, dan lukt het nu ook in Preekstof.
+
+**Het startscherm blijft niet meer hangen.** Startte de app snel, dan bleef het venster soms
+op "Preekstof start" staan tot je hem opnieuw opende.
+
+**De app begint op het startscherm.** Hij opende bij elke start de dienst waar je de vorige
+keer mee bezig was. Herlaad je de pagina terwijl de app open is, dan blijf je wel waar je was.
+
 ## 0.13.2 — pilot
 
 **Kerkdienstgemist werkt weer in de Mac-app.** De app kon niet nagaan dat hij echt met

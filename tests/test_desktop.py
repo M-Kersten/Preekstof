@@ -151,3 +151,40 @@ def test_the_windows_build_files_keep_windows_line_endings():
     for name in ("desktop/installer.iss", "desktop/build-windows.ps1"):
         raw = (ROOT / name).read_bytes()
         assert raw.count(b"\r\n") == raw.count(b"\n"), name
+
+
+class FakeWindow:
+    """A window that, like WKWebView on a quick start, can end up back on the starting page."""
+
+    def __init__(self, landings):
+        import threading
+        from types import SimpleNamespace
+
+        self.landings = list(landings)
+        self.asked: list[str] = []
+        self.now = "about:blank"
+        loaded = threading.Event()
+        loaded.set()
+        self.events = SimpleNamespace(loaded=loaded)
+
+    def load_url(self, url):
+        self.asked.append(url)
+        self.now = self.landings.pop(0) if self.landings else url
+
+    def get_current_url(self):
+        return self.now
+
+
+def test_the_app_is_shown_even_when_the_starting_page_wins_the_race(monkeypatch):
+    monkeypatch.setattr(desktop.time, "sleep", lambda _s: None)
+    window = FakeWindow(["about:blank", "http://127.0.0.1:8766/"])
+    desktop.show_the_app(window, "http://127.0.0.1:8766")
+    assert window.asked == ["http://127.0.0.1:8766"] * 2
+    assert window.now.startswith("http://127.0.0.1:8766")
+
+
+def test_once_there_it_asks_no_more(monkeypatch):
+    monkeypatch.setattr(desktop.time, "sleep", lambda _s: None)
+    window = FakeWindow(["http://127.0.0.1:8766/"])
+    desktop.show_the_app(window, "http://127.0.0.1:8766")
+    assert len(window.asked) == 1

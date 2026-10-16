@@ -6,4 +6,7 @@ faster-whisper>=1.0
 # faster-whisper open files, but a church's computer should not hold a version that breaks it.
 av>=11,<19
 anthropic>=1.0
+# On a Mac, https is checked by macOS itself, as in Safari (backend/certificates.py).
+truststore>=0.10; sys_platform == "darwin"
+certifi
 yt-dlp>=2024.1

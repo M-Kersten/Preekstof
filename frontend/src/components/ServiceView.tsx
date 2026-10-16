@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { ApiError, serviceApi, type ClipCandidate, type Service, type ServiceSummary } from '../api'
 import { useChurch } from '../church'
-import { forget, remember, remembered } from '../remember'
+import { heldForNow, holdForNow, letGo } from '../remember'
 import { formatTime } from '../subtitleLayout'
 import type { Version } from '../versions'
 import ClipSuggestions from './ClipSuggestions'
@@ -144,14 +144,14 @@ export default function ServiceView({ onOpenClip }: Props) {
 
   const adopt = (s: Service) => {
     setService(s)
-    remember(STORAGE_KEY, s.id)
+    holdForNow(STORAGE_KEY, s.id)
   }
 
   // Restore the last service after a reload.
   useEffect(() => {
-    const saved = remembered(STORAGE_KEY)
+    const saved = heldForNow(STORAGE_KEY)
     if (!saved) return
-    serviceApi.get(saved).then(setService).catch(() => forget(STORAGE_KEY))
+    serviceApi.get(saved).then(setService).catch(() => letGo(STORAGE_KEY))
   }, [])
 
   // What is there to go back to. Asked again whenever you are between services, so one you
@@ -340,7 +340,7 @@ export default function ServiceView({ onOpenClip }: Props) {
     setLink('')
     autoChain.current = false
     dirty.current = false
-    forget(STORAGE_KEY)
+    letGo(STORAGE_KEY)
   }
 
   const openEarlier = (id: string) => {

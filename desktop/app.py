@@ -388,7 +388,7 @@ def run() -> int:
         try:
             server, lock, _ = start_up(data)
             state.update(server=server, lock=lock)
-            window.load_url(server.url)
+            show_the_app(window, server.url)
         except Exception as exc:  # noqa: BLE001
             import traceback
 
@@ -400,6 +400,29 @@ def run() -> int:
                   localization=localization())
     shut_down(state.get("server"), state.get("lock"))
     return 0
+
+
+def show_the_app(window, url: str, tries: int = 5) -> None:
+    """Swap the starting page for the app, and make sure the swap held.
+
+    The starting page is still loading when a quick start (a second, with everything
+    cached) already has the server up. Asked to go to the app at that moment, the window
+    went there and then finished drawing the starting page on top of it: a window that
+    said "Preekstof start" for good, until the app was closed and opened again. So first
+    the starting page is let finish, and afterwards the window is asked where it is.
+    """
+    window.events.loaded.wait(15)
+    for _attempt in range(tries):
+        window.load_url(url)
+        window.events.loaded.wait(20)
+        time.sleep(0.5)
+        try:
+            now = window.get_current_url() or ""
+        except Exception:  # noqa: BLE001  a window that cannot say is given the benefit
+            return
+        if now.startswith(url.rstrip("/")):
+            return
+        print(f"[venster] nog niet bij de app ({now or 'leeg'}); opnieuw")
 
 
 def shut_down(server: "Server | None", lock: "Lock | None") -> None:

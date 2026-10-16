@@ -3,7 +3,7 @@
 Per versie, in gewone taal. Welke versie jij draait staat onderin het paneel dat opengaat
 als je in de balk op **Alles gereed** klikt.
 
-## Volgende versie
+## 0.13.3 — pilot
 
 **Kerkdienstgemist en het volgen van de spreker werken nu echt op de Mac.** De vorige
 versie loste het maar half op. De Mac controleert de beveiliging van een website nu zelf,

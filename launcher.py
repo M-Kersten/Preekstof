@@ -644,7 +644,14 @@ def smoke_checks(port: int) -> str:
             raise SystemExit(f"Rooktest: het onderdeel {name} ontbreekt.")
     import tempfile
 
-    from backend import selftest, transcription
+    from backend import certificates, selftest, transcription
+
+    # Without trusted authorities every https address fails, and kerkdienstgemist says
+    # "geen verbinding" while the site is up. The Mac app shipped like that once.
+    certificates.make_sure()
+    trusted = certificates.trusted()
+    if not trusted:
+        raise SystemExit("Rooktest: geen vertrouwde certificaten; https-adressen zouden allemaal mislukken.")
 
     with tempfile.TemporaryDirectory() as work:
         video = selftest.make_video(Path(work))
@@ -664,7 +671,8 @@ def smoke_checks(port: int) -> str:
     if not followed.ok:
         raise SystemExit(f"Rooktest: de spreker volgen lukt niet ({followed.detail}).")
     said = " ".join(s.text for s in heard.segments).strip()
-    return (f"Rooktest geslaagd: versie {health.get('version')}, {len(fonts)} lettertypes, {made.detail}, "
+    return (f"Rooktest geslaagd: versie {health.get('version')}, {len(fonts)} lettertypes, "
+            f"{trusted} vertrouwde certificaten, {made.detail}, "
             f"uitgeschreven: “{said[:60]}”.")
 
 

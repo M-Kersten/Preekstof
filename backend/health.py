@@ -4,12 +4,13 @@ import os
 import shutil
 import socket
 import subprocess
+import uuid
 from pathlib import Path
 
 from pydantic import BaseModel
 
 from . import discovery, mac, speed, storage, transcription, version, vision
-from .models import OWN_TEMPLATES, PROJECTS_DIR, ROOT, SERVICES_DIR
+from .models import DATA_DIR, OWN_TEMPLATES, PROJECTS_DIR, ROOT, SERVICES_DIR
 from .transcription import MODEL_SIZE
 
 
@@ -99,7 +100,8 @@ def _llm() -> Check:
 
 
 def _disk() -> Check:
-    free_gb = shutil.disk_usage(ROOT).free / 1e9
+    # Where the recordings go, which is not where the app is: see places.py.
+    free_gb = shutil.disk_usage(DATA_DIR if DATA_DIR.is_dir() else Path.home()).free / 1e9
     if free_gb >= 3:
         return Check(name="Schijfruimte", ok=True, detail=f"{free_gb:.0f} GB vrij")
     try:
@@ -118,9 +120,12 @@ def _folders() -> Check:
     for directory in (PROJECTS_DIR, SERVICES_DIR, OWN_TEMPLATES):
         try:
             directory.mkdir(parents=True, exist_ok=True)
-            probe = directory / ".schrijftest"
+            # A name of its own per call: the panel and a report can ask at the same moment,
+            # and with one shared name the first to finish took the other's file away and
+            # the second reported the folder as unwritable.
+            probe = directory / f".schrijftest-{os.getpid()}-{uuid.uuid4().hex[:8]}"
             probe.write_text("ok", encoding="utf-8")
-            probe.unlink()
+            probe.unlink(missing_ok=True)
         except OSError:
             problems.append(directory.name)
     return Check(name="Mappen", ok=not problems, detail="Alles beschrijfbaar" if not problems

@@ -3,6 +3,16 @@
 Per versie, in gewone taal. Welke versie jij draait staat onderin het paneel dat opengaat
 als je in de balk op **Alles gereed** klikt.
 
+## Volgende versie
+
+**Kerkdienstgemist werkt weer in de Mac-app.** De app kon niet nagaan dat hij echt met
+kerkdienstgemist.nl praatte en meldde daarom "geen verbinding", terwijl de site gewoon online
+was. Hetzelfde hield de controle op updates en het ophalen van het model voor het volgen van
+de spreker tegen. Gaat het toch mis met het certificaat, dan zegt de app dat nu ook zo.
+
+**Mappen stond soms ten onrechte op rood** in het gereedheidspaneel, als twee controles
+tegelijk liepen.
+
 ## 0.13.1 — pilot
 
 **Minder verbeteren in de ondertitels.** Preekstof leest de ondertitels van een fragment nu na

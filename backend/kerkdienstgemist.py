@@ -19,6 +19,7 @@ telling them to use the download button themselves. Nothing breaks silently.
 
 import json
 import re
+import ssl
 import urllib.error
 import urllib.request
 from dataclasses import dataclass
@@ -205,7 +206,8 @@ def resolve(url: str, timeout: float = TIMEOUT) -> Recording | None:
     station, recording = found
     try:
         answer = ask(f"{api_for(url)}/stations/{station}/recordings/{recording}?include=media", timeout)
-    except (urllib.error.URLError, OSError, ValueError, json.JSONDecodeError):
+    except (urllib.error.URLError, OSError, ValueError, json.JSONDecodeError) as exc:
+        print(f"[kerkdienstgemist] {url}: {type(exc).__name__}: {exc}")
         return None
     try:
         return read(answer)
@@ -245,6 +247,17 @@ def services_in(answer: dict, station_id: str, site: str) -> list[Service]:
     return out
 
 
+def unreachable(site: str, exc: Exception) -> str:
+    """What to say when the platform could not be reached, and which kind of not."""
+    reason = getattr(exc, "reason", exc)
+    if isinstance(reason, ssl.SSLError):
+        # The site answered, and this computer could not check who it was talking to.
+        return (f"{site} is bereikbaar, maar deze computer kon niet nagaan dat het echt "
+                f"{site} is (beveiligingscertificaat). Stuur een melding vanuit het "
+                "gereedheidspaneel; daar staat in wat er misging.")
+    return f"Geen verbinding met {site}. Kijk of je internet het doet."
+
+
 def station(station_id: str, site: str = SITE, timeout: float = TIMEOUT, page: int = 1) -> Station:
     """The church behind a station number, and one page of the services it has standing.
 
@@ -267,7 +280,8 @@ def station(station_id: str, site: str = SITE, timeout: float = TIMEOUT, page: i
         raise NotFound(f"{site} antwoordde niet zoals verwacht ({exc.code}). Probeer het later "
                        "nog eens.") from exc
     except (urllib.error.URLError, OSError, ValueError, json.JSONDecodeError) as exc:
-        raise NotFound(f"Geen verbinding met {site}. Kijk of je internet het doet.") from exc
+        print(f"[kerkdienstgemist] {base}: {type(exc).__name__}: {exc}")
+        raise NotFound(unreachable(site, exc)) from exc
 
     try:
         said = (about.get("data") or {}).get("attributes") or {}

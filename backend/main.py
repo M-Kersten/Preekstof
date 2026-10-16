@@ -21,6 +21,12 @@ from fastapi.staticfiles import StaticFiles
 from contextlib import asynccontextmanager
 from datetime import datetime, timezone
 
+from . import certificates
+
+# Before anything opens an https address: the Mac app's OpenSSL looks for its trusted
+# authorities on the computer it was built on (certificates.py).
+certificates.make_sure()
+
 from . import brands, clips, diagnose, discovery, fetch, fonts, formats, health, house, lifecycle, look, journal, kerkdienstgemist, music, outro, polish, posts, renderer, room, selftest, settings, setup, speed, storage, tracking, transcription, updates, version, wordlearn
 from .jobs import Cancelled, Estimator, Job, JobManager
 from .models import (DATA_DIR, OWN_TEMPLATES, ROOT, SERVICES_DIR, TEMPLATES_DIR, ChurchInfo, ClipCandidate, ClipOrigin, CropWindow, Enhance, MusicSettings, ProcessedClip, Project, ShareSettings, Watermark,

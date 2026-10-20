@@ -36,6 +36,8 @@ jobs:
           set -eu
           mkdir -p _site/fonts
           cp site/index.html _site/
+          # The still in front of the film, so the page shows it without asking YouTube.
+          cp site/video-poster.jpg _site/
           cp frontend/public/icon.svg _site/
           for weight in Regular Medium SemiBold ExtraBold; do
             cp "templates/fonts/Poppins-$weight.ttf" _site/fonts/

@@ -323,3 +323,22 @@ def test_the_editor_knows_the_same_leaning_words():
     phrases = json.loads(re.search(r"COLD_PHRASES = (\[.*?\])", source).group(1))
     assert set(words) == discovery.COLD_WORDS
     assert set(phrases) == set(discovery.COLD_PHRASES)
+
+
+def test_two_or_three_sentences_may_be_the_hook_together():
+    """The point does not always fit in one sentence; up to ten seconds it may take more."""
+    told = Transcript(language="nl", segments=[
+        spoken(0.0, "We lezen vandaag uit Lukas vijftien."),
+        spoken(20.0, "God wacht niet tot je terugkomt."),
+        spoken(22.6, "Hij rent je tegemoet."),
+        spoken(24.6, "Nog voor je een woord hebt gezegd."),
+        spoken(40.0, "Amen."),
+    ])
+    two, why = hooks.place("God wacht niet tot je terugkomt. Hij rent je tegemoet.", hooks.said(told), LENGTH)
+    assert why == "" and two is not None and 4.0 < two.end - two.start <= hooks.LONGEST
+    three, _ = hooks.place("God wacht niet tot je terugkomt. Hij rent je tegemoet. Nog voor je een woord hebt gezegd.",
+                           hooks.said(told), LENGTH)
+    assert three is not None and three.end - three.start <= hooks.LONGEST
+    shown = hooks.captions(told, three)
+    assert [s.text for s in shown.segments] == ["God wacht niet tot je terugkomt.", "Hij rent je tegemoet.",
+                                                "Nog voor je een woord hebt gezegd."]

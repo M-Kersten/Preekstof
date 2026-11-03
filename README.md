@@ -492,15 +492,15 @@ written down as a mishearing, and says which. `frontend/src/captionCheck.ts` hol
 ### The hook: the point first, then the clip
 
 A clip opens where the thought opens, which is what makes it possible to follow and slow for
-stopping somebody mid-scroll. So every clip can start with a hook: about three seconds from later
-in the clip in which the preacher says the point, a white flash of under half a second, and then
+stopping somebody mid-scroll. So every clip can start with a hook: one sentence from later in the
+clip in which the preacher says the point, or two or three when the point only stands together, a white flash of under half a second, and then
 the clip from its first second (`backend/hooks.py`, `models.Hook`).
 
 Claude reads the clip's subtitles once, after they have been read back, and proposes up to three
 sentences, best first. Where a sentence sits is not the model's to say: the quote has to stand
 word for word in what whisper heard, and its edges come from whisper's own word timings, with a
 little room on each side and never into the next word. The first proposal that lasts between 1.5
-and 5 seconds, comes from after the first six seconds and does not open on a word that leans on
+and 10 seconds, comes from after the first six seconds and does not open on a word that leans on
 what came before (the same `discovery.cold_open` the suggestions use) is taken. None passing is
 no hook, which is a clip as it always was. A clip shorter than fifteen seconds gets none.
 
@@ -508,14 +508,16 @@ Claude's choice is a first proposal and nothing more. Every proposal that passes
 (`Project.hookOptions`), so the editor lists the others to play and take with one click, without
 asking again. Asking again sends what was offered before along as not wanted, so the answer is a
 different sentence rather than the same one in other words; new proposals join the list and the
-hook in use stays until somebody picks another. And any sentence of the clip can be made the hook
-by clicking its first and its last word. The browser cuts it with `hookEdges` in
+hook in use stays until somebody picks another. When none of them is it, the **Zelf kiezen** switch opens the
+words of the clip, and any stretch of them can be made the hook by clicking its first and its last
+word. The switch starts closed, because most of the time a proposal will do and a box of forty
+words to click is clutter; it starts open when the hook is somebody's own or nothing was proposed. The browser cuts it with `hookEdges` in
 `frontend/src/hook.ts`, a mirror of `hooks.edges` kept in step by `tests/mirror_cases.py`, so the
 seconds shown while choosing are the seconds the video gets. While choosing it says how long the
-hook would be, and warns when it is under 1.5 or over 5 seconds, comes from the opening seconds,
+hook would be, and warns when it is under 1.5 or over 10 seconds, comes from the opening seconds,
 or opens on a word that leans on what came before (the same word list, compared in
-`tests/test_hooks.py`). The edges can still be moved by tenths of a second, folded away under
-"Precies afstellen". A hook set by hand is never replaced by a new suggestion. `HOOK_CLIPS=0` in
+`tests/test_hooks.py`). Inside it, the edges can still be moved by tenths of a second, folded
+away under "Precies afstellen". A hook set by hand is never replaced by a new suggestion. `HOOK_CLIPS=0` in
 `config.env` stops the question; the panel then offers choosing one yourself.
 
 The renderer opens the recording a second time for those seconds, seeking straight to them, so the

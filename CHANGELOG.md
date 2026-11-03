@@ -5,15 +5,17 @@ als je in de balk op **Alles gereed** klikt.
 
 ## Volgende versie
 
-**Elke clip kan beginnen met een hook.** Een paar seconden waarin de predikant de kern alvast
-zegt, een korte witte flits, en dan begint de clip bij het begin. Wie voorbij scrolt, hoort zo
-meteen waar het om gaat. Preekstof kiest de zin zelf uit de clip, op het moment dat de
-ondertitels worden uitgeschreven, en zet de andere zinnen die hij goed vond eronder. Bevalt
-de keuze niet, dan speel je die andere af en neem je er een met één klik. Wil je nog meer,
-dan vraag je om andere zinnen; wat je al gezien hebt komt dan niet terug. Of je klikt in de
-tekst van de clip zelf het eerste en het laatste woord aan. Terwijl je aanwijst zie je hoe
-lang de hook wordt, en de app zegt het als hij te kort of te lang is of begint met een woord
-als "dat" dat terugverwijst. Afspelen laat het begin van de video zien zoals hij wordt.
+**Elke clip kan beginnen met een hook.** Vooraan zegt de predikant de kern, in één zin of in
+twee of drie achter elkaar als de kern pas samen staat. Na een korte witte flits begint de clip
+bij het begin. Wie voorbij scrolt, hoort zo meteen waar het om gaat.
+
+Preekstof kiest de hook zelf uit de clip, op het moment dat de ondertitels worden uitgeschreven,
+en zet de andere stukken die hij goed vond eronder. Bevalt de keuze niet, dan speel je die af en
+neem je er een met één klik. Wil je nog meer, dan vraag je om andere zinnen; wat je al gezien
+hebt komt dan niet terug. Staat het er niet tussen, zet dan **Zelf kiezen** aan en klik in de
+tekst van de clip het eerste en het laatste woord aan. Je ziet meteen hoe lang de hook wordt, en
+de app zegt het als hij erg kort of lang is of begint met een woord als "dat".
+
 Clips die al gemaakt waren, blijven zoals ze waren tot je er zelf een hook bij zet.
 
 ## 0.13.4 — pilot

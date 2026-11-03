@@ -10,10 +10,10 @@ export const AFTER = 0.3
 export const GAP = 0.03
 /** The same limits the server checks a proposal against (hooks.py). */
 export const SHORTEST = 1.5
-export const LONGEST = 5
+export const LONGEST = 10
 export const EARLIEST = 6
 /** What the server takes from somebody choosing by hand (hooks.by_hand). */
-export const LONGEST_BY_HAND = 10
+export const LONGEST_BY_HAND = 15
 
 const round2 = (value: number) => Math.round(value * 100) / 100
 

@@ -159,9 +159,9 @@ class Hook(BaseModel):
 
     Someone scrolling decides in the first seconds whether to stay. The clip itself opens
     where the thought opens, which is right for following it and slow for being stopped
-    by it. So the sentence that carries the point is played first, a short white flash
-    follows, and then the clip starts from its beginning. The sentence comes back in its
-    place later on; that is the point of it.
+    by it. So the sentence that carries the point, or the two or three that carry it
+    together, is played first, a short white flash follows, and then the clip starts from
+    its beginning. It comes back in its place later on; that is the point of it.
 
     Times count from the start of the clip, like the subtitles. hooks.py chooses one.
     """

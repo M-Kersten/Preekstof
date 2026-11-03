@@ -2,9 +2,10 @@
 
 A clip opens where the thought opens, because that is what makes it possible to follow.
 Somebody scrolling past has not decided to follow anything yet. What stops them is the
-preacher saying the point, so that sentence is played first, a short white flash marks
-the jump, and then the clip starts from the top. Around three seconds: long enough for a
-whole sentence, short enough that it is clearly a preview and not the clip.
+preacher saying the point, so that is played first, a short white flash marks the jump,
+and then the clip starts from the top. One sentence when one says it, two or three when the
+point only stands together; ten seconds at most, so it is clearly a preview and not the
+clip starting twice.
 
 Which sentence carries the point is a question about meaning, so Claude reads the clip's
 subtitles and proposes a few, best first. Where it sits is not left to the model: the
@@ -38,8 +39,8 @@ ON = settings.text("HOOK_CLIPS", "1").strip().lower() not in ("0", "false", "nee
 EFFORT = settings.choice("HOOK_EFFORT", ("low", "medium", "high", "xhigh", "max"), "low")
 
 SHORTEST = 1.5  # seconds: less is a word, not a sentence
-LONGEST = 5.0  # more is the clip starting twice
-AIM = 3.0  # what the question asks for
+LONGEST = 10.0  # three sentences at most; more is the clip starting twice
+LONGEST_BY_HAND = 15.0  # somebody choosing for themselves gets some more room
 EARLIEST = 6.0  # the hook comes from after this point in the clip
 SHORTEST_CLIP = 15.0  # a clip shorter than this has no room for a preview of itself
 BEFORE = 0.12  # room in front of the first word, so its first sound is not cut
@@ -50,21 +51,23 @@ SYSTEM = (
     "Je krijgt de ondertitels van een fragment uit een Nederlandse preek, met per regel de "
     "tijd in seconden. Het fragment gaat online als korte video (Instagram Reel, YouTube "
     "Short).\n\n"
-    "Kies een hook: één zin of zinsdeel uit dit fragment waarin de predikant de kern van de "
-    "boodschap zegt. Die wordt vooraan afgespeeld, ongeveer drie seconden, en daarna begint "
-    "het fragment bij het begin. Iemand die voorbij scrolt moet aan die paar seconden genoeg "
-    "hebben om te willen weten hoe het verder gaat.\n\n"
+    "Kies een hook: het stuk uit dit fragment waarin de predikant de kern van de boodschap "
+    "zegt. Dat wordt vooraan afgespeeld, en daarna begint het fragment bij het begin. Iemand "
+    "die voorbij scrolt moet aan die paar seconden genoeg hebben om te willen weten hoe het "
+    "verder gaat.\n\n"
     "Een goede hook:\n"
     "- zegt de kern, de belofte of de vraag waar het fragment om draait\n"
     "- is te begrijpen zonder wat ervoor kwam: geen \"dat\", \"die\", \"hij\", \"dus\", "
     "\"daarom\" of \"want\" als eerste woord\n"
-    "- duurt twee tot vier seconden; meestal zes tot twaalf woorden\n"
+    "- is één zin als één zin de kern zegt, en twee of drie zinnen achter elkaar als de kern "
+    "pas samen staat; korter is beter zolang het af is\n"
+    "- duurt samen twee tot tien seconden\n"
     "- komt niet uit de eerste zes seconden van het fragment, want die hoort de kijker meteen "
     "daarna toch\n\n"
     "Regels, en hier mag je niet van afwijken:\n"
     "- neem de woorden letterlijk over zoals ze in de ondertitels staan, aaneengesloten, "
     "zonder iets weg te laten, toe te voegen of te verbeteren\n"
-    "- een hook mag over twee regels lopen als de zin dat doet\n"
+    "- een hook mag over meer regels lopen als de zinnen dat doen\n"
     "- geef tot drie opties, de beste eerst, en bij elk in een zin waarom\n\n"
     "Staat er niets in dat zonder de rest werkt, geef dan een lege lijst terug."
 )
@@ -242,6 +245,6 @@ def by_hand(hook: Hook, length: float) -> Hook:
     end = max(start, min(hook.end, length))
     if end - start < 0.5:
         raise ValueError("Een hook moet minstens een halve seconde duren.")
-    if end - start > LONGEST * 2:
-        raise ValueError(f"Een hook mag hoogstens {LONGEST * 2:.0f} seconden duren.")
+    if end - start > LONGEST_BY_HAND:
+        raise ValueError(f"Een hook mag hoogstens {LONGEST_BY_HAND:.0f} seconden duren.")
     return hook.model_copy(update={"start": round(start, 2), "end": round(end, 2), "by": "hand"})

@@ -40,8 +40,8 @@ function advice(start: number, end: number, text = ''): string[] {
   const said: string[] = []
   const first = leansBack(text)
   if (first) said.push(`Begint met „${first}”: zonder wat ervoor kwam weet de kijker niet waar dat op slaat.`)
-  if (length > LONGEST_BY_HAND) said.push('Te lang: een hook duurt hoogstens tien seconden.')
-  else if (length > LONGEST) said.push('Lang voor een hook. Na vijf seconden voelt het als een tweede begin.')
+  if (length > LONGEST_BY_HAND) said.push('Te lang: een hook duurt hoogstens vijftien seconden.')
+  else if (length > LONGEST) said.push('Lang voor een hook. Na tien seconden voelt het als een tweede begin.')
   if (length < SHORTEST) said.push('Erg kort. Onder anderhalve seconde is het eerder een woord dan een zin.')
   if (start < EARLIEST) said.push('Dit komt uit het begin van de clip, dus de kijker hoort het meteen daarna nog een keer.')
   return said
@@ -51,9 +51,10 @@ function advice(start: number, end: number, text = ''): string[] {
  * The hook: which few seconds open the video, and the ways to choose them.
  *
  * Claude's choice is a first proposal and nothing more. Its other proposals sit right under
- * it, to play and take with one click. Asking again brings different sentences. And any
- * sentence of the clip can be made the hook by clicking its first and its last word, cut by
- * the same rule the server uses (hook.ts), so what is shown here is what the video gets.
+ * it, to play and take with one click. Asking again brings different sentences. When none of
+ * them is it, "Zelf kiezen" opens the words of the clip: click the first and the last, and
+ * that is the hook, cut by the same rule the server uses (hook.ts). Closed until it is
+ * wanted, because most of the time a proposal will do and forty words to click are clutter.
  */
 export default function HookPanel({ hook, options, segments, duration, busy, onChange, onSuggest, onPlay }: Props) {
   const words = useMemo<Word[]>(
@@ -65,6 +66,8 @@ export default function HookPanel({ hook, options, segments, duration, busy, onC
   const [pending, setPending] = useState<number | null>(null)
   const [hover, setHover] = useState<number | null>(null)
   const [refused, setRefused] = useState('')
+  // Open from the start when the hook is somebody's own, or when there is nothing proposed.
+  const [own, setOwn] = useState(() => hook?.by === 'hand' || options.length === 0)
   const box = useRef<HTMLDivElement>(null)
 
   // Esc stops choosing halfway.
@@ -85,7 +88,7 @@ export default function HookPanel({ hook, options, segments, duration, busy, onC
     const list = box.current
     const first = list?.querySelector<HTMLElement>('.word.in')
     if (list && first) list.scrollTop = Math.max(0, first.offsetTop - list.offsetTop - 40)
-  }, [hook?.start, hook?.end])
+  }, [hook?.start, hook?.end, own])
 
   if (duration < SHORTEST_CLIP) {
     return (
@@ -122,7 +125,7 @@ export default function HookPanel({ hook, options, segments, duration, busy, onC
     const cut = hookEdges(words, first, last, duration)
     stopPicking()
     if (cut.end - cut.start > LONGEST_BY_HAND) {
-      setRefused('Dat is langer dan tien seconden. Kies een kortere zin.')
+      setRefused('Dat is langer dan vijftien seconden. Kies minder zinnen.')
       return
     }
     onChange({ ...cut, text: words.slice(first, last + 1).map((w) => w.word).join(' '), on: true, by: 'hand' })
@@ -142,7 +145,7 @@ export default function HookPanel({ hook, options, segments, duration, busy, onC
   return (
     <Section
       title="Hook"
-      intro="De eerste seconden van de video: de predikant zegt de kern, een korte witte flits, en dan begint de clip bij het begin."
+      intro="Vooraan zegt de predikant de kern. Na een korte witte flits begint de clip bij het begin."
       className="hook-panel"
     >
       {hook ? (
@@ -165,7 +168,7 @@ export default function HookPanel({ hook, options, segments, duration, busy, onC
       ) : (
         <p className="hint">
           {words.length
-            ? 'Deze clip heeft nog geen hook. Vraag om voorstellen, of klik hieronder zelf een zin aan.'
+            ? 'Deze clip heeft nog geen hook. Vraag om voorstellen, of zet hieronder Zelf kiezen aan.'
             : 'Zodra de ondertitels er zijn, kan er een hook gekozen worden.'}
         </p>
       )}
@@ -191,53 +194,68 @@ export default function HookPanel({ hook, options, segments, duration, busy, onC
             </button>
           </div>
 
-          <h3 className="hook-head">Zelf kiezen</h3>
-          <p className="hint hook-how">
-            {pending === null
-              ? 'Klik op het eerste woord van je hook, en daarna op het laatste.'
-              : <>Klik nu op het laatste woord, of <button type="button" className="linkish" onClick={stopPicking}>stop</button> (Esc).</>}
-          </p>
-          <div className={`hook-words ${pending !== null ? 'choosing' : ''}`} ref={box}>
-            {words.map((w, i) => {
-              const chosen = picking ? i >= picking[0] && i <= picking[1] : Boolean(hook && within(w, hook))
-              const lineStart = i === 0 || words[i - 1].line !== w.line
-              return (
-                <span key={i}>
-                  {lineStart && i > 0 && <br />}
-                  {lineStart && <span className="at">{clock(w.start)}</span>}
-                  <button
-                    type="button"
-                    className={`word ${chosen ? (picking ? 'picking' : 'in') : ''} ${w.start < EARLIEST ? 'early' : ''}`}
-                    aria-pressed={chosen}
-                    onClick={() => pick(i)}
-                    onMouseEnter={() => pending !== null && setHover(i)}
-                  >
-                    {w.word}
-                  </button>{' '}
-                </span>
-              )
-            })}
-          </div>
-          {pickedCut && (
-            <p className="hook-advice live">
-              {seconds(pickedCut.end - pickedCut.start)}. {advice(pickedCut.start, pickedCut.end, pickedText).join(' ')}
-            </p>
-          )}
-          {refused && <p className="hook-advice">{refused}</p>}
-
-          {hook && (
-            <details className="hook-fine">
-              <summary>Precies afstellen</summary>
-              <div className="hook-row nudge">
-                <span>Begin <b>{exact(hook.start)}</b></span>
-                <button className="small" aria-label="Begin eerder" onClick={() => nudge('start', -STEP)}>−</button>
-                <button className="small" aria-label="Begin later" onClick={() => nudge('start', STEP)}>+</button>
-                <span>Einde <b>{exact(hook.end)}</b></span>
-                <button className="small" aria-label="Einde eerder" onClick={() => nudge('end', -STEP)}>−</button>
-                <button className="small" aria-label="Einde later" onClick={() => nudge('end', STEP)}>+</button>
+          <label className="switch-row">
+            <input
+              type="checkbox"
+              className="switch"
+              checked={own}
+              onChange={(e) => {
+                setOwn(e.target.checked)
+                stopPicking()
+                setRefused('')
+              }}
+            />
+            <span><b>Zelf kiezen</b> uit de tekst van de clip</span>
+          </label>
+          {own && (
+            <div className="hook-own">
+              <p className="hint hook-how">
+                {pending === null
+                  ? 'Klik op het eerste woord van je hook, en daarna op het laatste.'
+                  : <>Klik nu op het laatste woord, of <button type="button" className="linkish" onClick={stopPicking}>stop</button> (Esc).</>}
+              </p>
+              <div className={`hook-words ${pending !== null ? 'choosing' : ''}`} ref={box}>
+                {words.map((w, i) => {
+                  const chosen = picking ? i >= picking[0] && i <= picking[1] : Boolean(hook && within(w, hook))
+                  const lineStart = i === 0 || words[i - 1].line !== w.line
+                  return (
+                    <span key={i}>
+                      {lineStart && i > 0 && <br />}
+                      {lineStart && <span className="at">{clock(w.start)}</span>}
+                      <button
+                        type="button"
+                        className={`word ${chosen ? (picking ? 'picking' : 'in') : ''} ${w.start < EARLIEST ? 'early' : ''}`}
+                        aria-pressed={chosen}
+                        onClick={() => pick(i)}
+                        onMouseEnter={() => pending !== null && setHover(i)}
+                      >
+                        {w.word}
+                      </button>{' '}
+                    </span>
+                  )
+                })}
               </div>
-              <p className="hint">Per tiende seconde, voor als het eerste of laatste woord net wordt afgekapt.</p>
-            </details>
+              {pickedCut && (
+                <p className="hook-advice live">
+                  {seconds(pickedCut.end - pickedCut.start)}. {advice(pickedCut.start, pickedCut.end, pickedText).join(' ')}
+                </p>
+              )}
+              {refused && <p className="hook-advice">{refused}</p>}
+              {hook && (
+                <details className="hook-fine">
+                  <summary>Precies afstellen</summary>
+                  <div className="hook-row nudge">
+                    <span>Begin <b>{exact(hook.start)}</b></span>
+                    <button className="small" aria-label="Begin eerder" onClick={() => nudge('start', -STEP)}>−</button>
+                    <button className="small" aria-label="Begin later" onClick={() => nudge('start', STEP)}>+</button>
+                    <span>Einde <b>{exact(hook.end)}</b></span>
+                    <button className="small" aria-label="Einde eerder" onClick={() => nudge('end', -STEP)}>−</button>
+                    <button className="small" aria-label="Einde later" onClick={() => nudge('end', STEP)}>+</button>
+                  </div>
+                  <p className="hint">Per tiende seconde, voor als het eerste of laatste woord net wordt afgekapt.</p>
+                </details>
+              )}
+            </div>
           )}
         </>
       )}

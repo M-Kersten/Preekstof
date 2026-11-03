@@ -381,8 +381,8 @@ def suggest_hook(project_id: str):
         before.append(project.hook)
     found = hooks.suggest(transcript, length, project.title or "", besides=before)
     if not found:
-        raise HTTPException(422, "Er is geen andere zin gevonden die op zichzelf de kern zegt. Klik "
-                                 "hieronder zelf het eerste en het laatste woord van je hook aan.")
+        raise HTTPException(422, "Er is geen ander stuk gevonden dat op zichzelf de kern zegt. Zet "
+                                 "‘Zelf kiezen’ aan en klik het eerste en het laatste woord van je hook aan.")
     project.hookOptions = (found + project.hookOptions)[:MOST_HOOK_OPTIONS]
     if project.hook is None:
         project.hook = found[0]

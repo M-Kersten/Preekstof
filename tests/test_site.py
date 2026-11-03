@@ -45,6 +45,14 @@ def test_what_the_page_loads_is_put_next_to_it():
         assert (ROOT / "templates" / "fonts" / other).is_file()
 
 
+def test_the_film_waits_for_a_click():
+    """The YouTube player is made when somebody presses play, never when the page opens."""
+    assert "<iframe" not in PAGE
+    assert "youtube-nocookie.com/embed/" in PAGE
+    assert 'src="video-poster.jpg"' in PAGE and "cp site/video-poster.jpg _site/" in WORKFLOW
+    assert (ROOT / "site" / "video-poster.jpg").is_file()
+
+
 def test_nothing_on_the_page_comes_from_another_server():
     """Fonts from Google would hand every visitor's address to Google; nothing else is needed."""
     loaded = re.findall(r'(?:src|href)="(https?://[^"]+)"', PAGE)  # mailto: is not loaded

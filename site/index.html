@@ -208,6 +208,20 @@
       .bar span { width: 40% !important; transition: none !important; }
     }
 
+    /* the film: a still with a play button until somebody presses it, so that opening the
+       page hands nobody's address to YouTube */
+    .video { position: relative; aspect-ratio: 16 / 9; margin-top: 1.2rem; border-radius: 16px; overflow: hidden; background: var(--deep); box-shadow: 0 20px 50px rgba(42, 17, 64, 0.22); }
+    .video-play { position: absolute; inset: 0; display: block; width: 100%; padding: 0; border: 0; background: none; cursor: pointer; }
+    .video-play img { display: block; width: 100%; height: 100%; object-fit: cover; }
+    .video-play::after { content: ""; position: absolute; inset: 0; background: rgba(42, 17, 64, 0.28); transition: background 0.15s; }
+    .video-play:hover::after { background: rgba(42, 17, 64, 0.12); }
+    .video-play:focus-visible { outline: 3px solid var(--gold); outline-offset: -3px; }
+    .video-play .play { position: absolute; z-index: 1; left: 50%; top: 50%; width: 5.4rem; height: 5.4rem; margin: -2.7rem 0 0 -2.7rem; border-radius: 50%; background: var(--gold); box-shadow: 0 10px 30px rgba(201, 151, 28, 0.45); transition: transform 0.12s; }
+    .video-play:hover .play { transform: scale(1.05); }
+    .video-play .play::before { content: ""; position: absolute; left: 55%; top: 50%; transform: translate(-50%, -50%); border-style: solid; border-width: 0.95rem 0 0.95rem 1.55rem; border-color: transparent transparent transparent var(--deep); }
+    .video iframe { position: absolute; inset: 0; width: 100%; height: 100%; border: 0; }
+    .video-note { margin-top: 0.6rem; }
+
     [hidden] { display: none !important; }
     @media (max-width: 34rem) {
       .steps > li { padding-left: 1.2rem; }
@@ -275,6 +289,19 @@
 
   <main>
   <div class="wrap">
+    <section id="video">
+      <h2>Preekstof in dertig seconden</h2>
+      <p class="muted">Van een dienst op Kerkdienstgemist tot een clip die klaar is om te delen.</p>
+      <div class="video">
+        <button type="button" class="video-play" id="video-play" data-video="mjzZSOB-jAM" aria-label="Video afspelen: Preekstof in dertig seconden">
+          <img src="video-poster.jpg" alt="" width="1280" height="720" loading="lazy">
+          <span class="play" aria-hidden="true"></span>
+        </button>
+      </div>
+      <p class="video-note small muted">De video staat op YouTube. Pas als je op afspelen klikt, maakt deze pagina verbinding met YouTube.</p>
+      <noscript><p class="small muted">Zonder JavaScript speelt hij hier niet af. Je vindt hem op youtu.be/mjzZSOB-jAM.</p></noscript>
+    </section>
+
     <section id="krijgen">
       <h2>Eén moment, klaar voor elke plek</h2>
       <div class="gets">
@@ -544,6 +571,19 @@
       tabs.windows.addEventListener("click", function () { show("windows"); });
       tabs.mac.addEventListener("click", function () { show("mac"); });
       if (isMac) show("mac");
+
+      // The film comes from YouTube, and only once somebody asks for it. Until then the page
+      // shows a still of its own, so visiting it tells YouTube nothing.
+      var play = document.getElementById("video-play");
+      play.addEventListener("click", function () {
+        var frame = document.createElement("iframe");
+        frame.src = "https://www.youtube-nocookie.com/embed/" + play.getAttribute("data-video") + "?autoplay=1&rel=0";
+        frame.title = "Preekstof in dertig seconden";
+        frame.allow = "autoplay; encrypted-media; picture-in-picture; fullscreen";
+        frame.allowFullscreen = true;
+        frame.referrerPolicy = "strict-origin-when-cross-origin";
+        play.parentNode.replaceChild(frame, play);
+      });
 
       // The clip in the phone: one line at a time, each word lit while it is "said".
       var lines = [["Je", "hoeft", "niet", "eerst"], ["alles", "op", "orde", "te", "hebben"],

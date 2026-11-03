@@ -27,9 +27,9 @@ from . import certificates
 # for Safari (certificates.py).
 certificates.make_sure()
 
-from . import brands, clips, diagnose, discovery, fetch, fonts, formats, health, house, lifecycle, look, journal, kerkdienstgemist, music, outro, polish, posts, renderer, room, selftest, settings, setup, speed, storage, tracking, transcription, updates, version, wordlearn
+from . import brands, clips, diagnose, discovery, fetch, fonts, formats, health, hooks, house, lifecycle, look, journal, kerkdienstgemist, music, outro, polish, posts, renderer, room, selftest, settings, setup, speed, storage, tracking, transcription, updates, version, wordlearn
 from .jobs import Cancelled, Estimator, Job, JobManager
-from .models import (DATA_DIR, OWN_TEMPLATES, ROOT, SERVICES_DIR, TEMPLATES_DIR, ChurchInfo, ClipCandidate, ClipOrigin, CropWindow, Enhance, MusicSettings, ProcessedClip, Project, ShareSettings, Watermark,
+from .models import (DATA_DIR, OWN_TEMPLATES, ROOT, SERVICES_DIR, TEMPLATES_DIR, ChurchInfo, ClipCandidate, ClipOrigin, CropWindow, Enhance, Hook, MusicSettings, ProcessedClip, Project, ShareSettings, Watermark,
                      ProjectDetail, Service, ServiceDetail, Style, Track, Transcript, load_church_info, load_project,
                      load_service, load_service_transcript, load_transcript, new_project, new_service, project_dir,
                      recover_services, save_project, save_service, save_service_transcript, save_transcript, service_dir)
@@ -209,7 +209,10 @@ def transcribe_project(project_id: str):
             source, work_dir, on_progress=on_progress, duration=duration, should_stop=job.check,
             start=start,
         )
-        save_transcript(get_project(project_id), transcript)
+        latest = get_project(project_id)
+        job.message = "Er wordt een hook gezocht"
+        offer_hook(latest, transcript)
+        save_transcript(latest, transcript)
 
     return jobs.start(transcribe_key(project.id), work).to_dict()
 
@@ -316,6 +319,58 @@ def update_crop(project_id: str, crop: CropWindow):
     return detail(project)
 
 
+def offer_hook(project: Project, transcript: Transcript) -> None:
+    """Let a hook be chosen for this clip, unless somebody already chose one by hand."""
+    if project.hook is not None and project.hook.by == "hand":
+        return
+    length = project.sourceInfo.duration if project.sourceInfo else 0.0
+    found = hooks.suggest(transcript, length, project.title or "")
+    if found is not None:
+        project.hook = found
+
+
+@app.put("/projects/{project_id}/hook", response_model=ProjectDetail)
+def update_hook(project_id: str, hook: Hook | None = Body(default=None, embed=True)):
+    """Switch the hook on or off, or set it by hand. None takes it away."""
+    project = get_project(project_id)
+    if hook is None:
+        project.hook = None
+    elif project.hook is not None and (hook.start, hook.end) == (project.hook.start, project.hook.end):
+        project.hook = project.hook.model_copy(update={"on": hook.on})  # only switched
+    else:
+        length = project.sourceInfo.duration if project.sourceInfo else 0.0
+        try:
+            project.hook = hooks.by_hand(hook, length)
+        except ValueError as exc:
+            raise HTTPException(400, str(exc)) from exc
+    save_project(project)
+    return detail(project)
+
+
+@app.post("/projects/{project_id}/hook/suggest", response_model=ProjectDetail)
+def suggest_hook(project_id: str):
+    """Ask for a hook again, for this clip as its subtitles read now."""
+    project = get_project(project_id)
+    transcript = load_transcript(project)
+    if transcript is None or not transcript.segments:
+        raise HTTPException(400, "Er zijn nog geen ondertitels om een hook uit te kiezen")
+    length = project.sourceInfo.duration if project.sourceInfo else 0.0
+    if length < hooks.SHORTEST_CLIP:
+        raise HTTPException(400, f"Dit fragment is te kort voor een hook; dat kan vanaf "
+                                 f"{hooks.SHORTEST_CLIP:.0f} seconden.")
+    try:
+        discovery.check_provider()
+    except Exception as exc:  # noqa: BLE001
+        raise HTTPException(400, str(exc)) from exc
+    found = hooks.suggest(transcript, length, project.title or "")
+    if found is None:
+        raise HTTPException(422, "Er is geen zin gevonden die op zichzelf de kern zegt. Kies er zelf "
+                                 "een in de ondertitels.")
+    project.hook = found
+    save_project(project)
+    return detail(project)
+
+
 @app.put("/projects/{project_id}/framing", response_model=ProjectDetail)
 def update_framing(project_id: str, follow: bool = Body(default=False, embed=True)):
     """Follow the speaker, or go back to the window the user set. Both stay on disk."""
@@ -374,6 +429,7 @@ def render_project(project_id: str, shapes: list[str] | None = Body(default=None
     transcript = load_transcript(project) or Transcript()
     work = project_dir(project.id) / "work"
     output_dir = project_dir(project.id) / "output"
+    hook = project.hook if project.hook and project.hook.on and project.hook.end <= info.duration + 0.05 else None
 
     def work_fn(job: Job) -> None:
         made_from = formats.recipe(project, transcript, brand)
@@ -390,6 +446,8 @@ def render_project(project_id: str, shapes: list[str] | None = Body(default=None
             job.message = f"{named}Ondertitels worden voorbereid"
             output = formats.output_for(shape, project.output)
             subtitles = write_ass(transcript, project.style, output, work / formats.work_name(shape, "subtitles.ass"))
+            hook_subtitles = (write_ass(hooks.captions(transcript, hook), project.style, output,
+                                        work / formats.work_name(shape, "hook.ass")) if hook else None)
 
             def on_progress(fraction: float, message: str, n=n, named=named) -> None:
                 at = (n + fraction) / len(wanted)
@@ -407,6 +465,9 @@ def render_project(project_id: str, shapes: list[str] | None = Body(default=None
                     on_progress=on_progress, should_stop=job.check,
                     commands=work / formats.work_name(shape, "track.cmd"),
                     look=colour,
+                    hook=(hook.start, hook.end) if hook else None,
+                    hook_subtitles=hook_subtitles,
+                    hook_commands=work / formats.work_name(shape, "hook.cmd"),
                 )
             finally:
                 rendering_now.pop(project.id, None)
@@ -1565,6 +1626,7 @@ def write_out(project: Project, accurate: bool = False, on_progress=None, should
             first = heard
             heard, swapped = polish.polish(heard, polish.context_for(project))
             polish.note(project_dir(project.id) / "work", first, swapped)
+            offer_hook(project, heard)
             save_transcript(project, heard)
     except Cancelled:
         raise

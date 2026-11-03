@@ -154,6 +154,25 @@ class Track(BaseModel):
     enough: bool = False  # False: found too little to be worth offering
 
 
+class Hook(BaseModel):
+    """A few seconds from later in the clip, played first: the preacher saying the point.
+
+    Someone scrolling decides in the first seconds whether to stay. The clip itself opens
+    where the thought opens, which is right for following it and slow for being stopped
+    by it. So the sentence that carries the point is played first, a short white flash
+    follows, and then the clip starts from its beginning. The sentence comes back in its
+    place later on; that is the point of it.
+
+    Times count from the start of the clip, like the subtitles. hooks.py chooses one.
+    """
+
+    start: float = Field(ge=0.0)
+    end: float = Field(gt=0.0)
+    text: str = ""  # what was said, at the time it was chosen; the captions come from the transcript
+    on: bool = True
+    by: Literal["claude", "hand"] = "claude"
+
+
 class CropWindow(BaseModel):
     """Where the 9:16 output frame sits on the source.
 
@@ -189,6 +208,7 @@ class Project(BaseModel):
     cropStrategy: CropStrategy = "static"
     crop: CropWindow | None = None  # None = default framing for the source (see renderer.default_crop)
     track: Track | None = None  # the path the crop walks when cropStrategy is "tracked"
+    hook: Hook | None = None  # played before the clip starts; None for a clip from before hooks
     # What this clip keeps to itself instead of sharing the house style: see house.py.
     own: list[Literal["style", "watermark"]] = []
 

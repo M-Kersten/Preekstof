@@ -152,6 +152,8 @@ input[type='checkbox'] { accent-color: var(--purple); width: 1rem; height: 1rem;
 .preview .badge { position: absolute; top: 0.6rem; left: 0.6rem; font-size: 0.68rem; font-weight: 600; background: rgba(0, 0, 0, 0.55); color: #fff; padding: 0.15rem 0.5rem; border-radius: 6px; }
 .preview .safe { position: absolute; left: 0; right: 0; border-top: 1px dashed rgba(255, 255, 255, 0.28); pointer-events: none; }
 .preview .mark { position: absolute; height: auto; pointer-events: none; }
+.preview .flash { position: absolute; inset: 0; background: #fff; opacity: 0; pointer-events: none; transition: opacity 0.2s ease-out; }
+.preview .flash.on { opacity: 1; transition: opacity 0.12s ease-in; }
 .transport { display: flex; align-items: center; gap: 0.6rem; margin-top: 0.8rem; color: rgba(237, 230, 244, 0.75); font-size: 0.85rem; }
 .transport input[type='range'] { flex: 1; accent-color: var(--gold); }
 .stage .transport button { background: rgba(255, 255, 255, 0.1); border-color: transparent; color: var(--white); }
@@ -1195,3 +1197,15 @@ a.button.small { padding: 0.22rem 0.55rem; font-size: 0.78rem; font-weight: 500;
 .restarting { position: fixed; inset: 0; z-index: 100; display: grid; place-items: center; background: rgba(46, 18, 64, 0.88); color: var(--white); text-align: center; padding: 2rem; }
 .restarting strong { display: block; font-size: 1.3rem; margin-bottom: 0.5rem; }
 .restarting p { max-width: 34rem; color: rgba(255, 255, 255, 0.8); }
+
+/* The hook: a few seconds from later in the clip, played first. */
+.hook-panel .check { display: flex; align-items: baseline; gap: 0.5rem; font-weight: 600; cursor: pointer; }
+.hook-panel .check input { transform: translateY(2px); }
+.hook-quote { margin: 0.7rem 0 0.3rem; padding: 0.6rem 0.8rem; border-left: 3px solid var(--gold); background: rgba(201, 151, 28, 0.08); border-radius: 0 8px 8px 0; font-size: 0.95rem; }
+.hook-quote.off { opacity: 0.5; }
+.hook-meta { font-size: 0.8rem; color: var(--muted, #6b6475); margin: 0 0 0.6rem; }
+.hook-row { display: flex; align-items: center; gap: 0.5rem; flex-wrap: wrap; margin-top: 0.5rem; }
+.hook-row.nudge { gap: 0.35rem; }
+.hook-row.nudge span { font-size: 0.82rem; margin: 0 0.2rem 0 0.6rem; }
+.hook-row.nudge span:first-child { margin-left: 0; }
+.hook-row.nudge button { min-width: 2.1rem; padding-left: 0; padding-right: 0; }

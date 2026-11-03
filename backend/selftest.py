@@ -29,11 +29,12 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Callable
 
-from . import places, renderer, subtitles, tracking, transcription, vision
-from .models import ROOT, Output, Style, Transcript
+from . import hooks, places, renderer, subtitles, tracking, transcription, vision
+from .models import ROOT, Hook, Output, Style, Transcript
 
 SAMPLE = ROOT / "selftest" / "proef.opus"
 SECONDS = 8.7
+HOOK_SECONDS = 2.5  # the last bit of the test video, played first, as a clip's hook is
 
 # Beside the log, because that is where the things somebody may have to send from live, and
 # it is already swept and already out of git. Nothing in here is worth keeping.
@@ -218,7 +219,13 @@ def step_clip(work: Path, video: Path, heard: str) -> tuple[Outcome, Path | None
         words.segments = [Segment(start=0.2, end=SECONDS - 0.2,
                                   text=heard[:60] or "Preekstof werkt op deze computer")]
         ass = subtitles.write_ass(words, Style(), Output(), work / "proef.ass")
-        renderer.render_video(video, info, ass, Output(), target)
+        # With a hook in front, the way a clip from a service is made: the same recording
+        # opened twice, two sets of captions, the flash, and the two joined.
+        hook = Hook(start=SECONDS - HOOK_SECONDS - 0.4, end=SECONDS - 0.4)
+        hook_ass = subtitles.write_ass(hooks.captions(words, hook), Style(), Output(), work / "proef-hook.ass")
+        renderer.render_video(video, info, ass, Output(), target, hook=(hook.start, hook.end),
+                              hook_subtitles=hook_ass)
+        made = renderer.probe(target).duration if target.is_file() else 0.0
     except Exception as exc:  # noqa: BLE001
         return Outcome("clip", "Clip maken", False, str(exc), time.monotonic() - began), None
     took = time.monotonic() - began
@@ -226,9 +233,13 @@ def step_clip(work: Path, video: Path, heard: str) -> tuple[Outcome, Path | None
         return Outcome("clip", "Clip maken", False,
                        "De clip kwam leeg terug. Dat is meestal een FFmpeg zonder libass.",
                        took), None
+    if abs(made - (info.duration + HOOK_SECONDS)) > 0.4:
+        return Outcome("clip", "Clip maken", False,
+                       f"De hook kwam niet goed mee: de clip duurt {made:.1f} s in plaats van "
+                       f"{info.duration + HOOK_SECONDS:.1f} s.", took), None
     size = target.stat().st_size / 1e6
     return Outcome("clip", "Clip maken", True,
-                   f"1080×1920 met ondertitel, {size:.1f} MB", took), target
+                   f"1080×1920 met ondertitel en hook, {size:.1f} MB", took), target
 
 
 def run(work: Path, on_progress: Report | None = None) -> Result:

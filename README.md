@@ -489,6 +489,33 @@ and reads the pixels back to prove the highlight really walks along the line.
 written down as a mishearing, and says which. `frontend/src/captionCheck.ts` holds the rules;
 `GET /words` gives the browser the same corrections the transcription applies.
 
+### The hook: the point first, then the clip
+
+A clip opens where the thought opens, which is what makes it possible to follow and slow for
+stopping somebody mid-scroll. So every clip can start with a hook: about three seconds from later
+in the clip in which the preacher says the point, a white flash of under half a second, and then
+the clip from its first second (`backend/hooks.py`, `models.Hook`).
+
+Claude reads the clip's subtitles once, after they have been read back, and proposes up to three
+sentences, best first. Where a sentence sits is not the model's to say: the quote has to stand
+word for word in what whisper heard, and its edges come from whisper's own word timings, with a
+little room on each side and never into the next word. The first proposal that lasts between 1.5
+and 5 seconds, comes from after the first six seconds and does not open on a word that leans on
+what came before (the same `discovery.cold_open` the suggestions use) is taken. None passing is
+no hook, which is a clip as it always was. A clip shorter than fifteen seconds gets none.
+
+In the editor the hook can be played the way the video will have it, switched off, asked for
+again, taken from the subtitle line under the play head, or moved by tenths of a second. A hook
+set by hand is never replaced by a new suggestion. `HOOK_CLIPS=0` in `config.env` stops the
+question; the panel then only offers choosing one yourself.
+
+The renderer opens the recording a second time for those seconds, seeking straight to them, so the
+clip itself is built exactly as without a hook. The hook gets its own captions (only the words
+said inside it, counted from zero), its own piece of the speaker's path when the frame follows
+(`renderer.track_commands` with an offset, under its own filter name because `sendcmd` talks to
+every filter of the name it is given), a fade to white at its end and the clip a fade out of white
+at its start. The two voices are joined and levelled together, so they come out equally loud.
+
 ## After the render: the shapes and the text under the post
 
 A made clip is not a posted clip. Two questions are left at that point, and the window that opens
@@ -1066,6 +1093,7 @@ projects/project-3d25a7a1/
 ## Render pipeline
 
 ```text
+[hook: the same source, a few seconds later in → crop → hook.ass → fade to white] → concat
 source.mp4 → static 9:16 crop → fps 30 → burn subtitles.ass (libass) → concat outro
 speech → loudnorm -14 LUFS → (optional) mix with ducked music → limiter
 → libx264 crf 20 + AAC 160k → final.mp4

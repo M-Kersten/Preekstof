@@ -86,7 +86,8 @@ def wanted(asked: list[str] | None, always: list[str]) -> list[Shape]:
 # Everything about a clip that ends up in its picture or its sound. The title is not in
 # here, and neither is where the footage happens to live: a clip that gets its own copy
 # when the recording is cleaned up is still the same clip.
-RECIPE = {"origin", "style", "output", "outro", "music", "watermark", "enhance", "cropStrategy", "crop", "track"}
+RECIPE = {"origin", "style", "output", "outro", "music", "watermark", "enhance", "cropStrategy", "crop", "track",
+          "hook"}
 
 
 def recipe(project: Project, transcript: Transcript, brand) -> str:
@@ -100,6 +101,11 @@ def recipe(project: Project, transcript: Transcript, brand) -> str:
     if not project.enhance.on:
         # Left out when off, so a clip made before colour correction existed still matches.
         clip.pop("enhance", None)
+    if project.hook is None or not project.hook.on:
+        # The same for a clip without a hook: what was made before hooks is still up to date.
+        clip.pop("hook", None)
+    else:
+        clip["hook"] = {"start": project.hook.start, "end": project.hook.end}
     said = {
         "clip": clip,
         "words": transcript.model_dump(mode="json"),

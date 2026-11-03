@@ -8,6 +8,8 @@ import { BACKGROUND_ALPHA, SAFE_MARGIN_BOTTOM, SAFE_MARGIN_SIDE, cssWeight, form
 
 export interface PreviewHandle {
   seek: (time: number) => void
+  /** Play start..end, flash, and carry on from the start of the clip: the hook as the video has it. */
+  playHook: (start: number, end: number) => void
 }
 
 interface Props {
@@ -58,16 +60,31 @@ const VideoPreview = forwardRef<PreviewHandle, Props>(function VideoPreview(prop
   const [scale, setScale] = useState(360 / output.width)
   const families = useFonts()
   const drag = useRef<{ x: number; y: number; crop: CropWindow; moved: boolean } | null>(null)
+  // While the hook plays: where it ends, so the preview can jump to the start of the clip.
+  const hookEnd = useRef<number | null>(null)
+  const [flash, setFlash] = useState(false)
 
   useImperativeHandle(ref, () => ({
     seek: (t: number) => {
       const v = mainRef.current
       if (!v) return
+      hookEnd.current = null
       outroRef.current?.pause()
       setPhase('main')
       v.currentTime = toFile(t)
       setTime(t)
       onTime(t)
+    },
+    playHook: (start: number, end: number) => {
+      const v = mainRef.current
+      if (!v) return
+      outroRef.current?.pause()
+      setPhase('main')
+      v.currentTime = toFile(start)
+      setTime(start)
+      onTime(start)
+      hookEnd.current = end
+      void v.play().catch(() => (hookEnd.current = null))
     },
   }))
 
@@ -98,7 +115,13 @@ const VideoPreview = forwardRef<PreviewHandle, Props>(function VideoPreview(prop
     let frame = 0
     const tick = () => {
       const v = mainRef.current
-      if (v && phase === 'main') {
+      if (v && phase === 'main' && hookEnd.current !== null && toClip(v.currentTime) >= hookEnd.current) {
+        // The end of the hook: a flash, and the clip from its first second, as in the video.
+        hookEnd.current = null
+        setFlash(true)
+        window.setTimeout(() => setFlash(false), 220)
+        v.currentTime = toFile(0)
+      } else if (v && phase === 'main') {
         // A clip is a range of a longer file, so stop at its end rather than the file's.
         if (v.currentTime >= offset + length - 0.02) {
           v.pause()
@@ -113,7 +136,7 @@ const VideoPreview = forwardRef<PreviewHandle, Props>(function VideoPreview(prop
     }
     if (playing) frame = requestAnimationFrame(tick)
     return () => cancelAnimationFrame(frame)
-  }, [playing, phase, onTime, offset, length, toClip, startOutro])
+  }, [playing, phase, onTime, offset, length, toClip, toFile, startOutro])
 
   const active = useMemo(() => segments.find((s) => time >= s.start && time < s.end && s.text.trim()), [segments, time])
   const layout = active ? layoutText(active.text, style, output) : null
@@ -209,7 +232,10 @@ const VideoPreview = forwardRef<PreviewHandle, Props>(function VideoPreview(prop
             if (offset > 0 && e.currentTarget.currentTime < offset) e.currentTarget.currentTime = offset
           }}
           onPlay={() => setPlaying(true)}
-          onPause={() => phase === 'main' && setPlaying(false)}
+          onPause={() => {
+            hookEnd.current = null
+            if (phase === 'main') setPlaying(false)
+          }}
           onEnded={startOutro}
           onSeeked={() => {
             const v = mainRef.current
@@ -293,6 +319,7 @@ const VideoPreview = forwardRef<PreviewHandle, Props>(function VideoPreview(prop
             ))}
           </div>
         )}
+        <div className={`flash ${flash ? 'on' : ''}`} aria-hidden="true" />
         <span className="badge">{phase === 'main' ? `9:16 · ${following ? 'volgt de spreker' : portrait ? 'staand' : 'liggend'} · zoom ${crop.zoom.toFixed(2)}` : `Afsluiter · ${church?.churchName ?? ''}`}</span>
       </div>
       </div>
@@ -307,6 +334,7 @@ const VideoPreview = forwardRef<PreviewHandle, Props>(function VideoPreview(prop
           value={phase === 'main' ? time : sourceInfo.duration}
           onChange={(e) => {
             const t = Number(e.target.value)
+            hookEnd.current = null
             if (mainRef.current) mainRef.current.currentTime = toFile(t)
             if (phase === 'outro') {
               outroRef.current?.pause()

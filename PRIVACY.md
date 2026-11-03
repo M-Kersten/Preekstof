@@ -23,7 +23,9 @@ jullie leert. De instellingen. De logbestanden.
 aanvraag per dienst, met jullie eigen API-sleutel. En per fragment dat je klaarzet nog één
 kleine aanvraag: de ondertitels van dat fragment, om verkeerd verstane woorden eruit te halen.
 Om die te kunnen lezen gaan er ongeveer twee minuten tekst van vlak ervoor en vlak erna mee, de
-namen die in de dienst vaker vallen en wat jullie over de dienst hebben ingevuld.
+namen die in de dienst vaker vallen en wat jullie over de dienst hebben ingevuld. Daarna gaan
+dezelfde ondertitels met de titel van het fragment nog een keer heen, om de zin te kiezen
+waarmee de video begint (de hook).
 De eerste keer dat je van een fragment een video maakt volgt er nog een, om de tekst onder de
 post te schrijven. Daarin gaan dezelfde ondertitels mee, de titel van het fragment, de naam van
 de kerk en wat jullie over de dienst hebben ingevuld. Dat is dus ook tekst uit de preek, van de
@@ -62,10 +64,10 @@ De app stuurt alleen het preekgedeelte, omdat hij de dienst in stukken knipt en 
 voorbedengedeelte overslaat. Dat scheelt, maar het is een inschatting van een computer en
 geen garantie. Een voorganger die tijdens de preek een naam noemt, stuurt die naam mee.
 
-Wil je die twee aanvragen per fragment niet, zet dan `POLISH_CLIPS=0` en `WRITE_POSTS=0` in
-`config.env`. Dan gaat alleen de preek nog naar Claude om momenten te zoeken. De ondertitels
-blijven zoals ze verstaan zijn, en de tekst onder de post maakt de app zelf uit de titel van het
-fragment.
+Wil je die aanvragen per fragment niet, zet dan `POLISH_CLIPS=0`, `HOOK_CLIPS=0` en
+`WRITE_POSTS=0` in `config.env`. Dan gaat alleen de preek nog naar Claude om momenten te zoeken.
+De ondertitels blijven zoals ze verstaan zijn, een hook kies je zelf of laat je weg, en de tekst
+onder de post maakt de app zelf uit de titel van het fragment.
 
 **Wil de kerk dit helemaal niet, dan hoeft het niet.** Zet in `config.env`:
 

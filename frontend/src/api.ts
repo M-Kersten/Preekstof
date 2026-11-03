@@ -115,6 +115,16 @@ export interface Enhance {
   on: boolean
 }
 
+/** A few seconds from later in the clip, played before it starts (backend/hooks.py). */
+export interface Hook {
+  /** Seconds into the clip, like the subtitles. */
+  start: number
+  end: number
+  text: string
+  on: boolean
+  by: 'claude' | 'hand'
+}
+
 export interface Project {
   id: string
   createdAt: string
@@ -131,6 +141,8 @@ export interface Project {
   cropStrategy: 'static' | 'tracked'
   crop: CropWindow
   track: Track | null
+  /** Absent from a server older than hooks. */
+  hook?: Hook | null
   /** What this clip keeps to itself instead of sharing the house style. */
   own: LookPart[]
   enhance: Enhance
@@ -540,6 +552,8 @@ export const api = {
   keepOwn: (id: string, part: LookPart, own: boolean) =>
     request<Project>(`/projects/${id}/own`, json('PUT', { part, own })),
   setFraming: (id: string, follow: boolean) => request<Project>(`/projects/${id}/framing`, json('PUT', { follow })),
+  setHook: (id: string, hook: Hook | null) => request<Project>(`/projects/${id}/hook`, json('PUT', { hook })),
+  suggestHook: (id: string) => request<Project>(`/projects/${id}/hook/suggest`, { method: 'POST' }),
   /** Look through this clip for the speaker. Runs as a job; watch it with trackStatus. */
   track: (id: string) => request<RenderStatus>(`/projects/${id}/track`, { method: 'POST' }),
   trackStatus: (id: string) =>

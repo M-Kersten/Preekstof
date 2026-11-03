@@ -3,6 +3,16 @@
 Per versie, in gewone taal. Welke versie jij draait staat onderin het paneel dat opengaat
 als je in de balk op **Alles gereed** klikt.
 
+## Volgende versie
+
+**Elke clip kan beginnen met een hook.** Een paar seconden waarin de predikant de kern alvast
+zegt, een korte witte flits, en dan begint de clip bij het begin. Wie voorbij scrolt, hoort zo
+meteen waar het om gaat. Preekstof kiest de zin zelf uit de clip, op het moment dat de
+ondertitels worden uitgeschreven. In de editor staat hij onder de ondertitels: je speelt hem af
+zoals hij in de video komt, zet hem uit, laat een andere kiezen, neemt de ondertitelregel waar
+je video op staat, of schuift het begin en einde per tiende seconde. Clips die al gemaakt
+waren, blijven zoals ze waren tot je er zelf een hook bij zet.
+
 ## 0.13.4 — pilot
 
 **Kerkdienstgemist en het volgen van de spreker werken nu ook in de Mac-app.** De zip deed

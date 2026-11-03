@@ -76,14 +76,19 @@ def _rotation(stream: dict) -> int:
 
 def build_crop_filter(info: VideoInfo, output: Output, crop_strategy: str = "static",
                       track: Track | None = None, crop: CropWindow | None = None,
-                      commands: Path | None = None) -> str:
+                      commands: Path | None = None, name: str = "track", offset: float = 0.0,
+                      length: float | None = None) -> str:
     """Return the FFmpeg filter chain that turns the source frame into output.width x output.height.
 
     A track without a path, or one asked for without somewhere to write its commands, falls
     back to the static window rather than failing: a clip must always be renderable.
+
+    `offset` and `length` take a piece of the path, for a piece of the clip played on its
+    own (the hook). `name` keeps two moving windows in one graph apart: sendcmd talks to
+    every filter of the name it is given.
     """
     if crop_strategy == "tracked" and track and track.x and commands is not None:
-        return tracked_crop_filter(info, output, crop, track, commands)
+        return tracked_crop_filter(info, output, crop, track, commands, name, offset, length)
     if crop_strategy in {"static", "tracked"}:
         return static_crop_filter(info, output, crop)
     raise ValueError(f"unknown crop strategy: {crop_strategy}")
@@ -205,7 +210,8 @@ def track_at(track: Track, seconds: float) -> float | None:
     return track.x[first] + (track.x[first + 1] - track.x[first]) * (place - first)
 
 
-def track_commands(info: VideoInfo, output: Output, crop: CropWindow | None, track: Track) -> str:
+def track_commands(info: VideoInfo, output: Output, crop: CropWindow | None, track: Track,
+                   name: str = "track", offset: float = 0.0, length: float | None = None) -> str:
     """The script that walks the crop window along the path, one line per move.
 
     Read finer than it was stored: sendcmd sets a value and leaves it there, so a path
@@ -215,23 +221,26 @@ def track_commands(info: VideoInfo, output: Output, crop: CropWindow | None, tra
     still costs a handful of lines rather than one per frame.
     """
     g = crop_geometry(info, output, crop)
-    span = (len(track.x) - 1) / max(1e-6, track.fps)
+    span = max(0.0, (len(track.x) - 1) / max(1e-6, track.fps) - offset)
+    if length is not None:
+        span = min(span, length)
     lines, before = [], None
     for step in range(int(span * COMMAND_FPS) + 1):
         moment = step / COMMAND_FPS
-        x = track_at(track, moment)
+        x = track_at(track, offset + moment)
         if x is None:
             break
         edge = edge_for(x, g.scaled_w, g.crop_w)
         if edge == before:
             continue
-        lines.append(f"{moment:.4f} crop@track x {edge};")
+        lines.append(f"{moment:.4f} crop@{name} x {edge};")
         before = edge
     return "\n".join(lines) + "\n"
 
 
 def tracked_crop_filter(info: VideoInfo, output: Output, crop: CropWindow | None,
-                        track: Track, commands: Path) -> str:
+                        track: Track, commands: Path, name: str = "track", offset: float = 0.0,
+                        length: float | None = None) -> str:
     """The same window as a static crop, told where to be as the clip plays.
 
     sendcmd hands the crop a new x at each moment the path calls for one. Everything about
@@ -240,12 +249,13 @@ def tracked_crop_filter(info: VideoInfo, output: Output, crop: CropWindow | None
     """
     g = crop_geometry(info, output, crop)
     commands.parent.mkdir(parents=True, exist_ok=True)
-    commands.write_text(track_commands(info, output, crop, track), encoding="utf-8")
-    start = edge_for(track.x[0], g.scaled_w, g.crop_w) if track.x else g.left
+    commands.write_text(track_commands(info, output, crop, track, name, offset, length), encoding="utf-8")
+    first = track_at(track, offset)
+    start = edge_for(first, g.scaled_w, g.crop_w) if first is not None else g.left
     enlarged = enlargement(info, output, crop)
     return (f"{before_scaling(enlarged)}scale={g.scaled_w}:{g.scaled_h}:flags=lanczos,"
             f"sendcmd=f='{_ffpath(commands)}',"
-            f"crop@track={g.crop_w}:{g.crop_h}:{start}:{g.top}{after_cropping(enlarged)},"
+            f"crop@{name}={g.crop_w}:{g.crop_h}:{start}:{g.top}{after_cropping(enlarged)},"
             f"pad={output.width}:{output.height}:(ow-iw)/2:(oh-ih)/2:color=black")
 
 
@@ -281,6 +291,9 @@ def build_command(
     source_start: float | None = None,
     commands: Path | None = None,
     look: str = "",
+    hook: tuple[float, float] | None = None,
+    hook_subtitles: Path | None = None,
+    hook_commands: Path | None = None,
 ) -> tuple[list[str], float]:
     """Build the ffmpeg command line. Returns (argv, total output duration).
 
@@ -292,6 +305,11 @@ def build_command(
     window, so each gets its own file; left out, it sits next to the subtitles.
 
     `look` is the colour correction (look.chain), done first, on the recording's own pixels.
+
+    `hook` is (start, end) in seconds into the clip: that piece is played first, with its own
+    captions (`hook_subtitles`), and then the clip from its beginning, with a short flash to
+    white between the two (models.Hook). The recording is opened a second time for it,
+    seeking straight to those seconds, so the clip itself is built exactly as without one.
     """
     w, h, fps = output.width, output.height, output.fps
     cmd = ["ffmpeg", "-y", "-hide_banner", "-loglevel", "error", "-nostats", "-progress", "pipe:1"]
@@ -309,22 +327,49 @@ def build_command(
     if logo_path is not None:
         inputs.append(logo_path)  # a still image; overlay repeats its single frame
 
+    hook_length = 0.0
+    hook_index = -1
+    if hook is not None and hook_subtitles is not None:
+        hook_length = round(hook[1] - hook[0], 3)
+        inputs.append(source)
+        hook_index = len(inputs) - 1
+        trim[hook_index] = ["-ss", f"{(source_start or 0.0) + hook[0]:.3f}", "-t", f"{hook_length:.3f}"]
+
     crop_chain = build_crop_filter(source_info, output, crop_strategy, track, crop,
                                    commands=commands or subtitles.with_name('track.cmd'))
     clip_label = "v0raw" if logo_path is not None else "v0"
-    filters.append(
-        f"[0:v]{look}{crop_chain},fps={fps},setsar=1,format=yuv420p,"
-        f"ass=filename='{_ffpath(subtitles)}':fontsdir='{_ffpath(FONTS_DIR)}'[{clip_label}]"
-    )
+    captions = f"ass=filename='{_ffpath(subtitles)}':fontsdir='{_ffpath(FONTS_DIR)}'"
+    if hook_index < 0:
+        filters.append(f"[0:v]{look}{crop_chain},fps={fps},setsar=1,format=yuv420p,{captions}[{clip_label}]")
+    else:
+        hook_chain = build_crop_filter(source_info, output, crop_strategy, track, crop,
+                                       commands=hook_commands or subtitles.with_name('hook.cmd'),
+                                       name="hook", offset=hook[0], length=hook_length)
+        filters.append(
+            f"[{hook_index}:v]{look}{hook_chain},fps={fps},setsar=1,format=yuv420p,"
+            f"ass=filename='{_ffpath(hook_subtitles)}':fontsdir='{_ffpath(FONTS_DIR)}',"
+            f"fade=t=out:st={max(0.0, hook_length - FLASH_OUT):.3f}:d={FLASH_OUT}:color=white[hookv]"
+        )
+        filters.append(f"[0:v]{look}{crop_chain},fps={fps},setsar=1,format=yuv420p,{captions},"
+                       f"fade=t=in:st=0:d={FLASH_IN}:color=white[mainv]")
+        filters.append(f"[hookv][mainv]concat=n=2:v=1:a=0[{clip_label}]")
     if logo_path is not None and watermark is not None:
         filters.append(
             f"[1:v]format=rgba,colorchannelmixer=aa={watermark.opacity:.2f},"
             f"scale={max(16, int(w * watermark.width))}:-1[wm]"
         )
         filters.append(f"[{clip_label}][wm]overlay={overlay_position(watermark)}:format=auto[v0]")
-    filters.append(_audio_filter(0, source_info, audio_norm, inputs, filters, "a0"))
+    if hook_index < 0:
+        filters.append(_audio_filter(0, source_info, audio_norm, inputs, filters, "a0"))
+    elif source_info.hasAudio:
+        # Levelled together, after joining, so the hook and the clip come out equally loud.
+        filters.append(f"[{hook_index}:a]afade=t=out:st={max(0.0, hook_length - SOUND_OUT):.3f}:d={SOUND_OUT}[hooka]")
+        filters.append(f"[0:a]afade=t=in:st=0:d={SOUND_IN}[maina]")
+        filters.append(f"[hooka][maina]concat=n=2:v=0:a=1,{audio_norm}[a0]")
+    else:
+        filters.append(f"anullsrc=r=48000:cl=stereo,atrim=duration={source_info.duration + hook_length:.3f}[a0]")
 
-    total = source_info.duration
+    total = source_info.duration + hook_length
     if outro is not None and outro_info is not None:
         inputs.append(outro)
         idx = len(inputs) - 1
@@ -364,6 +409,14 @@ def build_command(
         "-movflags", "+faststart", str(destination),
     ]
     return cmd, total
+
+
+# The jump from the hook to the start of the clip. A cut alone reads as a mistake in the
+# edit; a quick flash to white and back is how a short video says "and now from the top".
+FLASH_OUT = 0.18  # seconds the hook takes to go white
+FLASH_IN = 0.22  # and the clip to come out of it
+SOUND_OUT = 0.12  # the voice is faded, not cut, so the jump does not click
+SOUND_IN = 0.04
 
 
 def watermark_file(watermark: Watermark | None) -> Path | None:
@@ -427,13 +480,16 @@ def render_video(
     should_stop: Callable[[], None] | None = None,
     commands: Path | None = None,
     look: str = "",
+    hook: tuple[float, float] | None = None,
+    hook_subtitles: Path | None = None,
+    hook_commands: Path | None = None,
 ) -> Path:
     outro_info = probe(outro) if outro is not None and outro.is_file() else None
     if outro_info is None:
         outro = None
     cmd, total = build_command(
         source, source_info, subtitles, outro, outro_info, output, destination, crop_strategy, track, crop, music,
-        watermark, source_start, commands, look
+        watermark, source_start, commands, look, hook, hook_subtitles, hook_commands
     )
     tmp = destination.with_suffix(".part.mp4")
     cmd[-1] = str(tmp)

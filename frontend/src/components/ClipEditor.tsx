@@ -1,10 +1,11 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { ApiError, api, type CropWindow, type LookPart, type MusicSettings, type Project, type RenderStatus, type Segment, type ShapeKey, type ShareSettings, type Style, type Watermark } from '../api'
+import { ApiError, api, type CropWindow, type Hook, type LookPart, type MusicSettings, type Project, type RenderStatus, type Segment, type ShapeKey, type ShareSettings, type Style, type Watermark } from '../api'
 import { useChurch } from '../church'
 import { cssFilter } from '../look'
 import { heldForNow, holdForNow, letGo } from '../remember'
 import DeliveryPanel from './DeliveryPanel'
 import FramingPanel from './FramingPanel'
+import HookPanel from './HookPanel'
 import LogoPanel from './LogoPanel'
 import MusicPanel from './MusicPanel'
 import RenderControls from './RenderControls'
@@ -225,6 +226,24 @@ export default function ClipEditor({ projectId, onProjectChange }: Props) {
       setSearching(false)
     }
   }
+  const [hookBusy, setHookBusy] = useState(false)
+  const changeHook = (next: Hook | null) => {
+    if (!project) return
+    setError(null)
+    api.setHook(project.id, next).then(setProject).catch(fail)
+  }
+  const suggestHook = () => {
+    if (!project || hookBusy) return
+    setError(null)
+    setHookBusy(true)
+    // Saved first, so the hook is chosen from the subtitles as they read on screen.
+    api.saveTranscript(project.id, { language: 'nl', segments })
+      .then(() => api.suggestHook(project.id))
+      .then(setProject)
+      .catch(fail)
+      .finally(() => setHookBusy(false))
+  }
+
   const changeSegments = (next: Segment[]) => {
     dirty.current.transcript = true
     setSegments(next)
@@ -501,6 +520,16 @@ export default function ClipEditor({ projectId, onProjectChange }: Props) {
             <SubtitleEditor segments={segments} currentTime={currentTime} onChange={changeSegments} onSeek={(t) => previewRef.current?.seek(t)}>
               <WordSuggestions projectId={project.id} savedAt={transcriptSavedAt} />
             </SubtitleEditor>
+            <HookPanel
+              hook={project.hook ?? null}
+              segments={segments}
+              currentTime={currentTime}
+              duration={project.sourceInfo?.duration ?? 0}
+              busy={hookBusy}
+              onChange={changeHook}
+              onSuggest={suggestHook}
+              onPlay={(start, end) => previewRef.current?.playHook(start, end)}
+            />
             <FramingPanel
               sourceUrl={api.sourceUrl(project.id)}
               sourceInfo={project.sourceInfo!}

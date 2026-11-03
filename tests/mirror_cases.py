@@ -9,8 +9,9 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 from backend.models import CropWindow, Output, Style, VideoInfo  # noqa: E402
 from backend.models import Segment, Spoken, Track  # noqa: E402
 from backend.renderer import crop_geometry, track_at  # noqa: E402
+from backend.hooks import edges  # noqa: E402
 from backend.subtitles import layout_text, word_times  # noqa: E402
-from tests.cases import (CAPTIONS, CROP_SOURCES, CROP_WINDOWS, LAYOUT_SIZES,  # noqa: E402
+from tests.cases import (CAPTIONS, CROP_SOURCES, CROP_WINDOWS, HOOKS, LAYOUT_SIZES,  # noqa: E402
                          LAYOUT_TEXTS, OUTPUT, TRACKS, TRACK_TIMES)
 
 
@@ -52,8 +53,15 @@ def build() -> dict:
             "times": [w.model_dump() for w in word_times(seg)],
         })
 
+    hook = []
+    for timings, first, last, length in HOOKS:
+        words = [Spoken(start=a, end=b, word=f"w{i}") for i, (a, b) in enumerate(timings)]
+        start, end = edges(words, first, last, length)
+        hook.append({"words": [w.model_dump() for w in words], "first": first, "last": last,
+                     "length": length, "start": start, "end": end})
+
     return {"output": {"width": output.width, "height": output.height, "fps": output.fps},
-            "layout": layout, "crop": crop, "track": track, "caption": caption}
+            "layout": layout, "crop": crop, "track": track, "caption": caption, "hook": hook}
 
 
 if __name__ == "__main__":

@@ -17,9 +17,13 @@ whether it may be used:
     it comes from later in the clip than EARLIEST, so the clip does not repeat itself at once,
     and it does not open on a word that leans on what came before ("dat", "dus", "hij").
 
-The first proposal that passes is taken. None passing means no hook, which is a clip as
-it always was. The editor shows the choice, plays it, and lets somebody take another line
-or move the edges by hand; a hook chosen by hand is never replaced by a new suggestion.
+The first proposal that passes becomes the hook, and every one that passes is kept beside
+it (Project.hookOptions), so somebody who does not like the first can play the others and
+switch with one click instead of asking again. Asking again sends what was already offered
+along, so the next answer is a different sentence and not the same one in other words.
+None passing means no hook, which is a clip as it always was. In the editor the words of
+the clip can also be clicked, first and last, to make a hook of any sentence; a hook chosen
+by hand is never replaced by a new suggestion.
 """
 
 import re
@@ -155,37 +159,58 @@ def place(quote: str, words: list[Spoken], length: float) -> tuple[Hook | None, 
 # --- asking ----------------------------------------------------------------------
 
 
-def question(transcript: Transcript, title: str = "") -> str:
+def question(transcript: Transcript, title: str = "", offered: list[str] | None = None) -> str:
     lines = "\n".join(f"{s.start:.1f}-{s.end:.1f}: {s.text.strip()}"
                       for s in sorted(transcript.segments, key=lambda s: s.start) if s.text.strip())
     about = f"Titel van het fragment: {title.strip()}\n\n" if title and title.strip() else ""
-    return f"{about}De ondertitels:\n{lines}"
+    asked = f"{about}De ondertitels:\n{lines}"
+    if offered:
+        # Without this the next answer is the same sentence, which is the one that was not liked.
+        before = "\n".join(f"- {text}" for text in offered)
+        asked += (f"\n\nDeze zijn al voorgesteld en vielen niet in de smaak. Kies andere zinnen, "
+                  f"uit een ander deel van het fragment:\n{before}")
+    return asked
 
 
-def choose(options: list[LlmHook], transcript: Transcript, length: float) -> Hook | None:
-    """The first proposal that passes every check."""
+def overlaps(a: Hook, b: Hook) -> bool:
+    """Two hooks that are mostly the same seconds are the same hook."""
+    shared = min(a.end, b.end) - max(a.start, b.start)
+    return shared > 0.5 * min(a.end - a.start, b.end - b.start)
+
+
+def choose(options: list[LlmHook], transcript: Transcript, length: float,
+           besides: list[Hook] | None = None) -> list[Hook]:
+    """Every proposal that passes every check, best first, and none twice."""
     words = said(transcript)
+    taken: list[Hook] = []
     for option in options:
         hook, why = place(option.quote, words, length)
-        if hook is not None:
-            return hook
-        print(f"[hook] “{option.quote[:60]}” valt af: {why}")
-    return None
+        if hook is None:
+            print(f"[hook] “{option.quote[:60]}” valt af: {why}")
+        elif not any(overlaps(hook, other) for other in taken + (besides or [])):
+            taken.append(hook)
+    return taken
 
 
-def suggest(transcript: Transcript, length: float, title: str = "") -> Hook | None:
-    """A hook for this clip, or None. Never a reason for anything to fail."""
+def suggest(transcript: Transcript, length: float, title: str = "",
+            besides: list[Hook] | None = None) -> list[Hook]:
+    """Hooks for this clip, best first; empty when there is none. Never a reason to fail.
+
+    `besides` are hooks offered before: named in the question as not wanted again, and left
+    out of what comes back.
+    """
     from . import discovery
 
     if not ON or length < SHORTEST_CLIP or not any(s.text.strip() for s in transcript.segments):
-        return None
+        return []
     try:
         discovery.check_provider()
-        answer = discovery.ask(question(transcript, title), SYSTEM, LlmHooks, EFFORT)
+        asked = question(transcript, title, [h.text for h in besides or [] if h.text])
+        answer = discovery.ask(asked, SYSTEM, LlmHooks, EFFORT)
     except Exception as exc:  # noqa: BLE001  a clip without a hook is a clip as it always was
         print(f"[hook] overgeslagen: {exc}")
-        return None
-    return choose(getattr(answer, "hooks", []) or [], transcript, length)
+        return []
+    return choose(getattr(answer, "hooks", []) or [], transcript, length, besides)
 
 
 # --- what it shows ---------------------------------------------------------------

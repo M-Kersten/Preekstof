@@ -143,6 +143,8 @@ export interface Project {
   track: Track | null
   /** Absent from a server older than hooks. */
   hook?: Hook | null
+  /** What was proposed, so another can be taken without asking again. */
+  hookOptions?: Hook[]
   /** What this clip keeps to itself instead of sharing the house style. */
   own: LookPart[]
   enhance: Enhance

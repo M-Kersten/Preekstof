@@ -8,10 +8,13 @@ als je in de balk op **Alles gereed** klikt.
 **Elke clip kan beginnen met een hook.** Een paar seconden waarin de predikant de kern alvast
 zegt, een korte witte flits, en dan begint de clip bij het begin. Wie voorbij scrolt, hoort zo
 meteen waar het om gaat. Preekstof kiest de zin zelf uit de clip, op het moment dat de
-ondertitels worden uitgeschreven. In de editor staat hij onder de ondertitels: je speelt hem af
-zoals hij in de video komt, zet hem uit, laat een andere kiezen, neemt de ondertitelregel waar
-je video op staat, of schuift het begin en einde per tiende seconde. Clips die al gemaakt
-waren, blijven zoals ze waren tot je er zelf een hook bij zet.
+ondertitels worden uitgeschreven, en zet de andere zinnen die hij goed vond eronder. Bevalt
+de keuze niet, dan speel je die andere af en neem je er een met één klik. Wil je nog meer,
+dan vraag je om andere zinnen; wat je al gezien hebt komt dan niet terug. Of je klikt in de
+tekst van de clip zelf het eerste en het laatste woord aan. Terwijl je aanwijst zie je hoe
+lang de hook wordt, en de app zegt het als hij te kort of te lang is of begint met een woord
+als "dat" dat terugverwijst. Afspelen laat het begin van de video zien zoals hij wordt.
+Clips die al gemaakt waren, blijven zoals ze waren tot je er zelf een hook bij zet.
 
 ## 0.13.4 — pilot
 

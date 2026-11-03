@@ -84,3 +84,16 @@ CAPTIONS = [
     (5.0, 5.0, "geen tijd", None),                                   # nothing to divide
     (0.0, 1.0, "   ", None),                                         # nothing to say
 ]
+
+
+# Where a hook made of words first..last is cut: (word timings, first, last, clip length).
+# backend/hooks.py edges and frontend/src/hook.ts hookEdges.
+HOOK_WORDS = [(0.0, 0.3), (0.35, 0.7), (0.72, 1.1), (1.6, 2.0), (2.05, 2.4), (2.9, 3.3)]
+HOOKS = [
+    (HOOK_WORDS, 0, 2, 10.0),  # from the very first word: no room in front to take
+    (HOOK_WORDS, 1, 2, 10.0),  # the words around it are close: the gap decides
+    (HOOK_WORDS, 3, 4, 10.0),  # a pause on both sides: the full room
+    (HOOK_WORDS, 3, 5, 10.0),  # to the last word of the clip
+    (HOOK_WORDS, 5, 5, 3.4),   # the clip ends right after it
+    (HOOK_WORDS, 2, 2, 10.0),  # one word
+]

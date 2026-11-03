@@ -504,10 +504,19 @@ and 5 seconds, comes from after the first six seconds and does not open on a wor
 what came before (the same `discovery.cold_open` the suggestions use) is taken. None passing is
 no hook, which is a clip as it always was. A clip shorter than fifteen seconds gets none.
 
-In the editor the hook can be played the way the video will have it, switched off, asked for
-again, taken from the subtitle line under the play head, or moved by tenths of a second. A hook
-set by hand is never replaced by a new suggestion. `HOOK_CLIPS=0` in `config.env` stops the
-question; the panel then only offers choosing one yourself.
+Claude's choice is a first proposal and nothing more. Every proposal that passes is kept beside it
+(`Project.hookOptions`), so the editor lists the others to play and take with one click, without
+asking again. Asking again sends what was offered before along as not wanted, so the answer is a
+different sentence rather than the same one in other words; new proposals join the list and the
+hook in use stays until somebody picks another. And any sentence of the clip can be made the hook
+by clicking its first and its last word. The browser cuts it with `hookEdges` in
+`frontend/src/hook.ts`, a mirror of `hooks.edges` kept in step by `tests/mirror_cases.py`, so the
+seconds shown while choosing are the seconds the video gets. While choosing it says how long the
+hook would be, and warns when it is under 1.5 or over 5 seconds, comes from the opening seconds,
+or opens on a word that leans on what came before (the same word list, compared in
+`tests/test_hooks.py`). The edges can still be moved by tenths of a second, folded away under
+"Precies afstellen". A hook set by hand is never replaced by a new suggestion. `HOOK_CLIPS=0` in
+`config.env` stops the question; the panel then offers choosing one yourself.
 
 The renderer opens the recording a second time for those seconds, seeking straight to them, so the
 clip itself is built exactly as without a hook. The hook gets its own captions (only the words

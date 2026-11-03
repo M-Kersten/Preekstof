@@ -320,36 +320,50 @@ def update_crop(project_id: str, crop: CropWindow):
 
 
 def offer_hook(project: Project, transcript: Transcript) -> None:
-    """Let a hook be chosen for this clip, unless somebody already chose one by hand."""
+    """Let hooks be proposed for this clip, unless somebody already chose one by hand."""
     if project.hook is not None and project.hook.by == "hand":
         return
     length = project.sourceInfo.duration if project.sourceInfo else 0.0
     found = hooks.suggest(transcript, length, project.title or "")
-    if found is not None:
-        project.hook = found
+    if found:
+        project.hook = found[0]
+        project.hookOptions = found
 
 
 @app.put("/projects/{project_id}/hook", response_model=ProjectDetail)
 def update_hook(project_id: str, hook: Hook | None = Body(default=None, embed=True)):
-    """Switch the hook on or off, or set it by hand. None takes it away."""
+    """Switch the hook on or off, take another, or set it by hand. None takes it away."""
     project = get_project(project_id)
     if hook is None:
         project.hook = None
     elif project.hook is not None and (hook.start, hook.end) == (project.hook.start, project.hook.end):
         project.hook = project.hook.model_copy(update={"on": hook.on})  # only switched
     else:
-        length = project.sourceInfo.duration if project.sourceInfo else 0.0
-        try:
-            project.hook = hooks.by_hand(hook, length)
-        except ValueError as exc:
-            raise HTTPException(400, str(exc)) from exc
+        offered = next((o for o in project.hookOptions if (o.start, o.end) == (hook.start, hook.end)), None)
+        if offered is not None:
+            project.hook = offered.model_copy(update={"on": True})  # one of the proposals, as it was
+        else:
+            length = project.sourceInfo.duration if project.sourceInfo else 0.0
+            try:
+                project.hook = hooks.by_hand(hook, length)
+            except ValueError as exc:
+                raise HTTPException(400, str(exc)) from exc
     save_project(project)
     return detail(project)
 
 
+# Proposals kept per clip. Enough to choose from after asking a few times; beyond that the
+# list is longer than anybody plays through.
+MOST_HOOK_OPTIONS = 9
+
+
 @app.post("/projects/{project_id}/hook/suggest", response_model=ProjectDetail)
 def suggest_hook(project_id: str):
-    """Ask for a hook again, for this clip as its subtitles read now."""
+    """Ask for other hooks, for this clip as its subtitles read now.
+
+    What was offered before goes along as not wanted again. New proposals are added to the
+    list to choose from; the hook in use only changes when there was none.
+    """
     project = get_project(project_id)
     transcript = load_transcript(project)
     if transcript is None or not transcript.segments:
@@ -362,11 +376,16 @@ def suggest_hook(project_id: str):
         discovery.check_provider()
     except Exception as exc:  # noqa: BLE001
         raise HTTPException(400, str(exc)) from exc
-    found = hooks.suggest(transcript, length, project.title or "")
-    if found is None:
-        raise HTTPException(422, "Er is geen zin gevonden die op zichzelf de kern zegt. Kies er zelf "
-                                 "een in de ondertitels.")
-    project.hook = found
+    before = list(project.hookOptions)
+    if project.hook is not None and not any(hooks.overlaps(project.hook, o) for o in before):
+        before.append(project.hook)
+    found = hooks.suggest(transcript, length, project.title or "", besides=before)
+    if not found:
+        raise HTTPException(422, "Er is geen andere zin gevonden die op zichzelf de kern zegt. Klik "
+                                 "hieronder zelf het eerste en het laatste woord van je hook aan.")
+    project.hookOptions = (found + project.hookOptions)[:MOST_HOOK_OPTIONS]
+    if project.hook is None:
+        project.hook = found[0]
     save_project(project)
     return detail(project)
 

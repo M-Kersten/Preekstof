@@ -1201,10 +1201,28 @@ a.button.small { padding: 0.22rem 0.55rem; font-size: 0.78rem; font-weight: 500;
 /* The hook: a few seconds from later in the clip, played first. */
 .hook-panel .check { display: flex; align-items: baseline; gap: 0.5rem; font-weight: 600; cursor: pointer; }
 .hook-panel .check input { transform: translateY(2px); }
-.hook-quote { margin: 0.7rem 0 0.3rem; padding: 0.6rem 0.8rem; border-left: 3px solid var(--gold); background: rgba(201, 151, 28, 0.08); border-radius: 0 8px 8px 0; font-size: 0.95rem; }
+.hook-quote { margin: 0.7rem 0 0.4rem; padding: 0.6rem 0.8rem; border-left: 3px solid var(--gold); background: rgba(201, 151, 28, 0.08); border-radius: 0 8px 8px 0; font-size: 0.95rem; }
 .hook-quote.off { opacity: 0.5; }
-.hook-meta { font-size: 0.8rem; color: var(--muted, #6b6475); margin: 0 0 0.6rem; }
+.hook-meta { font-size: 0.8rem; color: var(--muted); }
 .hook-row { display: flex; align-items: center; gap: 0.5rem; flex-wrap: wrap; margin-top: 0.5rem; }
+.hook-advice { font-size: 0.82rem; color: #8A5A00; margin: 0.4rem 0 0; }
+.hook-advice.live { color: var(--ink); }
+.hook-head { font-size: 0.9rem; margin: 1.1rem 0 0.3rem; color: var(--purple); }
+.hook-options { list-style: none; margin: 0; padding: 0; display: grid; gap: 0.35rem; }
+.hook-options li { display: grid; grid-template-columns: 1fr auto auto auto; align-items: center; gap: 0.5rem; padding: 0.4rem 0.55rem; border: 1px solid var(--line); border-radius: 8px; }
+.hook-option-text { font-size: 0.88rem; }
+.hook-how { margin: 0 0 0.4rem; }
+.hook-how .linkish { background: none; border: 0; padding: 0; color: var(--purple); text-decoration: underline; cursor: pointer; font: inherit; }
+.hook-words { max-height: 13rem; overflow-y: auto; padding: 0.5rem 0.6rem; border: 1px solid var(--line); border-radius: 8px; line-height: 1.9; font-size: 0.9rem; background: var(--white); }
+.hook-words .at { display: inline-block; min-width: 2.6rem; font-family: var(--mono); font-size: 0.72rem; color: var(--muted); }
+.hook-words .word { display: inline; background: none; border: 0; padding: 0.05rem 0.12rem; margin: 0; border-radius: 4px; font: inherit; color: inherit; cursor: pointer; }
+.hook-words .word:hover { background: var(--lavender); }
+.hook-words .word.early { color: var(--muted); }
+.hook-words .word.in { background: rgba(201, 151, 28, 0.25); }
+.hook-words .word.picking { background: var(--purple); color: var(--white); }
+.hook-words.choosing { border-color: var(--purple); }
+.hook-fine { margin-top: 0.9rem; }
+.hook-fine summary { cursor: pointer; font-size: 0.85rem; color: var(--purple); }
 .hook-row.nudge { gap: 0.35rem; }
 .hook-row.nudge span { font-size: 0.82rem; margin: 0 0.2rem 0 0.6rem; }
 .hook-row.nudge span:first-child { margin-left: 0; }

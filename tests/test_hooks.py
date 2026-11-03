@@ -73,11 +73,27 @@ def test_too_short_and_too_long_are_refused(quote, why):
     assert hook is None and why in said
 
 
-def test_the_first_proposal_that_passes_is_taken(capsys):
+def test_the_proposals_that_pass_are_kept_best_first(capsys):
     chosen = hooks.choose([LlmHook(quote="Vandaag lezen we over de verloren zoon", why=""),
-                           LlmHook(quote="Genade is niet wat je verdient", why="")], CLIP, LENGTH)
-    assert chosen is not None and chosen.text.startswith("Genade")
+                           LlmHook(quote="Genade is niet wat je verdient", why=""),
+                           LlmHook(quote="het is wat je krijgt", why=""),
+                           LlmHook(quote="Dat is het hele evangelie in één zin", why="")], CLIP, LENGTH)
+    assert [h.text for h in chosen] == ["Genade is niet wat je verdient,", "het is wat je krijgt."]
     assert "valt af" in capsys.readouterr().out
+
+
+def test_the_same_seconds_are_not_offered_twice():
+    first = hooks.choose([LlmHook(quote="Genade is niet wat je verdient", why="")], CLIP, LENGTH)
+    again = hooks.choose([LlmHook(quote="Genade is niet wat je verdient", why=""),
+                          LlmHook(quote="is niet wat je verdient", why=""),
+                          LlmHook(quote="het is wat je krijgt", why="")], CLIP, LENGTH, besides=first)
+    assert [h.text for h in again] == ["het is wat je krijgt."]
+
+
+def test_asking_again_names_what_was_offered_before():
+    asked = hooks.question(CLIP, "Genade", ["Genade is niet wat je verdient,"])
+    assert "al voorgesteld" in asked and "- Genade is niet wat je verdient," in asked
+    assert "al voorgesteld" not in hooks.question(CLIP, "Genade")
 
 
 def test_through_a_stubbed_model(monkeypatch):
@@ -85,27 +101,27 @@ def test_through_a_stubbed_model(monkeypatch):
     monkeypatch.setattr("backend.discovery.check_provider", lambda: None)
     monkeypatch.setattr("backend.discovery.ask", lambda *a, **k: hooks.LlmHooks(hooks=[
         LlmHook(quote="Genade is niet wat je verdient", why="de kern")]))
-    hook = hooks.suggest(CLIP, LENGTH, "Genade")
-    assert hook is not None and hook.by == "claude" and hook.on
+    found = hooks.suggest(CLIP, LENGTH, "Genade")
+    assert len(found) == 1 and found[0].by == "claude" and found[0].on
 
 
 def test_no_key_is_no_hook_and_no_failure(monkeypatch):
     monkeypatch.setattr(hooks, "ON", True)
     monkeypatch.setattr("backend.discovery.check_provider",
                         lambda: (_ for _ in ()).throw(RuntimeError("geen sleutel")))
-    assert hooks.suggest(CLIP, LENGTH) is None
+    assert hooks.suggest(CLIP, LENGTH) == []
 
 
 def test_a_short_clip_gets_no_hook(monkeypatch):
     monkeypatch.setattr(hooks, "ON", True)
     monkeypatch.setattr("backend.discovery.check_provider", lambda: pytest.fail("niets vragen"))
-    assert hooks.suggest(CLIP, 12.0) is None
+    assert hooks.suggest(CLIP, 12.0) == []
 
 
 def test_switched_off_asks_nothing(monkeypatch):
     monkeypatch.setattr(hooks, "ON", False)
     monkeypatch.setattr("backend.discovery.check_provider", lambda: pytest.fail("niets vragen"))
-    assert hooks.suggest(CLIP, LENGTH) is None
+    assert hooks.suggest(CLIP, LENGTH) == []
 
 
 def test_the_question_carries_the_lines_with_their_times():
@@ -235,14 +251,43 @@ def test_a_hook_of_nothing_is_refused(clip):
     assert said.status_code == 400
 
 
-def test_asking_again_replaces_a_suggestion(clip, monkeypatch):
+def test_asking_without_a_hook_takes_the_best(clip, monkeypatch):
     client, pid = clip
     monkeypatch.setattr(hooks, "ON", True)
     monkeypatch.setattr("backend.discovery.check_provider", lambda: None)
     monkeypatch.setattr("backend.discovery.ask", lambda *a, **k: hooks.LlmHooks(hooks=[
-        LlmHook(quote="Genade is niet wat je verdient", why="")]))
+        LlmHook(quote="Genade is niet wat je verdient", why=""), LlmHook(quote="het is wat je krijgt", why="")]))
     said = client.post(f"/projects/{pid}/hook/suggest").json()
     assert said["hook"]["text"].startswith("Genade") and said["hook"]["by"] == "claude"
+    assert len(said["hookOptions"]) == 2
+
+
+def test_asking_again_adds_others_and_leaves_the_hook_alone(clip, monkeypatch):
+    """Somebody browsing proposals decides which one to use; a new list does not decide for them."""
+    client, pid = clip
+    asked = []
+    monkeypatch.setattr(hooks, "ON", True)
+    monkeypatch.setattr("backend.discovery.check_provider", lambda: None)
+    answers = [[LlmHook(quote="Genade is niet wat je verdient", why="")],
+               [LlmHook(quote="Genade is niet wat je verdient", why=""), LlmHook(quote="het is wat je krijgt", why="")]]
+    monkeypatch.setattr("backend.discovery.ask",
+                        lambda user, *a, **k: asked.append(user) or hooks.LlmHooks(hooks=answers.pop(0)))
+    client.post(f"/projects/{pid}/hook/suggest")
+    said = client.post(f"/projects/{pid}/hook/suggest").json()
+    assert said["hook"]["text"].startswith("Genade")
+    assert [o["text"] for o in said["hookOptions"]] == ["het is wat je krijgt.", "Genade is niet wat je verdient,"]
+    assert "al voorgesteld" in asked[1] and "Genade is niet wat je verdient," in asked[1]
+
+
+def test_taking_another_proposal_keeps_it_a_proposal(clip, monkeypatch):
+    client, pid = clip
+    monkeypatch.setattr(hooks, "ON", True)
+    monkeypatch.setattr("backend.discovery.check_provider", lambda: None)
+    monkeypatch.setattr("backend.discovery.ask", lambda *a, **k: hooks.LlmHooks(hooks=[
+        LlmHook(quote="Genade is niet wat je verdient", why=""), LlmHook(quote="het is wat je krijgt", why="")]))
+    options = client.post(f"/projects/{pid}/hook/suggest").json()["hookOptions"]
+    said = client.put(f"/projects/{pid}/hook", json={"hook": options[1]}).json()
+    assert said["hook"]["text"] == "het is wat je krijgt." and said["hook"]["by"] == "claude"
 
 
 def test_nothing_usable_says_so(clip, monkeypatch):
@@ -263,3 +308,18 @@ def test_a_new_suggestion_never_replaces_one_chosen_by_hand(clip, monkeypatch):
     monkeypatch.setattr(hooks, "suggest", lambda *a, **k: pytest.fail("niets vragen"))
     main.offer_hook(project, CLIP)
     assert project.hook.start == 40.0
+
+
+def test_the_editor_knows_the_same_leaning_words():
+    """frontend/src/hook.ts warns about a hand-picked hook with the same words the checks use."""
+    import json
+    import re
+    from pathlib import Path
+
+    from backend import discovery
+
+    source = (Path(__file__).resolve().parent.parent / "frontend" / "src" / "hook.ts").read_text(encoding="utf-8")
+    words = json.loads(re.search(r"COLD_WORDS = new Set\((\[.*?\])\)", source).group(1))
+    phrases = json.loads(re.search(r"COLD_PHRASES = (\[.*?\])", source).group(1))
+    assert set(words) == discovery.COLD_WORDS
+    assert set(phrases) == set(discovery.COLD_PHRASES)

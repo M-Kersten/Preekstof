@@ -209,6 +209,7 @@ class Project(BaseModel):
     crop: CropWindow | None = None  # None = default framing for the source (see renderer.default_crop)
     track: Track | None = None  # the path the crop walks when cropStrategy is "tracked"
     hook: Hook | None = None  # played before the clip starts; None for a clip from before hooks
+    hookOptions: list[Hook] = []  # what was proposed, so another can be taken without asking again
     # What this clip keeps to itself instead of sharing the house style: see house.py.
     own: list[Literal["style", "watermark"]] = []
 

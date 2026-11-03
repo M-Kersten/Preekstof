@@ -7,6 +7,7 @@
 import { readFileSync } from 'node:fs'
 import { cropGeometry } from '../src/crop.ts'
 import { layoutText, wordTimes } from '../src/subtitleLayout.ts'
+import { hookEdges } from '../src/hook.ts'
 import { trackAt } from '../src/track.ts'
 import type { CropWindow, Output, Segment, Spoken, Style, Track, VideoInfo } from '../src/api.ts'
 
@@ -26,12 +27,14 @@ interface TrackCase {
   at: { seconds: number; x: number | null }[]
 }
 interface CaptionCase { segment: Segment; times: Spoken[] }
+interface HookCase { words: Spoken[]; first: number; last: number; length: number; start: number; end: number }
 interface Fixture {
   output: Output
   layout: LayoutCase[]
   crop: CropCase[]
   track: TrackCase[]
   caption: CaptionCase[]
+  hook: HookCase[]
 }
 
 const path = process.argv[2]
@@ -102,6 +105,17 @@ for (const c of fixture.track) {
   }
 }
 
+for (const c of fixture.hook) {
+  const got = hookEdges(c.words, c.first, c.last, c.length)
+  if (Math.abs(got.start - c.start) > 1e-9 || Math.abs(got.end - c.end) > 1e-9) {
+    problems.push(
+      [`hookEdges(words ${c.first}..${c.last}, clip ${c.length}s)`,
+       `  python: ${c.start}-${c.end}`,
+       `  ts:     ${got.start}-${got.end}`].join('\n'),
+    )
+  }
+}
+
 for (const c of fixture.caption) {
   const got = wordTimes(c.segment)
   const same = got.length === c.times.length && got.every((w, i) => (
@@ -119,7 +133,7 @@ for (const c of fixture.caption) {
   }
 }
 
-const total = fixture.layout.length + fixture.crop.length + moments + fixture.caption.length
+const total = fixture.layout.length + fixture.crop.length + moments + fixture.caption.length + fixture.hook.length
 if (problems.length) {
   console.error(`The preview and the renderer disagree on ${problems.length} of ${total} cases:`)
   console.error('')

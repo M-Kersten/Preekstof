@@ -522,8 +522,8 @@ export default function ClipEditor({ projectId, onProjectChange }: Props) {
             </SubtitleEditor>
             <HookPanel
               hook={project.hook ?? null}
+              options={project.hookOptions ?? []}
               segments={segments}
-              currentTime={currentTime}
               duration={project.sourceInfo?.duration ?? 0}
               busy={hookBusy}
               onChange={changeHook}

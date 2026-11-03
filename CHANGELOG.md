@@ -3,7 +3,7 @@
 Per versie, in gewone taal. Welke versie jij draait staat onderin het paneel dat opengaat
 als je in de balk op **Alles gereed** klikt.
 
-## Volgende versie
+## 0.14.0 — pilot
 
 **Elke clip kan beginnen met een hook.** Vooraan zegt de predikant de kern, in één zin of in
 twee of drie achter elkaar als de kern pas samen staat. Na een korte witte flits begint de clip

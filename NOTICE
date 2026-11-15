@@ -138,3 +138,12 @@ Hugging Face (huggingface.co)
     Model downloads only, listed above.
 
 Nothing is sent to the author of this software. There is no telemetry.
+
+Background music in templates/library/music
+-------------------------------------------
+The 25 tracks in templates/library/music are by Scott Buckley
+(https://www.scottbuckley.com.au), released under the Creative Commons Attribution 4.0
+International licence (https://creativecommons.org/licenses/by/4.0/). They were re-encoded
+to 128 kbps. Every post using one names it as the composer asks, for example:
+'Hymn' by Scott Buckley - released under CC-BY 4.0. www.scottbuckley.com.au
+The app adds that line to the post texts itself (backend/posts.py).

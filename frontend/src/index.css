@@ -1235,3 +1235,6 @@ a.button.small { padding: 0.22rem 0.55rem; font-size: 0.78rem; font-weight: 500;
 .switch-row input[type='checkbox'].switch:focus-visible { outline: 2px solid var(--gold); outline-offset: 2px; }
 .switch-row input[type='checkbox'].switch:focus:not(:focus-visible) { outline: none; }
 .hook-own { margin-top: 0.6rem; }
+.music-track:has(.music-credit) { flex-wrap: wrap; }
+.music-credit { flex-basis: 100%; margin: 0.35rem 0 0.1rem; padding: 0.45rem 0.6rem; font-size: 0.78rem; line-height: 1.45; color: var(--ink); background: var(--lavender); border-radius: 6px; }
+.music-credit q { display: block; margin-top: 0.2rem; font-family: var(--mono); font-size: 0.74rem; quotes: none; }

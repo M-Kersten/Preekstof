@@ -131,3 +131,33 @@ def test_library_audio_is_tracked_even_when_a_global_gitignore_says_otherwise(tm
     rule = said.stdout.split("\t")[0]
     ignored = bool(rule.strip(": ")) and not rule.split(":")[-1].startswith("!")
     assert ignored is not tracked, said.stdout
+
+
+# --- music whose licence asks for a line in the post ----------------------------------------
+
+CREDIT = "'Hymn' by Scott Buckley - released under CC-BY 4.0. www.scottbuckley.com.au"
+
+
+def test_a_track_carries_the_line_its_licence_asks_for(folders):
+    own, library = folders
+    (library / "hymn.mp3").write_bytes(b"x")
+    (library / "tracks.json").write_text(json.dumps({"tracks": [
+        {"file": "hymn.mp3", "title": "Hymn", "credit": "Scott Buckley (CC BY 4.0)", "attribution": CREDIT}]}),
+        encoding="utf-8")
+    assert music.library()[0].attribution == CREDIT
+    assert music.attribution("hymn.mp3") == CREDIT
+    assert music.attribution("") == ""
+    (own / "eigen.mp3").write_bytes(b"x")
+    assert music.attribution("eigen.mp3") == ""
+
+
+def test_every_shipped_track_says_how_to_credit_it():
+    """Scott Buckley's licence asks for this exact line in the description of every post."""
+    catalogue = json.loads((main.ROOT / "templates" / "library" / "music" / "tracks.json").read_text("utf-8"))
+    folder = main.ROOT / "templates" / "library" / "music"
+    for row in catalogue["tracks"]:
+        assert (folder / row["file"]).is_file(), row["file"]
+        assert row["attribution"] == (f"'{row['title']}' by Scott Buckley - released under CC-BY 4.0. "
+                                      "www.scottbuckley.com.au")
+    listed = {row["file"] for row in catalogue["tracks"]}
+    assert {p.name for p in music.files_in(folder)} == listed, "elk meegeleverd nummer staat in tracks.json"

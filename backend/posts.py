@@ -32,7 +32,7 @@ from urllib.parse import urlparse
 
 from pydantic import BaseModel
 
-from . import brands, settings
+from . import brands, music, settings
 from .models import (Project, ShareSettings, Transcript, load_service, load_transcript, project_dir,
                      write_atomic)
 
@@ -425,19 +425,35 @@ def save(project_id: str, post: Post) -> None:
     write_atomic(post_file(project_id), json.dumps(post.model_dump(), indent=2, ensure_ascii=False))
 
 
-def assemble(draft: PostDraft, platform: str, share: ShareSettings, link: str) -> str:
-    """One finished text: the body, and under it the lines that are the church's own."""
+def assemble(draft: PostDraft, platform: str, share: ShareSettings, link: str, credit: str = "") -> str:
+    """One finished text: the body, and under it the lines that are the church's own.
+
+    `credit` is the line the music's licence asks for (music.attribution). It goes under
+    every text, WhatsApp included: wherever the video goes, the credit goes with it.
+    """
     body = getattr(draft, platform, "").strip()
     passage = f"Bijbelgedeelte: {draft.bible}" if any(ch.isdigit() for ch in draft.bible) else ""
     if platform == "whatsapp":
-        return f"{body}\n{link}".strip() if link else body
+        said = f"{body}\n{link}".strip() if link else body
+        return f"{said}\n\n{credit}".strip() if credit else said
     if platform == "instagram":
         tail = "De hele dienst terugkijken? De link staat in onze bio." if link else ""
         row = " ".join(tags(share.hashtags + draft.hashtags, INSTAGRAM_TAGS))
     else:
         tail = f"De hele dienst terugkijken: {link}" if link else ""
         row = " ".join(tags(share.hashtags, FACEBOOK_TAGS))
-    return "\n\n".join(part for part in (body, passage, tail, row) if part)
+    return "\n\n".join(part for part in (body, passage, tail, credit, row) if part)
+
+
+def credited(text: str, credit: str) -> str:
+    """A text somebody wrote themselves, with the music's credit kept under it.
+
+    The licence asks for the line whoever wrote the rest, so an edit cannot lose it. Taking
+    it out by hand puts it back; choosing other music, or none, is how it goes.
+    """
+    if not credit or credit in text:
+        return text
+    return f"{text.rstrip()}\n\n{credit}"
 
 
 def view(project: Project, post: Post | None = None) -> dict | None:
@@ -447,7 +463,9 @@ def view(project: Project, post: Post | None = None) -> dict | None:
         return None
     brand = brands.active()
     link, where = link_for(project, brand.share, brand.church.kerkdienstgemistStation)
-    texts = {p: post.own.get(p) or assemble(post.draft, p, brand.share, link) for p in PLATFORMS}
+    credit = music.attribution(project.music.file)
+    texts = {p: credited(post.own[p], credit) if post.own.get(p) else assemble(post.draft, p, brand.share, link, credit)
+             for p in PLATFORMS}
     return {"texts": texts, "own": sorted(post.own), "bible": post.draft.bible, "by": post.by,
             "note": post.note, "written": post.written, "link": link, "linkFrom": where}
 
@@ -459,7 +477,9 @@ def edit(project: Project, platform: str, text: str) -> dict | None:
     post = load(project.id) or Post()
     brand = brands.active()
     link, _where = link_for(project, brand.share, brand.church.kerkdienstgemistStation)
-    if not text.strip() or text.strip() == assemble(post.draft, platform, brand.share, link).strip():
+    credit = music.attribution(project.music.file)
+    made = assemble(post.draft, platform, brand.share, link, credit).strip()
+    if not text.strip() or text.strip() == made:
         post.own.pop(platform, None)
     else:
         post.own[platform] = text

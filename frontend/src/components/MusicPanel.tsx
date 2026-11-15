@@ -148,6 +148,8 @@ export default function MusicPanel({ music, onChange }: Props) {
 
   const choose = (file: string) => onChange({ ...music, file })
   const on = Boolean(music.file)
+  // A track that is no longer there (the library changed in an update) renders as no music.
+  const gone = on && files.length > 0 && !files.some((f) => f.file === music.file)
   const library = files.filter((f) => f.library)
   const own = files.filter((f) => !f.library)
 
@@ -183,6 +185,12 @@ export default function MusicPanel({ music, onChange }: Props) {
           <div className="music-progress" aria-hidden="true">
             <div style={{ width: `${Math.round(share * 100)}%` }} />
           </div>
+        )}
+        {chosen && f.attribution && (
+          <p className="music-credit">
+            Dit nummer mag je gebruiken als de maker in de beschrijving van je post staat. Preekstof zet deze regel
+            er zelf onder: <q>{f.attribution}</q>
+          </p>
         )}
       </li>
     )
@@ -237,6 +245,11 @@ export default function MusicPanel({ music, onChange }: Props) {
             <input id="fade" type="range" min={0} max={6} step={0.5} value={music.fadeOut} onChange={(e) => onChange({ ...music, fadeOut: Number(e.target.value) })} />
             <output>{String(music.fadeOut).replace('.', ',')} s</output>
           </div>
+        </div>
+      )}
+      {gone && (
+        <div className="notice" style={{ marginTop: '0.7rem' }}>
+          Het nummer dat hier gekozen was, zit niet meer in de app. Zonder ander nummer wordt de clip zonder muziek gemaakt.
         </div>
       )}
       {error && <div className="error" style={{ marginTop: '0.7rem', marginBottom: 0 }}>{error}</div>}

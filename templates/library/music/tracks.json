@@ -1,11 +1,338 @@
 {
-  "_lees_dit": "De standaardbibliotheek: muziek die met de app meekomt. Zet een bestand in deze map en voeg het hier toe met een titel en, als de licentie erom vraagt, de naam van de maker. Een bestand dat hier niet staat, verschijnt onder zijn bestandsnaam. De volgorde hier is de volgorde in de app.",
+  "_lees_dit": "De standaardbibliotheek: muziek die met de app meekomt. Zet een bestand in deze map en voeg het hier toe met een titel en, als de licentie erom vraagt, de naam van de maker (credit) en de regel die onder elke post moet staan (attribution). Een bestand dat hier niet staat, verschijnt onder zijn bestandsnaam. De volgorde hier is de volgorde in de app.",
   "tracks": [
-      { "file": "agape.mp3", "title": "Agape", "credit": "Nicholas Britell" },
-      { "file": "and-we-walk-after.mp3", "title": "And we walk after", "credit": "Trevor Kowalski" },
-      { "file": "muted.mp3", "title": "Muted", "credit": "Hanna Lindgren" },
-      { "file": "one-way.mp3", "title": "One Way", "credit": "Daniel.mp3" },
-      { "file": "present.mp3", "title": "Present", "credit": "LLoyd Vaan" },
-      { "file": "the-beginning.mp3", "title": "The Beginning", "credit": "Flawed Mangoes" }
+    {
+      "file": "with-these-hands.mp3",
+      "title": "With These Hands",
+      "credit": "Scott Buckley (CC BY 4.0)",
+      "attribution": "'With These Hands' by Scott Buckley - released under CC-BY 4.0. www.scottbuckley.com.au",
+      "page": "https://www.scottbuckley.com.au/library/with-these-hands/",
+      "mood": [
+        "dreamy",
+        "emotional",
+        "peaceful",
+        "reflective",
+        "thoughtful"
+      ]
+    },
+    {
+      "file": "petrichor.mp3",
+      "title": "Petrichor",
+      "credit": "Scott Buckley (CC BY 4.0)",
+      "attribution": "'Petrichor' by Scott Buckley - released under CC-BY 4.0. www.scottbuckley.com.au",
+      "page": "https://www.scottbuckley.com.au/library/petrichor/",
+      "mood": [
+        "calm",
+        "emotional",
+        "peaceful",
+        "reflective",
+        "thoughtful"
+      ]
+    },
+    {
+      "file": "life-is.mp3",
+      "title": "Life Is",
+      "credit": "Scott Buckley (CC BY 4.0)",
+      "attribution": "'Life Is' by Scott Buckley - released under CC-BY 4.0. www.scottbuckley.com.au",
+      "page": "https://www.scottbuckley.com.au/library/life-is/",
+      "mood": [
+        "bittersweet",
+        "calm",
+        "emotional",
+        "reflective",
+        "relaxed",
+        "thoughtful"
+      ]
+    },
+    {
+      "file": "cicadas.mp3",
+      "title": "Cicadas",
+      "credit": "Scott Buckley (CC BY 4.0)",
+      "attribution": "'Cicadas' by Scott Buckley - released under CC-BY 4.0. www.scottbuckley.com.au",
+      "page": "https://www.scottbuckley.com.au/library/cicadas/",
+      "mood": [
+        "blissful",
+        "calm",
+        "dreamy",
+        "peaceful",
+        "thoughtful"
+      ]
+    },
+    {
+      "file": "castles-in-the-sky.mp3",
+      "title": "Castles in the Sky",
+      "credit": "Scott Buckley (CC BY 4.0)",
+      "attribution": "'Castles in the Sky' by Scott Buckley - released under CC-BY 4.0. www.scottbuckley.com.au",
+      "page": "https://www.scottbuckley.com.au/library/castles-in-the-sky/",
+      "mood": [
+        "calm",
+        "happy",
+        "peaceful",
+        "relaxed",
+        "thoughtful"
+      ]
+    },
+    {
+      "file": "reverie.mp3",
+      "title": "Reverie",
+      "credit": "Scott Buckley (CC BY 4.0)",
+      "attribution": "'Reverie' by Scott Buckley - released under CC-BY 4.0. www.scottbuckley.com.au",
+      "page": "https://www.scottbuckley.com.au/library/reverie/",
+      "mood": [
+        "calm",
+        "dreamy",
+        "melancholy",
+        "reflective",
+        "relaxed",
+        "thoughtful"
+      ]
+    },
+    {
+      "file": "skyward.mp3",
+      "title": "Skyward",
+      "credit": "Scott Buckley (CC BY 4.0)",
+      "attribution": "'Skyward' by Scott Buckley - released under CC-BY 4.0. www.scottbuckley.com.au",
+      "page": "https://www.scottbuckley.com.au/library/skyward/",
+      "mood": [
+        "melancholy",
+        "peaceful",
+        "reflective",
+        "thoughtful",
+        "uplifting"
+      ]
+    },
+    {
+      "file": "growing-up.mp3",
+      "title": "Growing Up",
+      "credit": "Scott Buckley (CC BY 4.0)",
+      "attribution": "'Growing Up' by Scott Buckley - released under CC-BY 4.0. www.scottbuckley.com.au",
+      "page": "https://www.scottbuckley.com.au/library/growing-up/",
+      "mood": [
+        "peaceful",
+        "reflective",
+        "relaxed",
+        "thoughtful"
+      ]
+    },
+    {
+      "file": "hymn.mp3",
+      "title": "Hymn",
+      "credit": "Scott Buckley (CC BY 4.0)",
+      "attribution": "'Hymn' by Scott Buckley - released under CC-BY 4.0. www.scottbuckley.com.au",
+      "page": "https://www.scottbuckley.com.au/library/hymn/",
+      "mood": [
+        "melancholy",
+        "peaceful",
+        "reflective",
+        "relaxed",
+        "uplifting"
+      ]
+    },
+    {
+      "file": "solstice.mp3",
+      "title": "Solstice",
+      "credit": "Scott Buckley (CC BY 4.0)",
+      "attribution": "'Solstice' by Scott Buckley - released under CC-BY 4.0. www.scottbuckley.com.au",
+      "page": "https://www.scottbuckley.com.au/library/solstice/",
+      "mood": [
+        "inspirational",
+        "reflective",
+        "thoughtful",
+        "uplifting"
+      ]
+    },
+    {
+      "file": "amberlight.mp3",
+      "title": "Amberlight",
+      "credit": "Scott Buckley (CC BY 4.0)",
+      "attribution": "'Amberlight' by Scott Buckley - released under CC-BY 4.0. www.scottbuckley.com.au",
+      "page": "https://www.scottbuckley.com.au/library/amberlight/",
+      "mood": [
+        "peaceful",
+        "thoughtful",
+        "uplifting"
+      ]
+    },
+    {
+      "file": "first-snow.mp3",
+      "title": "First Snow",
+      "credit": "Scott Buckley (CC BY 4.0)",
+      "attribution": "'First Snow' by Scott Buckley - released under CC-BY 4.0. www.scottbuckley.com.au",
+      "page": "https://www.scottbuckley.com.au/library/first-snow/",
+      "mood": [
+        "calm",
+        "peaceful",
+        "uplifting"
+      ]
+    },
+    {
+      "file": "moonlight.mp3",
+      "title": "Moonlight",
+      "credit": "Scott Buckley (CC BY 4.0)",
+      "attribution": "'Moonlight' by Scott Buckley - released under CC-BY 4.0. www.scottbuckley.com.au",
+      "page": "https://www.scottbuckley.com.au/library/moonlight/",
+      "mood": [
+        "peaceful",
+        "relaxed",
+        "romantic",
+        "thoughtful"
+      ]
+    },
+    {
+      "file": "adrift-among-infinite-stars.mp3",
+      "title": "Adrift Among Infinite Stars",
+      "credit": "Scott Buckley (CC BY 4.0)",
+      "attribution": "'Adrift Among Infinite Stars' by Scott Buckley - released under CC-BY 4.0. www.scottbuckley.com.au",
+      "page": "https://www.scottbuckley.com.au/library/adrift-among-infinite-stars/",
+      "mood": [
+        "emotional",
+        "peaceful",
+        "thoughtful"
+      ]
+    },
+    {
+      "file": "aurora.mp3",
+      "title": "Aurora",
+      "credit": "Scott Buckley (CC BY 4.0)",
+      "attribution": "'Aurora' by Scott Buckley - released under CC-BY 4.0. www.scottbuckley.com.au",
+      "page": "https://www.scottbuckley.com.au/library/aurora/",
+      "mood": [
+        "bittersweet",
+        "emotional",
+        "melancholy",
+        "peaceful",
+        "thoughtful"
+      ]
+    },
+    {
+      "file": "affirmations.mp3",
+      "title": "Affirmations",
+      "credit": "Scott Buckley (CC BY 4.0)",
+      "attribution": "'Affirmations' by Scott Buckley - released under CC-BY 4.0. www.scottbuckley.com.au",
+      "page": "https://www.scottbuckley.com.au/library/affirmations/",
+      "mood": [
+        "bittersweet",
+        "peaceful",
+        "thoughtful",
+        "uplifting"
+      ]
+    },
+    {
+      "file": "midsommar.mp3",
+      "title": "Midsommar",
+      "credit": "Scott Buckley (CC BY 4.0)",
+      "attribution": "'Midsommar' by Scott Buckley - released under CC-BY 4.0. www.scottbuckley.com.au",
+      "page": "https://www.scottbuckley.com.au/library/midsommar/",
+      "mood": [
+        "melancholy",
+        "peaceful",
+        "relaxed",
+        "thoughtful"
+      ]
+    },
+    {
+      "file": "snowfall.mp3",
+      "title": "Snowfall",
+      "credit": "Scott Buckley (CC BY 4.0)",
+      "attribution": "'Snowfall' by Scott Buckley - released under CC-BY 4.0. www.scottbuckley.com.au",
+      "page": "https://www.scottbuckley.com.au/library/snowfall/",
+      "mood": [
+        "bittersweet",
+        "calm",
+        "happy",
+        "reflective",
+        "thoughtful"
+      ]
+    },
+    {
+      "file": "extrapolation.mp3",
+      "title": "Extrapolation",
+      "credit": "Scott Buckley (CC BY 4.0)",
+      "attribution": "'Extrapolation' by Scott Buckley - released under CC-BY 4.0. www.scottbuckley.com.au",
+      "page": "https://www.scottbuckley.com.au/library/extrapolation/",
+      "mood": [
+        "bittersweet",
+        "melancholy",
+        "peaceful",
+        "thoughtful",
+        "uplifting"
+      ]
+    },
+    {
+      "file": "new-beginnings.mp3",
+      "title": "New Beginnings",
+      "credit": "Scott Buckley (CC BY 4.0)",
+      "attribution": "'New Beginnings' by Scott Buckley - released under CC-BY 4.0. www.scottbuckley.com.au",
+      "page": "https://www.scottbuckley.com.au/library/new-beginnings/",
+      "mood": [
+        "happy",
+        "inspirational",
+        "peaceful",
+        "uplifting"
+      ]
+    },
+    {
+      "file": "echoes-of-home.mp3",
+      "title": "Echoes Of Home",
+      "credit": "Scott Buckley (CC BY 4.0)",
+      "attribution": "'Echoes Of Home' by Scott Buckley - released under CC-BY 4.0. www.scottbuckley.com.au",
+      "page": "https://www.scottbuckley.com.au/library/echoes-of-home/",
+      "mood": [
+        "bittersweet",
+        "emotional",
+        "innocent",
+        "peaceful"
+      ]
+    },
+    {
+      "file": "home-was-you.mp3",
+      "title": "Home Was You",
+      "credit": "Scott Buckley (CC BY 4.0)",
+      "attribution": "'Home Was You' by Scott Buckley - released under CC-BY 4.0. www.scottbuckley.com.au",
+      "page": "https://www.scottbuckley.com.au/library/home-was-you/",
+      "mood": [
+        "bittersweet",
+        "dreamy",
+        "peaceful"
+      ]
+    },
+    {
+      "file": "at-the-end-of-all-things.mp3",
+      "title": "At The End Of All Things",
+      "credit": "Scott Buckley (CC BY 4.0)",
+      "attribution": "'At The End Of All Things' by Scott Buckley - released under CC-BY 4.0. www.scottbuckley.com.au",
+      "page": "https://www.scottbuckley.com.au/library/at-the-end-of-all-things/",
+      "mood": [
+        "bittersweet",
+        "blissful",
+        "peaceful",
+        "thoughtful"
+      ]
+    },
+    {
+      "file": "hymn-to-the-dawn.mp3",
+      "title": "Hymn to the Dawn",
+      "credit": "Scott Buckley (CC BY 4.0)",
+      "attribution": "'Hymn to the Dawn' by Scott Buckley - released under CC-BY 4.0. www.scottbuckley.com.au",
+      "page": "https://www.scottbuckley.com.au/library/hymn-to-the-dawn/",
+      "mood": [
+        "dreamy",
+        "peaceful",
+        "spiritual"
+      ]
+    },
+    {
+      "file": "a-kind-of-hope.mp3",
+      "title": "A Kind Of Hope",
+      "credit": "Scott Buckley (CC BY 4.0)",
+      "attribution": "'A Kind Of Hope' by Scott Buckley - released under CC-BY 4.0. www.scottbuckley.com.au",
+      "page": "https://www.scottbuckley.com.au/library/a-kind-of-hope/",
+      "mood": [
+        "bittersweet",
+        "melancholy",
+        "thoughtful",
+        "uplifting"
+      ]
+    }
   ]
 }

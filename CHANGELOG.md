@@ -3,6 +3,18 @@
 Per versie, in gewone taal. Welke versie jij draait staat onderin het paneel dat opengaat
 als je in de balk op **Alles gereed** klikt.
 
+## Volgende versie
+
+**Nieuwe muziek: 25 nummers van Scott Buckley.** Rustige, bezinnende en hoopvolle muziek,
+vooral piano en strijkers, gekozen om onder een preek te passen. Ze vervangen de zes nummers
+die er eerst in zaten. Scott Buckley geeft zijn muziek vrij onder CC BY 4.0, op voorwaarde dat
+hij in de beschrijving van de post genoemd wordt. Kies je een van zijn nummers, dan zie je in
+het muziekpaneel welke regel dat is, en Preekstof zet die regel zelf onder de teksten voor
+Instagram, Facebook en WhatsApp. Ook onder een tekst die je zelf hebt aangepast.
+
+Had een clip een van de oude nummers, dan zegt het muziekpaneel dat het nummer er niet meer
+is. Kies een ander, anders wordt de clip zonder muziek gemaakt.
+
 ## 0.14.0 — pilot
 
 **Elke clip kan beginnen met een hook.** Vooraan zegt de predikant de kern, in één zin of in

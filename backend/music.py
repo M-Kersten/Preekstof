@@ -13,6 +13,11 @@ library already uses, so the two never have to be told apart by anything else.
 templates/library/music/tracks.json gives the library its titles and credits. A file that is
 not listed there still shows, under its file name. Music under a Creative Commons licence
 usually asks for a credit, and the credit written there is shown next to the track.
+
+Some licences ask for more than a name next to the track: Scott Buckley's library, which the
+app ships a selection of, may be used anywhere as long as a fixed line stands in the post's
+description. That line is `attribution`. The music panel says so when such a track is chosen,
+and posts.py puts the line under every text for that clip, so nobody has to remember it.
 """
 
 import json
@@ -32,6 +37,7 @@ class Track(BaseModel):
     file: str
     title: str
     credit: str = ""  # who made it, as the licence asks for it to be named
+    attribution: str = ""  # the line the licence asks for in the post's description
     library: bool  # shipped with the app, rather than uploaded by this church
     sizeMb: float
     url: str  # where the browser can play it
@@ -65,7 +71,8 @@ def library() -> list[Track]:
     order = {name: n for n, name in enumerate(known)}
     found = sorted(files_in(LIBRARY_DIR), key=lambda p: (order.get(p.name, len(order)), p.name.lower()))
     return [Track(file=p.name, title=str(known.get(p.name, {}).get("title") or title_of(p.name)),
-                  credit=str(known.get(p.name, {}).get("credit") or ""), library=True,
+                  credit=str(known.get(p.name, {}).get("credit") or ""),
+                  attribution=str(known.get(p.name, {}).get("attribution") or ""), library=True,
                   sizeMb=round(p.stat().st_size / 1e6, 1), url=f"/templates/library/music/{quote(p.name)}")
             for p in found]
 
@@ -78,6 +85,17 @@ def own() -> list[Track]:
 
 def everything() -> list[Track]:
     return library() + own()
+
+
+def attribution(file: str) -> str:
+    """The line a post has to carry for this music, or "" when it needs none.
+
+    A church's own upload never has one: the app knows nothing about where it came from. A
+    church's own file with the same name as a library track cannot exist (see the upload).
+    """
+    if not file or (OWN_DIR / file).is_file():
+        return ""
+    return str(catalogue().get(file, {}).get("attribution") or "").strip()
 
 
 def path_for(name: str) -> Path | None:

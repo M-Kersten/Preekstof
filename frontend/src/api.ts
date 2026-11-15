@@ -377,6 +377,8 @@ export interface MusicFile {
   title: string
   /** Who made it, as its licence asks for it to be named. */
   credit: string
+  /** The line its licence asks for in the post's description; the app adds it to the post texts. */
+  attribution?: string
   /** Ships with the app; cannot be thrown away. */
   library: boolean
   sizeMb: number

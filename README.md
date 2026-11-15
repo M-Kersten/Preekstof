@@ -862,6 +862,12 @@ Music comes from two places (`backend/music.py`):
 - **Standaard**: the library in `templates/library/music/`, tracked in git and part of every release. `tracks.json` there gives each file a title and a credit and sets the order; see the README in that folder for adding a track. A church cannot delete these.
 - **Eigen muziek**: what a church uploads, in `templates/music/`, which git ignores so an update never touches it. An upload may not take a file name the library already uses, so a name a clip remembers always leads to one file.
 
+The library is a selection of 25 tracks by [Scott Buckley](https://www.scottbuckley.com.au/library/), chosen for sitting under a sermon: calm, reflective or hopeful, mostly piano and strings, nothing dark, ominous or comic. They are released under CC BY 4.0 on the condition that every post names them with a fixed line, which `tracks.json` holds per track as `attribution`:
+
+    'Hymn' by Scott Buckley - released under CC-BY 4.0. www.scottbuckley.com.au
+
+When such a track is chosen, the music panel says so and shows the line, and `posts.assemble` puts it under every text for that clip (Instagram before the hashtags, Facebook, WhatsApp). A text somebody rewrote by hand keeps it too (`posts.credited`): the licence asks for it whoever wrote the rest. The files were taken from his site at 320 kbps and re-encoded to 128 kbps stereo, about 107 MB for the 25, which is plenty under a voice. A clip that used a track from the library before this one finds it gone, gets a notice in the music panel, and is made without music until another is chosen.
+
 - **Volume** sets the level of the bed.
 - **Onder de stem** turns on side-chain ducking: the music drops automatically while someone is speaking and comes back in the pauses. This is what makes a bed sound deliberate rather than loud.
 - **Uitfaden** fades the music out at the end. The music runs under the end screen as well.

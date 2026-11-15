@@ -414,3 +414,30 @@ def test_making_a_video_writes_the_text_alongside_the_first_time(client, monkeyp
     a_clip()
     client.post("/projects/clip/render")
     assert written(client)["post"]["by"] == "model"
+
+
+# --- the line the music's licence asks for -------------------------------------------------
+
+CREDIT = "'Hymn' by Scott Buckley - released under CC-BY 4.0. www.scottbuckley.com.au"
+
+
+@pytest.mark.parametrize("platform", ["instagram", "facebook", "whatsapp"])
+def test_the_music_credit_goes_under_every_text(platform):
+    text = posts.assemble(draft(), platform, ShareSettings(hashtags=["#dekerk"]), "https://kerk.nl/dienst", CREDIT)
+    assert CREDIT in text
+
+
+def test_on_instagram_the_credit_comes_before_the_hashtags():
+    text = posts.assemble(draft(), "instagram", ShareSettings(hashtags=["#dekerk"]), "https://kerk.nl/dienst", CREDIT)
+    assert text.index(CREDIT) < text.index("#dekerk")
+
+
+def test_without_licensed_music_there_is_no_credit_line():
+    assert "Scott Buckley" not in posts.assemble(draft(), "facebook", ShareSettings(), "https://kerk.nl/dienst")
+
+
+def test_a_text_written_by_hand_keeps_the_credit():
+    """The licence asks for it whoever wrote the rest."""
+    assert posts.credited("Mijn eigen tekst.", CREDIT) == f"Mijn eigen tekst.\n\n{CREDIT}"
+    assert posts.credited(f"Eigen.\n{CREDIT}", CREDIT) == f"Eigen.\n{CREDIT}"
+    assert posts.credited("Eigen.", "") == "Eigen."

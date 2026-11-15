@@ -178,7 +178,9 @@ jobs:
         include:
           # Every Mac with an Apple chip runs macOS 14, so it takes the newest packages. An
           # Intel Mac from 2015 to 2017 stops at macOS 12, and those are the church laptops.
-          - runner: macos-14
+          # Built on macOS 15 (GitHub retired its macOS 14 machines); what it needs to run is
+          # measured from the binaries (tools/release.py), not from the machine it was built on.
+          - runner: macos-15
             kind: mac-arm64
             asset: Preekstof-Mac.zip
             macos: ""
@@ -251,7 +253,7 @@ jobs:
   app-mac:
     name: Desktop-app voor de Mac
     needs: plain
-    runs-on: macos-14
+    runs-on: macos-15  # macOS 14 machines are retired; desktop/build.py checks the app's own minimum
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5

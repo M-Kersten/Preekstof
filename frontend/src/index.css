@@ -1238,3 +1238,8 @@ a.button.small { padding: 0.22rem 0.55rem; font-size: 0.78rem; font-weight: 500;
 .music-track:has(.music-credit) { flex-wrap: wrap; }
 .music-credit { flex-basis: 100%; margin: 0.35rem 0 0.1rem; padding: 0.45rem 0.6rem; font-size: 0.78rem; line-height: 1.45; color: var(--ink); background: var(--lavender); border-radius: 6px; }
 .music-credit q { display: block; margin-top: 0.2rem; font-family: var(--mono); font-size: 0.74rem; quotes: none; }
+.welcome .ask-key { margin-top: 1.1rem; padding: 0.9rem 1rem; border: 1px solid var(--line); border-radius: 10px; background: var(--lavender); max-width: 44ch; }
+.welcome .ask-key p { margin: 0 0 0.7rem; font-size: 0.92rem; line-height: 1.5; }
+.welcome .ask-key .button { display: inline-block; padding: 0.45rem 0.9rem; border-radius: 8px; background: var(--purple); color: var(--white); font-weight: 600; text-decoration: none; }
+.welcome .ask-key .button:hover { background: var(--purple-soft); }
+.welcome .ask-key .hint { margin: 0.6rem 0 0; }

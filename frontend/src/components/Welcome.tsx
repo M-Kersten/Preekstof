@@ -139,6 +139,28 @@ const Services = ({ found }: { found: { name: string; services: StationService[]
  * Nothing is a dead end. The church can be typed by hand, kerkdienstgemist can be skipped,
  * and every answer stays editable later under Merk instellen.
  */
+const CONTACT = 'info@merijnkersten.nl'
+
+/** A mail asking for a key, with what is needed to make one already in it. */
+function keyRequest(version: string): string {
+  const subject = 'Sleutel voor Preekstof aanvragen'
+  const body = [
+    'Hallo Merijn,',
+    '',
+    'Wij willen Preekstof gebruiken en vragen een sleutel voor Claude aan.',
+    '',
+    'Naam van de kerk:',
+    'Plaats:',
+    'Mijn naam:',
+    'Hoeveel diensten per maand, ongeveer:',
+    '',
+    'Groet,',
+    '',
+    `Verstuurd vanuit Preekstof ${version}`,
+  ].join('\n')
+  return `mailto:${CONTACT}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`
+}
+
 export default function Welcome({ state, onDone }: Props) {
   const [step, setStep] = useState<Step>(state.missing.includes('key') ? 'why' : 'church')
   const [now, setNow] = useState(state)
@@ -263,6 +285,17 @@ export default function Welcome({ state, onDone }: Props) {
                 <a href="https://console.anthropic.com/" target="_blank" rel="noreferrer">console.anthropic.com</a>,
                 zet er wat tegoed op en klik daarna op API keys.
               </p>
+              <div className="ask-key">
+                <p>
+                  <strong>Liever geen account en geen tegoed?</strong> Vraag een sleutel aan. Preekstof heeft een
+                  potje voor kerken die het willen proberen, met een maandlimiet per kerk. De sleutel krijg je per
+                  mail, en die plak je hierboven.
+                </p>
+                <a className="button" href={keyRequest(now.version)} target="_blank" rel="noreferrer">
+                  Vraag een sleutel aan
+                </a>
+                <p className="hint">Opent je mailprogramma niet? Mail dan naar {CONTACT}.</p>
+              </div>
               {now.hasKey && !error && <p className="good">Er staat al een sleutel klaar die het doet.</p>}
               <div className="acts">
                 <button className="primary" disabled={busy || !key.trim()} onClick={saveKey}>

@@ -3,6 +3,13 @@
 Per versie, in gewone taal. Welke versie jij draait staat onderin het paneel dat opengaat
 als je in de balk op **Alles gereed** klikt.
 
+## Volgende versie
+
+**Een sleutel aanvragen.** Wie bij de eerste start nog geen sleutel voor Claude heeft en geen
+account met tegoed wil regelen, vraagt er nu een aan met een knop. Er gaat een mail naar
+Preekstof met de vragen er al in. De sleutel komt per mail terug, met een eigen maandlimiet per
+kerk, en die plak je in hetzelfde scherm.
+
 ## 0.15.0 — pilot
 
 **Nieuwe muziek: 25 nummers van Scott Buckley.** Rustige, bezinnende en hoopvolle muziek,

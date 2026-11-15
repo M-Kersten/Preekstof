@@ -3,7 +3,7 @@
 Per versie, in gewone taal. Welke versie jij draait staat onderin het paneel dat opengaat
 als je in de balk op **Alles gereed** klikt.
 
-## Volgende versie
+## 0.15.0 — pilot
 
 **Nieuwe muziek: 25 nummers van Scott Buckley.** Rustige, bezinnende en hoopvolle muziek,
 vooral piano en strijkers, gekozen om onder een preek te passen. Ze vervangen de zes nummers
